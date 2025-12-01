@@ -1,5 +1,1 @@
-/**
- * Strategy exports
- */
-
-// Will be populated in Phase 3
+export * from "./jwt.strategy";

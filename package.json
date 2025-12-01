@@ -64,6 +64,11 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/config": "^4.0.0",
+    "@nestjs/passport": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "fastify": "^5.0.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "class-validator": "^0.14.0",
@@ -76,6 +81,18 @@
     "@nestjs/passport": {
       "optional": true
     },
+    "@nestjs/throttler": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    },
+    "passport": {
+      "optional": true
+    },
+    "passport-jwt": {
+      "optional": true
+    },
     "@nestjs/bullmq": {
       "optional": true
     },
@@ -85,14 +102,16 @@
     "@nestjs/platform-socket.io": {
       "optional": true
     },
-    "@nestjs/throttler": {
-      "optional": true
-    },
     "@nestjs/schedule": {
       "optional": true
     }
   },
   "optionalDependencies": {
+    "@nestjs/passport": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "fastify": "^5.0.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.0",
     "neo4j-driver": "^5.27.0",
     "ioredis": "^5.4.2",
     "stripe": "^17.5.0",
@@ -120,8 +139,9 @@
     "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
     "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.2",
+    "@types/passport-jwt": "^4.0.1",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2"
   },

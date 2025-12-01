@@ -1,5 +1,2 @@
-/**
- * Abstract classes exports
- */
-
-// Will be populated in Phase 3
+export * from "./entity";
+export * from "./abstract.company.configuration";

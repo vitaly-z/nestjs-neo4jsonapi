@@ -1,29 +1,42 @@
 /**
  * Common module exports
  *
- * Contains abstracts, decorators, filters, guards, interfaces, registries, strategies, and types.
+ * Contains abstracts, contexts, decorators, enums, filters, guards,
+ * interfaces, registries, repositories, strategies, types, and tokens.
  */
 
 // Abstracts
-export * from './abstracts';
+export * from "./abstracts";
+
+// Contexts
+export * from "./contexts";
 
 // Decorators
-export * from './decorators';
+export * from "./decorators";
+
+// Enums
+export * from "./enums";
 
 // Filters
-export * from './filters';
+export * from "./filters";
 
 // Guards
-export * from './guards';
+export * from "./guards";
 
 // Interfaces
-export * from './interfaces';
+export * from "./interfaces";
 
 // Registries
-export * from './registries';
+export * from "./registries";
+
+// Repositories
+export * from "./repositories";
 
 // Strategies
-export * from './strategies';
+export * from "./strategies";
 
 // Types
-export * from './types';
+export * from "./types";
+
+// Tokens and interfaces for dependency injection
+export * from "./tokens";

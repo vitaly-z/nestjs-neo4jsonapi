@@ -1,5 +1,1 @@
-/**
- * Filter exports
- */
-
-// Will be populated in Phase 3
+export * from "./http-exception.filter";

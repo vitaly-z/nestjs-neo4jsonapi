@@ -1,0 +1,87 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: {
+    // Main entry
+    index: 'src/index.ts',
+
+    // Subpath entries for tree-shaking
+    'common/index': 'src/common/index.ts',
+    'config/index': 'src/config/index.ts',
+    'core/index': 'src/core/index.ts',
+    'foundations/index': 'src/foundations/index.ts',
+    'agents/index': 'src/agents/index.ts',
+    'bootstrap/index': 'src/bootstrap/index.ts',
+  },
+  format: ['cjs', 'esm'],
+  dts: {
+    compilerOptions: {
+      composite: false,
+      emitDecoratorMetadata: true,
+      experimentalDecorators: true,
+    },
+  },
+  splitting: false,
+  sourcemap: true,
+  clean: true,
+  treeshake: true,
+  external: [
+    // Peer dependencies (always external)
+    '@nestjs/common',
+    '@nestjs/core',
+    '@nestjs/config',
+    '@nestjs/jwt',
+    '@nestjs/passport',
+    '@nestjs/bullmq',
+    '@nestjs/websockets',
+    '@nestjs/platform-socket.io',
+    '@nestjs/platform-fastify',
+    '@nestjs/throttler',
+    '@nestjs/schedule',
+    '@nestjs/event-emitter',
+    'reflect-metadata',
+    'rxjs',
+    'class-validator',
+    'class-transformer',
+
+    // Optional dependencies (external, loaded at runtime if present)
+    'neo4j-driver',
+    'ioredis',
+    'stripe',
+    '@langchain/core',
+    '@langchain/openai',
+    '@langchain/langgraph',
+    'bullmq',
+    '@sendgrid/mail',
+    'nodemailer',
+    '@aws-sdk/client-s3',
+    '@aws-sdk/s3-request-presigner',
+    '@azure/storage-blob',
+    'socket.io',
+    'pino',
+    'pino-pretty',
+    'pino-loki',
+    'pino-roll',
+    'nestjs-pino',
+    '@opentelemetry/api',
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/instrumentation-fastify',
+    '@opentelemetry/instrumentation-http',
+    '@opentelemetry/instrumentation-nestjs-core',
+    '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/resources',
+    '@opentelemetry/semantic-conventions',
+    'web-push',
+    'nestjs-cls',
+    'nestjs-i18n',
+    'handlebars',
+    'bcryptjs',
+    'passport',
+    'passport-jwt',
+    'zod',
+    'zod-to-json-schema',
+  ],
+  esbuildOptions(options) {
+    options.keepNames = true; // Preserve class names for NestJS DI
+  },
+});

@@ -83,10 +83,6 @@ export class ModelService {
       case "openrouter":
         // OpenRouter uses configured values with required headers
         llmConfig.configuration.baseURL = this.aiConfig.ai.url || "https://openrouter.ai/api/v1";
-        llmConfig.configuration.defaultHeaders = {
-          "HTTP-Referer": "https://only35.photo",
-          "X-Title": "Only35",
-        };
         break;
 
       default:

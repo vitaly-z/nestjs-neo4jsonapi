@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "NestJS foundation package with JSON:API, Neo4j, Redis, LangChain agents, and common utilities",
   "author": "Carlo Nicora",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

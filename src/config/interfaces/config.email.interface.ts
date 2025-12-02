@@ -1,5 +1,5 @@
 export interface ConfigEmailInterface {
-  emailProvider: 'sendgrid' | 'smtp';
+  emailProvider: "sendgrid" | "smtp";
   emailApiKey?: string;
   emailFrom: string;
   emailHost: string;

@@ -40,3 +40,6 @@ export * from "./types";
 
 // Tokens and interfaces for dependency injection
 export * from "./tokens";
+
+// Constants
+export * from "./constants/system.roles";

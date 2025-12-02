@@ -1,0 +1,23 @@
+/**
+ * Injection tokens for agent prompts
+ * These tokens allow consumers to provide custom prompts for each agent
+ */
+
+// Graph Creator prompts
+export const GRAPH_CREATOR_PROMPT = Symbol("GRAPH_CREATOR_PROMPT");
+
+// Summariser prompts
+export const SUMMARISER_MAP_PROMPT = Symbol("SUMMARISER_MAP_PROMPT");
+export const SUMMARISER_COMBINE_PROMPT = Symbol("SUMMARISER_COMBINE_PROMPT");
+export const SUMMARISER_TLDR_PROMPT = Symbol("SUMMARISER_TLDR_PROMPT");
+
+// Contextualiser prompts
+export const CONTEXTUALISER_QUESTION_REFINER_PROMPT = Symbol("CONTEXTUALISER_QUESTION_REFINER_PROMPT");
+export const CONTEXTUALISER_RATIONAL_PROMPT = Symbol("CONTEXTUALISER_RATIONAL_PROMPT");
+export const CONTEXTUALISER_CHUNK_PROMPT = Symbol("CONTEXTUALISER_CHUNK_PROMPT");
+export const CONTEXTUALISER_CHUNK_VECTOR_PROMPT = Symbol("CONTEXTUALISER_CHUNK_VECTOR_PROMPT");
+export const CONTEXTUALISER_KEYCONCEPTS_PROMPT = Symbol("CONTEXTUALISER_KEYCONCEPTS_PROMPT");
+export const CONTEXTUALISER_ATOMICFACTS_PROMPT = Symbol("CONTEXTUALISER_ATOMICFACTS_PROMPT");
+
+// Responder prompts
+export const RESPONDER_ANSWER_PROMPT = Symbol("RESPONDER_ANSWER_PROMPT");

@@ -1,0 +1,198 @@
+import { Annotation } from "@langchain/langgraph";
+import { CitationContext } from "../../contextualiser/contexts/citations.context";
+import { HistoryContext } from "../../contextualiser/contexts/history.context";
+import { NotebookContext } from "../../contextualiser/contexts/notebook.context";
+import { PromptContext } from "../../contextualiser/contexts/prompt.context";
+import { RequestContext } from "../../contextualiser/contexts/request.context";
+import { TokenUsageContext } from "../../../common/contexts/tokenusage.context";
+import { DataLimits } from "../../../common/types/data.limits";
+
+export const ContextualiserContext = Annotation.Root({
+  companyId: Annotation<string>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  contentId: Annotation<string>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  contentType: Annotation<string>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  hops: Annotation<number>({
+    default: () => undefined,
+    reducer: (current, update) => update ?? current ?? 0,
+  }),
+  previousAnalysis: Annotation<string>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  previousAnswer: Annotation<string>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  limits: Annotation<DataLimits>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  prompts: Annotation<typeof PromptContext.State>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  chatHistory: Annotation<(typeof HistoryContext.State)[]>({
+    default: () => undefined,
+    reducer: (current) => current,
+  }),
+  question: Annotation<string>({
+    default: () => undefined,
+    reducer: (current, update) => update ?? current,
+  }),
+  rationalPlan: Annotation<string>({
+    default: () => undefined,
+    reducer: (current, update) => update ?? current,
+  }),
+  annotations: Annotation<string>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (!update) return current;
+      if (!current) return update;
+      if (current.includes(update)) return current;
+      return current + "\n" + update;
+    },
+  }),
+  notebook: Annotation<(typeof NotebookContext.State)[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (!update) return current;
+      if (!current) {
+        return update;
+      }
+
+      const existingIds = new Set(current.map((item) => item.chunkId));
+      const newItems = update.filter((item) => !existingIds.has(item.chunkId));
+
+      return [...current, ...newItems];
+    },
+  }),
+  chunkLevel: Annotation<number>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update) return update;
+      return current;
+    },
+  }),
+  queuedChunks: Annotation<string[]>({
+    default: () => [],
+    reducer: (current, update) => {
+      if (update === undefined) {
+        return current || [];
+      }
+      // Always replace with the update - this allows clearing processed chunks
+      return update;
+    },
+  }),
+  queuedKeyConcepts: Annotation<string[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) {
+        return current;
+      }
+      if (update.length === 0) {
+        return [];
+      }
+      if (!current) return update;
+
+      const existingIds = new Set(current.map((item) => item));
+      const newItems = update.filter((item) => !existingIds.has(item));
+
+      return [...current, ...newItems];
+    },
+  }),
+  processedChunks: Annotation<string[]>({
+    default: () => [],
+    reducer: (current, update) => {
+      if (update === undefined) return current || [];
+      if (!current) return update;
+
+      const existingIds = new Set(current);
+      const newItems = update.filter((item) => !existingIds.has(item));
+
+      return [...current, ...newItems];
+    },
+  }),
+  processedAtomicFacts: Annotation<string[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  processedKeyConcepts: Annotation<string[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  processedNeighbours: Annotation<string[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  neighbouringAlreadyExplored: Annotation<boolean>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  sources: Annotation<(typeof CitationContext.State)[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return [...current, ...update];
+    },
+  }),
+  ontology: Annotation<string[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  requests: Annotation<(typeof RequestContext.State)[]>({
+    default: () => undefined,
+    reducer: (current, update) => {
+      if (update === undefined) return current;
+      return update;
+    },
+  }),
+  nextStep: Annotation<string>({
+    default: () => undefined,
+    reducer: (current, update) => update ?? current,
+  }),
+  status: Annotation<string[]>({
+    default: () => [],
+    reducer: (current, update) => {
+      if (update === undefined || update.length === 0) return current;
+      // Filter out duplicates by combining arrays and using Set
+      const combined = [...current, ...update];
+      return [...new Set(combined)];
+    },
+  }),
+  tokens: Annotation<typeof TokenUsageContext.State>({
+    default: () => ({ input: 0, output: 0 }),
+    reducer: (current, update) => {
+      if (!update) return current;
+      return {
+        input: (current?.input || 0) + (update?.input || 0),
+        output: (current?.output || 0) + (update?.output || 0),
+      };
+    },
+  }),
+});
+
+export type ContextualiserContextState = typeof ContextualiserContext.State;

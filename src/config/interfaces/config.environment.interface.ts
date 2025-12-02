@@ -1,3 +1,3 @@
 export interface ConfigEnvironmentInterface {
-  type: 'worker' | 'api';
+  type: "worker" | "api";
 }

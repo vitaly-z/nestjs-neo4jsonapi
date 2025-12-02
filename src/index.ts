@@ -1,23 +1,23 @@
 /**
- * @carlonicora/nestjs-jsonapi
+ * @carlonicora/nestjs-neo4jsonapi
  *
  * NestJS foundation package with JSON:API, Neo4j, Redis, and common utilities.
  */
 
 // Common exports
-export * from './common';
+export * from "./common";
 
 // Config exports
-export * from './config';
+export * from "./config";
 
 // Core module exports
-export * from './core';
+export * from "./core";
 
 // Foundation module exports
-export * from './foundations';
+export * from "./foundations";
 
 // Agent module exports
-export * from './agents';
+export * from "./agents";
 
 // Bootstrap utilities
-export * from './bootstrap';
+export * from "./bootstrap";

@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
 import { DataModelInterface } from "../interfaces/datamodel.interface";
 
-@Injectable()
+/**
+ * ModelRegistry - Global singleton for model registration
+ *
+ * NOT @Injectable because it must be instantiated and populated with models
+ * BEFORE NestJS bootstraps. Other services depend on models being registered first.
+ */
 export class ModelRegistry {
   private models = new Map<string, DataModelInterface<any>>();
   private labelNameIndex = new Map<string, DataModelInterface<any>>();
@@ -48,7 +52,6 @@ export class ModelRegistry {
 }
 
 /**
- * @deprecated Use the injectable ModelRegistry service instead.
- * This singleton is kept for backward compatibility.
+ * Global singleton instance - use this for model registration before bootstrap
  */
 export const modelRegistry = new ModelRegistry();

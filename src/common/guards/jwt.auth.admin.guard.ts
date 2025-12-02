@@ -2,31 +2,27 @@ import { CanActivate, ExecutionContext, HttpException, Inject, Injectable, Optio
 import { Reflector } from "@nestjs/core";
 import { AuthGuard } from "@nestjs/passport";
 import { ClsService } from "nestjs-cls";
-import type {
+import { Neo4jService } from "../../core/neo4j/services/neo4j.service";
+import {
+  COMPANY_CONFIGURATIONS_FACTORY,
   CompanyConfigurationsFactory,
   CompanyConfigurationsInterface,
-  Neo4jServiceInterface,
+  SYSTEM_ROLES,
   SystemRolesInterface,
 } from "../tokens";
-import { COMPANY_CONFIGURATIONS_FACTORY, NEO4J_SERVICE, SYSTEM_ROLES } from "../tokens";
 
 @Injectable()
 export class AdminJwtAuthGuard extends AuthGuard("jwt") implements CanActivate {
-  private readonly neo4j: Neo4jServiceInterface;
-  private readonly companyConfigFactory?: CompanyConfigurationsFactory;
-  private readonly systemRoles?: SystemRolesInterface;
-
   constructor(
     private readonly cls: ClsService,
     private reflector: Reflector,
-    @Inject(NEO4J_SERVICE) neo4j: Neo4jServiceInterface,
-    @Optional() @Inject(COMPANY_CONFIGURATIONS_FACTORY) companyConfigFactory?: CompanyConfigurationsFactory,
-    @Optional() @Inject(SYSTEM_ROLES) systemRoles?: SystemRolesInterface,
+    private readonly neo4j: Neo4jService,
+    @Optional()
+    @Inject(COMPANY_CONFIGURATIONS_FACTORY)
+    private readonly companyConfigFactory?: CompanyConfigurationsFactory,
+    @Optional() @Inject(SYSTEM_ROLES) private readonly systemRoles?: SystemRolesInterface,
   ) {
     super();
-    this.neo4j = neo4j;
-    this.companyConfigFactory = companyConfigFactory;
-    this.systemRoles = systemRoles;
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

@@ -14,8 +14,9 @@ export enum AppMode {
  */
 export interface AppModeConfig {
   mode: AppMode;
-  enableCronJobs: boolean;
+  enableControllers: boolean;
   enableWorkers: boolean;
+  enableCronJobs: boolean;
 }
 
 /**

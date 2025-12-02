@@ -1,15 +1,10 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Inject, Optional } from "@nestjs/common";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { LoggingServiceInterface } from "../tokens";
-import { LOGGING_SERVICE } from "../tokens";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Optional } from "@nestjs/common";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { AppLoggingService } from "../../core/logging/services/logging.service";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger?: LoggingServiceInterface;
-
-  constructor(@Optional() @Inject(LOGGING_SERVICE) logger?: LoggingServiceInterface) {
-    this.logger = logger;
-  }
+  constructor(@Optional() private readonly logger?: AppLoggingService) {}
 
   /**
    * Check if the exception is a validation error from NestJS ValidationPipe

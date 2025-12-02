@@ -1,147 +1,141 @@
 {
-  "name": "@carlonicora/nestjs-jsonapi",
+  "name": "@carlonicora/nestjs-neo4jsonapi",
   "version": "0.0.1",
-  "description": "NestJS foundation package with JSON:API, Neo4j, Redis, and common utilities",
+  "description": "NestJS foundation package with JSON:API, Neo4j, Redis, LangChain agents, and common utilities",
   "author": "Carlo Nicora",
   "license": "MIT",
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./common": {
       "types": "./dist/common/index.d.ts",
-      "import": "./dist/common/index.mjs",
-      "require": "./dist/common/index.js"
+      "default": "./dist/common/index.js"
     },
     "./config": {
       "types": "./dist/config/index.d.ts",
-      "import": "./dist/config/index.mjs",
-      "require": "./dist/config/index.js"
+      "default": "./dist/config/index.js"
     },
     "./core": {
       "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.mjs",
-      "require": "./dist/core/index.js"
+      "default": "./dist/core/index.js"
     },
     "./core/*": {
       "types": "./dist/core/*.d.ts",
-      "import": "./dist/core/*.mjs",
-      "require": "./dist/core/*.js"
+      "default": "./dist/core/*.js"
     },
     "./foundations": {
       "types": "./dist/foundations/index.d.ts",
-      "import": "./dist/foundations/index.mjs",
-      "require": "./dist/foundations/index.js"
+      "default": "./dist/foundations/index.js"
     },
     "./foundations/*": {
       "types": "./dist/foundations/*.d.ts",
-      "import": "./dist/foundations/*.mjs",
-      "require": "./dist/foundations/*.js"
+      "default": "./dist/foundations/*.js"
     },
     "./agents": {
       "types": "./dist/agents/index.d.ts",
-      "import": "./dist/agents/index.mjs",
-      "require": "./dist/agents/index.js"
+      "default": "./dist/agents/index.js"
     },
     "./bootstrap": {
       "types": "./dist/bootstrap/index.d.ts",
-      "import": "./dist/bootstrap/index.mjs",
-      "require": "./dist/bootstrap/index.js"
+      "default": "./dist/bootstrap/index.js"
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "clean": "rm -rf dist",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
     "prepublishOnly": "pnpm build"
   },
-  "peerDependencies": {
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "@nestjs/config": "^4.0.0",
-    "@nestjs/passport": "^11.0.0",
-    "@nestjs/throttler": "^6.0.0",
-    "fastify": "^5.0.0",
-    "passport": "^0.7.0",
-    "passport-jwt": "^4.0.0",
-    "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.0",
-    "class-validator": "^0.14.0",
-    "class-transformer": "^0.5.0"
-  },
-  "peerDependenciesMeta": {
-    "@nestjs/jwt": {
-      "optional": true
-    },
-    "@nestjs/passport": {
-      "optional": true
-    },
-    "@nestjs/throttler": {
-      "optional": true
-    },
-    "fastify": {
-      "optional": true
-    },
-    "passport": {
-      "optional": true
-    },
-    "passport-jwt": {
-      "optional": true
-    },
-    "@nestjs/bullmq": {
-      "optional": true
-    },
-    "@nestjs/websockets": {
-      "optional": true
-    },
-    "@nestjs/platform-socket.io": {
-      "optional": true
-    },
-    "@nestjs/schedule": {
-      "optional": true
-    }
-  },
-  "optionalDependencies": {
-    "@nestjs/passport": "^11.0.0",
-    "@nestjs/throttler": "^6.0.0",
-    "fastify": "^5.0.0",
-    "passport": "^0.7.0",
-    "passport-jwt": "^4.0.0",
-    "neo4j-driver": "^5.27.0",
-    "ioredis": "^5.4.2",
-    "stripe": "^17.5.0",
-    "@langchain/core": "^0.3.26",
-    "@langchain/openai": "^0.3.16",
-    "@langchain/langgraph": "^0.2.38",
-    "bullmq": "^5.34.8",
-    "@sendgrid/mail": "^8.1.4",
-    "nodemailer": "^6.9.16",
+  "dependencies": {
     "@aws-sdk/client-s3": "^3.712.0",
     "@aws-sdk/s3-request-presigner": "^3.712.0",
     "@azure/storage-blob": "^12.26.0",
-    "socket.io": "^4.8.1",
-    "pino": "^9.6.0",
-    "nestjs-pino": "^4.2.0",
-    "pino-pretty": "^13.0.0",
+    "@langchain/community": "^1.0.0",
+    "@langchain/core": "^1.0.2",
+    "@langchain/langgraph": "^1.0.1",
+    "@langchain/openai": "^1.0.0",
+    "@langchain/textsplitters": "^1.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/event-emitter": "^3.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.1.9",
+    "@nestjs/throttler": "^6.0.0",
+    "@nestjs/websockets": "^11.1.9",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/sdk-node": "^0.57.0",
-    "web-push": "^3.6.7",
-    "nestjs-cls": "^4.5.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.207.0",
+    "@opentelemetry/instrumentation-http": "^0.207.0",
+    "@opentelemetry/instrumentation-nestjs-core": "^0.54.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-node": "^0.207.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0",
+    "@sendgrid/mail": "^8.1.4",
+    "adm-zip": "^0.5.0",
+    "axios": "^1.13.1",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.34.8",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
+    "fast-xml-parser": "^4.5.0",
+    "fastify": "^5.0.0",
     "handlebars": "^4.7.8",
-    "bcryptjs": "^2.4.3"
-  },
-  "dependencies": {
-    "tslib": "^2.8.1"
+    "ioredis": "^5.4.2",
+    "jszip": "^3.10.1",
+    "lodash": "^4.17.0",
+    "marked": "^15.0.0",
+    "mathjs": "^15.0.0",
+    "natural": "^8.1.0",
+    "neo4j-driver": "^6.0.1",
+    "nestjs-pino": "^4.2.0",
+    "node-tesseract-ocr": "^2.2.0",
+    "nodemailer": "^6.9.16",
+    "officeparser": "^5.2.1",
+    "openai": "^6.7.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.0",
+    "pdf-parse": "^2.4.5",
+    "pdf2pic": "^3.0.0",
+    "pdfjs-dist": "^5.4.394",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.0.0",
+    "qs": "^6.13.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "sharp": "^0.33.0",
+    "socket.io": "^4.8.1",
+    "stripe": "^20.0.0",
+    "tslib": "^2.8.1",
+    "turndown": "^7.2.2",
+    "web-push": "^3.6.7",
+    "xlsx-republish": "^0.20.3",
+    "zod": "^4.0.0",
+    "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.16.0",
+    "@nestjs/bullmq": "^11.0.4",
+    "@swc/core": "^1.15.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^6.4.17",
     "@types/passport-jwt": "^4.0.1",
+    "@types/qs": "^6.9.17",
+    "@types/turndown": "^5.0.5",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "globals": "^15.13.0",
+    "prettier": "^3.4.2",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2"
   },
@@ -158,9 +152,19 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/carlonicora/nestjs-jsonapi"
+    "url": "https://github.com/carlonicora/nestjs-neo4jsonapi"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "@nestjs/config": "^4.0.0",
+    "nestjs-cls": "^6.0.1",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": false
+    }
   }
 }

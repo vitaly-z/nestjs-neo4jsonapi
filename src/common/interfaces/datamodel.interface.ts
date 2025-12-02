@@ -1,16 +1,11 @@
-/**
- * Serialiser type - to be implemented by consuming apps
- * This is a placeholder that allows type-safe serialiser references
- */
-export interface JsonApiSerialiserInterface {
-  serialize(data: any): any;
-}
+import { AbstractJsonApiSerialiser } from "../../core/jsonapi/abstracts/abstract.jsonapi.serialiser";
+import { JsonApiServiceInterface } from "../../core/jsonapi/interfaces/jsonapi.service.interface";
 
 export function getEndpoint(modelGetter: () => DataModelInterface<any>): string {
   return modelGetter().endpoint;
 }
 
-export type SerialiserType = JsonApiSerialiserInterface;
+export type SerialiserType = AbstractJsonApiSerialiser & JsonApiServiceInterface;
 
 export type DataMeta = {
   type: string;

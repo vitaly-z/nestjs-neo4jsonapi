@@ -15,6 +15,7 @@ interface LLMParameters {
     baseURL: string;
     defaultHeaders?: Record<string, string>;
   };
+  modelKwargs?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -53,8 +54,8 @@ export class ModelService {
   getLLM(params?: { temperature?: number }): BaseChatModel {
     const temperature = params?.temperature ?? 0.2;
 
-    // Create cache key based on type and temperature
-    const cacheKey = `${this.aiConfig.ai.provider}-${temperature}`;
+    // Create cache key based on type, temperature, and region (for provider routing)
+    const cacheKey = `${this.aiConfig.ai.provider}-${temperature}-${this.aiConfig.ai.region || "default"}`;
 
     // Return cached instance if available
     if (this._modelCache.has(cacheKey)) {
@@ -83,6 +84,15 @@ export class ModelService {
       case "openrouter":
         // OpenRouter uses configured values with required headers
         llmConfig.configuration.baseURL = this.aiConfig.ai.url || "https://openrouter.ai/api/v1";
+        // Add provider routing if region is configured
+        if (this.aiConfig.ai.region) {
+          llmConfig.modelKwargs = {
+            provider: {
+              order: [this.aiConfig.ai.region],
+              allow_fallbacks: true,
+            },
+          };
+        }
         break;
 
       default:

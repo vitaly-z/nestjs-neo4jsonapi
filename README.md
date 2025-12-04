@@ -85,6 +85,66 @@ The library is organized into four main layers:
 pnpm add @carlonicora/nestjs-neo4jsonapi
 ```
 
+### Git Submodule Setup (Alternative)
+
+If you want to use the package as a git submodule (for development or before npm release):
+
+**1. Add the submodule**
+```bash
+cd /path/to/your-project
+git submodule add https://github.com/carlonicora/nestjs-neo4jsonapi packages/nestjs-neo4jsonapi
+```
+
+**2. Verify it worked**
+```bash
+git submodule status
+# Should show: <commit-sha> packages/nestjs-neo4jsonapi (heads/master)
+```
+
+**3. Commit the submodule**
+```bash
+git add .gitmodules packages/nestjs-neo4jsonapi
+git commit -m "Add nestjs-neo4jsonapi as submodule"
+```
+
+**4. Update your `package.json`** (e.g., `apps/api/package.json`)
+```json
+{
+  "dependencies": {
+    "@carlonicora/nestjs-neo4jsonapi": "workspace:*"
+  }
+}
+```
+
+**5. Ensure `pnpm-workspace.yaml` includes packages**
+```yaml
+packages:
+  - "apps/*"
+  - "packages/*"
+```
+
+**6. Install and build**
+```bash
+pnpm install
+cd packages/nestjs-neo4jsonapi && pnpm build && cd ../..
+```
+
+**For CI/CD (GitHub Actions)**, add `submodules: recursive` to your checkout step:
+```yaml
+- uses: actions/checkout@v4
+  with:
+    submodules: recursive
+```
+
+**Cloning a project with submodules:**
+```bash
+# When cloning fresh
+git clone --recurse-submodules https://github.com/your/repo.git
+
+# If already cloned
+git submodule update --init --recursive
+```
+
 ### Peer Dependencies
 
 The following packages must be installed in your application:

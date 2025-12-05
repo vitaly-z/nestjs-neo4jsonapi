@@ -20,6 +20,7 @@ export * from "./abstracts/abstract.jsonapi.serialiser";
 
 // Serialisers
 export * from "./serialisers/jsonapi.paginator";
+export * from "./serialisers/descriptor.based.serialiser";
 
 // Interfaces
 export * from "./interfaces/jsonapi.service.interface";

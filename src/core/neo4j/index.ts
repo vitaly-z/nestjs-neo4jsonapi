@@ -13,5 +13,8 @@ export { EntityFactory } from "./factories/entity.factory";
 export { orderBy } from "./queries/order.by";
 export { updateRelationshipQuery } from "./queries/update.relationship";
 
+// Abstracts
+export * from "./abstracts";
+
 // Re-export ModelRegistry from common
 export { ModelRegistry, modelRegistry } from "../../common/registries/registry";

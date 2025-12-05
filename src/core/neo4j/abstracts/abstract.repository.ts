@@ -1,0 +1,606 @@
+import { HttpException, HttpStatus, OnModuleInit } from "@nestjs/common";
+import { EntityDescriptor, RelationshipDef } from "../../../common/interfaces/entity.schema.interface";
+import { JsonApiCursorInterface } from "../../jsonapi/interfaces/jsonapi.cursor.interface";
+import { updateRelationshipQuery } from "../queries/update.relationship";
+import { Neo4jService } from "../services/neo4j.service";
+import { SecurityService } from "../../security/services/security.service";
+
+/**
+ * Abstract base repository for Neo4j entities
+ *
+ * This class provides generic CRUD operations using the schema-first EntityDescriptor pattern.
+ * Fields and relationships are defined once in the descriptor, and everything else is derived.
+ *
+ * @template T - The entity type (e.g., Glossary, Article, Topic)
+ * @template R - The relationships record type for autocomplete support
+ *
+ * Usage pattern:
+ * ```typescript
+ * export class GlossaryRepository extends AbstractRepository<Glossary, typeof GlossaryDescriptor.relationships> {
+ *   protected readonly descriptor = GlossaryDescriptor;
+ *
+ *   constructor(
+ *     neo4j: Neo4jService,
+ *     securityService: SecurityService,
+ *   ) {
+ *     super(neo4j, securityService);
+ *   }
+ *
+ *   // Generic methods (find, findById, create, put, patch, delete, findByRelated) are inherited
+ *   // Domain-specific methods can be added here
+ * }
+ * ```
+ */
+export abstract class AbstractRepository<
+  T,
+  R extends Record<string, RelationshipDef> = Record<string, RelationshipDef>,
+> implements OnModuleInit {
+  protected abstract readonly descriptor: EntityDescriptor<T, R>;
+
+  constructor(
+    protected readonly neo4j: Neo4jService,
+    protected readonly securityService: SecurityService,
+  ) {}
+
+  async onModuleInit() {
+    const { constraints, indexes, model } = this.descriptor;
+    const { nodeName, labelName } = model;
+
+    // Create constraints
+    for (const constraint of constraints) {
+      await this.neo4j.writeOne({
+        query: `CREATE CONSTRAINT ${nodeName}_${constraint.property} IF NOT EXISTS FOR (${nodeName}:${labelName}) REQUIRE ${nodeName}.${constraint.property} IS UNIQUE`,
+      });
+    }
+
+    // Create indexes
+    if (indexes) {
+      for (const index of indexes) {
+        if (index.type === "FULLTEXT") {
+          // Check if index exists and matches expected configuration
+          const result = await this.neo4j.read(
+            `
+            SHOW INDEXES
+            YIELD name, type, entityType, labelsOrTypes, properties
+            WHERE name = $indexName AND type = 'FULLTEXT' AND entityType = 'NODE'
+            RETURN labelsOrTypes AS labels, properties
+          `,
+            { indexName: index.name },
+          );
+
+          const match = result.records[0];
+          const labels = match?.get("labels") ?? [];
+          const properties = match?.get("properties") ?? [];
+
+          const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((val) => b.includes(val));
+
+          if (!match || !arraysEqual(labels, [labelName]) || !arraysEqual(properties, index.properties)) {
+            await this.neo4j.writeOne({
+              query: `
+                CREATE FULLTEXT INDEX \`${index.name}\` IF NOT EXISTS
+                FOR (n:${[labelName].map((l) => `\`${l}\``).join(" | ")})
+                ON EACH [${index.properties.map((p) => `n.\`${p}\``).join(", ")}]
+              `,
+              queryParams: {},
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Builds the default MATCH query for the entity
+   */
+  protected buildDefaultMatch(options?: { searchField?: string; blockCompanyAndUser?: boolean }): string {
+    const { nodeName, labelName } = this.descriptor.model;
+    const { isCompanyScoped } = this.descriptor;
+
+    // Generic entities - no company filtering
+    if (!isCompanyScoped) {
+      return `
+        MATCH (${nodeName}:${labelName}${options?.searchField ? ` {${options.searchField}: $searchValue}` : ``})
+        WITH ${nodeName}
+      `;
+    }
+
+    // Company-scoped entities - standard filtering
+    return `
+      MATCH (${nodeName}:${labelName}${options?.searchField ? ` {${options.searchField}: $searchValue}` : ``})
+      WHERE $companyId IS NULL
+      OR EXISTS {
+        MATCH (${nodeName})-[:BELONGS_TO]-(company)
+      }
+      WITH ${nodeName}${options?.blockCompanyAndUser ? `` : `, company, currentUser`}
+    `;
+  }
+
+  /**
+   * Builds the user access validation snippet
+   */
+  protected buildUserHasAccess(): string {
+    const { nodeName } = this.descriptor.model;
+    return `WITH ${nodeName}`;
+  }
+
+  /**
+   * Builds the RETURN statement including all relationships from descriptor
+   */
+  protected buildReturnStatement(): string {
+    const { nodeName, labelName } = this.descriptor.model;
+    const { relationships, isCompanyScoped } = this.descriptor;
+
+    let query = "";
+    const returnParts = [nodeName];
+
+    // Match company relationship only for company-scoped entities
+    if (isCompanyScoped) {
+      query += `MATCH (${nodeName}:${labelName})-[:BELONGS_TO]->(${nodeName}_company:Company)\n`;
+      returnParts.push(`${nodeName}_company`);
+    }
+
+    // Build relationship matches from descriptor
+    for (const [name, rel] of Object.entries(relationships)) {
+      const relatedNodeName = `${nodeName}_${name}`;
+      const isOptional = rel.cardinality === "many";
+      const matchType = isOptional ? "OPTIONAL MATCH" : "MATCH";
+
+      if (rel.direction === "in") {
+        // (related)-[:REL]->(this)
+        query += `${matchType} (${nodeName})<-[:${rel.relationship}]-(${relatedNodeName}:${rel.model.labelName})\n`;
+      } else {
+        // (this)-[:REL]->(related)
+        query += `${matchType} (${nodeName})-[:${rel.relationship}]->(${relatedNodeName}:${rel.model.labelName})\n`;
+      }
+      returnParts.push(relatedNodeName);
+    }
+
+    query += `RETURN ${returnParts.join(", ")}`;
+    return query;
+  }
+
+  /**
+   * Validates if the user has access to the entity
+   * Throws Forbidden exception if entity exists but user doesn't have access
+   */
+  protected async _validateForbidden(params: {
+    response: T | null;
+    searchField: string;
+    searchValue: string;
+  }): Promise<T | null> {
+    if (params.response) return params.response;
+
+    const existsQuery = this.neo4j.initQuery({ serialiser: this.descriptor.model });
+    existsQuery.queryParams = { companyId: null, currentUserId: null, searchValue: params.searchValue };
+    existsQuery.query = `
+      ${this.buildDefaultMatch({ searchField: params.searchField, blockCompanyAndUser: true })}
+      ${this.buildReturnStatement()}
+    `;
+    const exists = await this.neo4j.readOne(existsQuery);
+
+    if (exists) throw new HttpException(`Forbidden`, HttpStatus.FORBIDDEN);
+
+    return null;
+  }
+
+  /**
+   * Find entities with optional search term, ordering, and pagination
+   */
+  async find(params: {
+    fetchAll?: boolean;
+    term?: string;
+    orderBy?: string;
+    cursor?: JsonApiCursorInterface;
+  }): Promise<T[]> {
+    const { nodeName } = this.descriptor.model;
+    const query = this.neo4j.initQuery({
+      cursor: params.cursor,
+      serialiser: this.descriptor.model,
+      fetchAll: params.fetchAll,
+    });
+
+    query.queryParams = {
+      ...query.queryParams,
+      term: params.term,
+    };
+
+    if (params.term && this.descriptor.fulltextIndexName) {
+      // Use fulltext search if term is provided and index exists
+      query.query += `CALL db.index.fulltext.queryNodes("${this.descriptor.fulltextIndexName}", $term)
+      YIELD node, score
+      ${this.descriptor.isCompanyScoped ? `WHERE (node)-[:BELONGS_TO]->(company)` : ``}
+
+      WITH node as ${nodeName}, score
+      ORDER BY score DESC
+    `;
+    } else {
+      // Use default query with ordering
+      query.query += `
+      ${this.buildDefaultMatch()}
+      ${this.securityService.userHasAccess({ validator: () => this.buildUserHasAccess() })}
+
+      ORDER BY ${nodeName}.${params.orderBy ?? this.descriptor.defaultOrderBy ?? "updatedAt DESC"}
+    `;
+    }
+
+    query.query += `
+      {CURSOR}
+
+      ${this.buildReturnStatement()}
+    `;
+
+    return this.neo4j.readMany(query);
+  }
+
+  /**
+   * Find entity by ID with security validation
+   */
+  async findById(params: { id: string }): Promise<T> {
+    const query = this.neo4j.initQuery({ serialiser: this.descriptor.model });
+
+    query.queryParams = {
+      ...query.queryParams,
+      searchValue: params.id,
+    };
+
+    query.query += `
+      ${this.buildDefaultMatch({ searchField: "id" })}
+      ${this.securityService.userHasAccess({ validator: () => this.buildUserHasAccess() })}
+      ${this.buildReturnStatement()}
+    `;
+
+    return this._validateForbidden({
+      response: await this.neo4j.readOne(query),
+      searchField: "id",
+      searchValue: params.id,
+    });
+  }
+
+  /**
+   * Find entities by a related entity
+   *
+   * @param relationship - The relationship name (e.g., 'author', 'topic')
+   * @param id - Single ID or array of IDs of the related entity
+   *
+   * @example
+   * ```typescript
+   * // Find all glossaries by a specific author
+   * await repository.findByRelated({ relationship: 'author', id: 'author-123' });
+   *
+   * // Find all glossaries related to specific topics
+   * await repository.findByRelated({ relationship: 'topic', id: ['topic-1', 'topic-2'] });
+   * ```
+   */
+  async findByRelated(params: {
+    relationship: keyof R & string;
+    id: string | string[];
+    term?: string;
+    orderBy?: string;
+    fetchAll?: boolean;
+    cursor?: JsonApiCursorInterface;
+  }): Promise<T[]> {
+    const { nodeName } = this.descriptor.model;
+    const rel = this.descriptor.relationships[params.relationship];
+
+    if (!rel) {
+      throw new HttpException(`Unknown relationship: ${params.relationship}`, HttpStatus.BAD_REQUEST);
+    }
+
+    const relatedIds = Array.isArray(params.id) ? params.id : [params.id];
+
+    const query = this.neo4j.initQuery({
+      cursor: params.cursor,
+      serialiser: this.descriptor.model,
+      fetchAll: params.fetchAll,
+    });
+
+    query.queryParams = {
+      ...query.queryParams,
+      relatedIds,
+      term: params.term,
+    };
+
+    if (params.term && this.descriptor.fulltextIndexName) {
+      // Use fulltext search with relationship filter
+      query.query += `CALL db.index.fulltext.queryNodes("${this.descriptor.fulltextIndexName}", $term)
+      YIELD node, score
+      ${this.descriptor.isCompanyScoped ? `WHERE (node)-[:BELONGS_TO]->(company)` : `WHERE true`}
+      `;
+
+      // Add relationship filter based on direction
+      if (rel.direction === "in") {
+        query.query += `AND (node)<-[:${rel.relationship}]-(:${rel.model.labelName} WHERE id IN $relatedIds)\n`;
+      } else {
+        query.query += `AND (node)-[:${rel.relationship}]->(:${rel.model.labelName} WHERE id IN $relatedIds)\n`;
+      }
+
+      query.query += `WITH node as ${nodeName}, score
+      ORDER BY score DESC
+    `;
+    } else {
+      // Use default query with relationship match
+      query.query += `
+      ${this.buildDefaultMatch()}
+      `;
+
+      // Add relationship match based on direction
+      if (rel.direction === "in") {
+        query.query += `MATCH (${nodeName})<-[:${rel.relationship}]-(related:${rel.model.labelName})
+        WHERE related.id IN $relatedIds\n`;
+      } else {
+        query.query += `MATCH (${nodeName})-[:${rel.relationship}]->(related:${rel.model.labelName})
+        WHERE related.id IN $relatedIds\n`;
+      }
+
+      query.query += `
+      ${this.securityService.userHasAccess({ validator: () => this.buildUserHasAccess() })}
+
+      ORDER BY ${nodeName}.${params.orderBy ?? this.descriptor.defaultOrderBy ?? "updatedAt DESC"}
+    `;
+    }
+
+    query.query += `
+      {CURSOR}
+
+      ${this.buildReturnStatement()}
+    `;
+
+    return this.neo4j.readMany(query);
+  }
+
+  /**
+   * Create a new entity with relationships
+   * Uses descriptor.fieldNames and descriptor.fieldDefaults for properties
+   * Uses descriptor.relationships for creating relationships
+   */
+  async create(params: { id: string; [key: string]: any }): Promise<void> {
+    const { nodeName, labelName } = this.descriptor.model;
+    const { fieldNames, fieldDefaults, fields, relationships } = this.descriptor;
+    const query = this.neo4j.initQuery();
+
+    // Validate related nodes exist
+    const nodesToValidate: Array<{ id: string; label: string }> = [];
+    for (const [name, rel] of Object.entries(relationships)) {
+      const paramValue = params[name];
+      if (paramValue) {
+        const ids = Array.isArray(paramValue) ? paramValue : [paramValue];
+        nodesToValidate.push(...ids.map((id) => ({ id, label: rel.model.labelName })));
+      }
+    }
+
+    if (nodesToValidate.length > 0) {
+      await this.neo4j.validateExistingNodes({ nodes: nodesToValidate.filter(Boolean) });
+    }
+
+    // Apply defaults for fields not provided in params
+    const mergedParams = { ...fieldDefaults, ...params };
+
+    // Build query parameters
+    query.queryParams = {
+      ...query.queryParams,
+      ...mergedParams,
+    };
+
+    // Build field assignments for CREATE with proper Cypher type casting
+    const fieldAssignments = fieldNames
+      .map((fieldName) => {
+        const fieldDef = fields[fieldName as keyof typeof fields];
+        if (fieldDef?.type === "datetime") {
+          return `${fieldName}: datetime($${fieldName})`;
+        }
+        return `${fieldName}: $${fieldName}`;
+      })
+      .join(",\n        ");
+
+    // Create node with fields from descriptor
+    query.query += `
+      CREATE (${nodeName}:${labelName} {
+        id: $id,
+        ${fieldAssignments ? fieldAssignments + "," : ""}
+        createdAt: datetime(),
+        updatedAt: datetime()
+      })
+    `;
+
+    // Create company relationship only for company-scoped entities
+    if (this.descriptor.isCompanyScoped) {
+      query.query += `CREATE (${nodeName})-[:BELONGS_TO]->(company)\n`;
+    }
+
+    // Create relationships
+    for (const [name, rel] of Object.entries(relationships)) {
+      const paramValue = mergedParams[name];
+      // Add param to query params
+      query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
+
+      query.query += updateRelationshipQuery({
+        node: nodeName,
+        relationshipName: rel.relationship,
+        relationshipToNode: rel.direction === "out",
+        label: rel.model.labelName,
+        param: name,
+        values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+      });
+    }
+
+    await this.neo4j.writeOne(query);
+  }
+
+  /**
+   * Update an existing entity (full update - all fields are set)
+   * Uses descriptor.fieldNames for properties
+   * Uses descriptor.relationships for updating relationships
+   */
+  async put(params: { id: string; [key: string]: any }): Promise<void> {
+    const { nodeName, labelName } = this.descriptor.model;
+    const { fieldNames, fields, relationships } = this.descriptor;
+    const query = this.neo4j.initQuery();
+
+    // Validate related nodes exist
+    const nodesToValidate: Array<{ id: string; label: string }> = [];
+    for (const [name, rel] of Object.entries(relationships)) {
+      const paramValue = params[name];
+      if (paramValue) {
+        const ids = Array.isArray(paramValue) ? paramValue : [paramValue];
+        nodesToValidate.push(...ids.map((id) => ({ id, label: rel.model.labelName })));
+      }
+    }
+
+    if (nodesToValidate.length > 0) {
+      await this.neo4j.validateExistingNodes({ nodes: nodesToValidate.filter(Boolean) });
+    }
+
+    // Build query parameters
+    query.queryParams = {
+      ...query.queryParams,
+      ...params,
+    };
+
+    // Build SET assignments for all fields with proper Cypher type casting
+    const setAssignments = fieldNames
+      .map((fieldName) => {
+        const fieldDef = fields[fieldName as keyof typeof fields];
+        if (fieldDef?.type === "datetime") {
+          return `${nodeName}.${fieldName} = datetime($${fieldName})`;
+        }
+        return `${nodeName}.${fieldName} = $${fieldName}`;
+      })
+      .join(", ");
+
+    // Update node with fields from descriptor
+    // For generic entities, match without company relationship
+    const matchClause = this.descriptor.isCompanyScoped
+      ? `MATCH (${nodeName}:${labelName} {id: $id})-[:BELONGS_TO]->(company)`
+      : `MATCH (${nodeName}:${labelName} {id: $id})`;
+
+    query.query += `
+      ${matchClause}
+      SET ${nodeName}.updatedAt = datetime()${setAssignments ? `, ${setAssignments}` : ""}
+    `;
+
+    // Update relationships
+    for (const [name, rel] of Object.entries(relationships)) {
+      const paramValue = params[name];
+      // Add param to query params
+      query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
+
+      query.query += updateRelationshipQuery({
+        node: nodeName,
+        relationshipName: rel.relationship,
+        relationshipToNode: rel.direction === "out",
+        label: rel.model.labelName,
+        param: name,
+        values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+      });
+    }
+
+    await this.neo4j.writeOne(query);
+  }
+
+  /**
+   * Partial update - only updates fields and relationships that are explicitly passed
+   * Unlike put(), this method only modifies properties present in params
+   */
+  async patch(params: { id: string; [key: string]: any }): Promise<void> {
+    const { nodeName, labelName } = this.descriptor.model;
+    const { fieldNames, fields, relationships } = this.descriptor;
+    const query = this.neo4j.initQuery();
+
+    // Determine which fields to update (only those in params AND in fieldNames)
+    const fieldsToUpdate = fieldNames.filter((field) => params[field] !== undefined);
+
+    // Determine which relationships to update (only those in params)
+    const relationshipsToUpdate = Object.entries(relationships).filter(([name]) => params[name] !== undefined);
+
+    // Validate related nodes exist
+    const nodesToValidate: Array<{ id: string; label: string }> = [];
+    for (const [name, rel] of relationshipsToUpdate) {
+      const paramValue = params[name];
+      if (paramValue) {
+        const ids = Array.isArray(paramValue) ? paramValue : [paramValue];
+        nodesToValidate.push(...ids.map((id) => ({ id, label: rel.model.labelName })));
+      }
+    }
+
+    if (nodesToValidate.length > 0) {
+      await this.neo4j.validateExistingNodes({ nodes: nodesToValidate.filter(Boolean) });
+    }
+
+    // Build query parameters (only include fields that are being updated)
+    query.queryParams = {
+      ...query.queryParams,
+      id: params.id,
+    };
+
+    for (const field of fieldsToUpdate) {
+      query.queryParams[field] = params[field];
+    }
+
+    for (const [name] of relationshipsToUpdate) {
+      const paramValue = params[name];
+      query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
+    }
+
+    // Build SET assignments only for fields present in params with proper Cypher type casting
+    const setAssignments = fieldsToUpdate
+      .map((fieldName) => {
+        const fieldDef = fields[fieldName as keyof typeof fields];
+        if (fieldDef?.type === "datetime") {
+          return `${nodeName}.${fieldName} = datetime($${fieldName})`;
+        }
+        return `${nodeName}.${fieldName} = $${fieldName}`;
+      })
+      .join(", ");
+
+    // Update node with only the provided fields
+    // For generic entities, match without company relationship
+    const matchClause = this.descriptor.isCompanyScoped
+      ? `MATCH (${nodeName}:${labelName} {id: $id})-[:BELONGS_TO]->(company)`
+      : `MATCH (${nodeName}:${labelName} {id: $id})`;
+
+    query.query += `
+      ${matchClause}
+      SET ${nodeName}.updatedAt = datetime()${setAssignments ? `, ${setAssignments}` : ""}
+    `;
+
+    // Update only the relationships that were passed
+    for (const [name, rel] of relationshipsToUpdate) {
+      const paramValue = params[name];
+      query.query += updateRelationshipQuery({
+        node: nodeName,
+        relationshipName: rel.relationship,
+        relationshipToNode: rel.direction === "out",
+        label: rel.model.labelName,
+        param: name,
+        values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+      });
+    }
+
+    await this.neo4j.writeOne(query);
+  }
+
+  /**
+   * Delete an entity and all its relationships
+   */
+  async delete(params: { id: string }): Promise<void> {
+    const { nodeName, labelName } = this.descriptor.model;
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      ...query.queryParams,
+      id: params.id,
+    };
+
+    // For generic entities, match without company relationship
+    const matchClause = this.descriptor.isCompanyScoped
+      ? `MATCH (${nodeName}:${labelName} {id: $id})-[:BELONGS_TO]->(company)`
+      : `MATCH (${nodeName}:${labelName} {id: $id})`;
+
+    query.query += `
+      ${matchClause}
+      DETACH DELETE ${nodeName};
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
+}

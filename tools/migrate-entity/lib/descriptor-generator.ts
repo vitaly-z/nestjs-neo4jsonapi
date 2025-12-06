@@ -4,7 +4,6 @@
  * Generates new-style descriptor code from parsed entity data.
  */
 
-import * as path from "path";
 import { findAndParseCypherRelationships } from "./ast-parser";
 import {
   ComputedConfig,
@@ -30,7 +29,7 @@ export interface GeneratorOptions {
 export function generateDescriptor(
   parsed: ParsedEntity,
   entityDir: string,
-  options: GeneratorOptions = {}
+  options: GeneratorOptions = {},
 ): GeneratedDescriptor {
   const { meta, entityType, mapper, serialiser } = parsed;
 
@@ -41,7 +40,9 @@ export function generateDescriptor(
     if (options.verbose && cypherRelationships.length > 0) {
       console.log(`  Found ${cypherRelationships.length} relationships from Cypher queries:`);
       for (const rel of cypherRelationships) {
-        console.log(`    - ${rel.name}: ${rel.direction === "in" ? "<-" : ""}[:${rel.relationshipType}]${rel.direction === "out" ? "->" : ""} ${rel.relatedLabel}`);
+        console.log(
+          `    - ${rel.name}: ${rel.direction === "in" ? "<-" : ""}[:${rel.relationshipType}]${rel.direction === "out" ? "->" : ""} ${rel.relatedLabel}`,
+        );
       }
     }
   }
@@ -70,7 +71,7 @@ export function generateDescriptor(
 function buildFieldConfigs(
   entityType: ParsedEntity["entityType"],
   serialiser: ParsedEntity["serialiser"],
-  mapper: ParsedEntity["mapper"]
+  mapper: ParsedEntity["mapper"],
 ): FieldConfig[] {
   const fields: FieldConfig[] = [];
 
@@ -120,7 +121,7 @@ function buildFieldConfigs(
  */
 function buildComputedConfigs(
   mapper: ParsedEntity["mapper"],
-  serialiser: ParsedEntity["serialiser"]
+  serialiser: ParsedEntity["serialiser"],
 ): ComputedConfig[] {
   const computed: ComputedConfig[] = [];
 
@@ -146,7 +147,7 @@ function buildComputedConfigs(
 function buildRelationshipConfigs(
   serialiser: ParsedEntity["serialiser"],
   cypherRelationships: CypherRelationship[] = [],
-  verbose?: boolean
+  verbose?: boolean,
 ): RelationshipConfig[] {
   const relationships: RelationshipConfig[] = [];
 
@@ -177,7 +178,9 @@ function buildRelationshipConfigs(
       contextKey = rel.name === "author" ? "userId" : undefined;
 
       if (verbose) {
-        console.log(`    Using Cypher for '${rel.name}': ${direction === "in" ? "<-" : ""}[:${relationship}]${direction === "out" ? "->" : ""}`);
+        console.log(
+          `    Using Cypher for '${rel.name}': ${direction === "in" ? "<-" : ""}[:${relationship}]${direction === "out" ? "->" : ""}`,
+        );
       }
     } else {
       // Fall back to heuristics when no Cypher info available
@@ -187,7 +190,9 @@ function buildRelationshipConfigs(
       contextKey = inferred.contextKey;
 
       if (verbose) {
-        console.log(`    Using heuristic for '${rel.name}': ${direction === "in" ? "<-" : ""}[:${relationship}]${direction === "out" ? "->" : ""} (no Cypher match)`);
+        console.log(
+          `    Using heuristic for '${rel.name}': ${direction === "in" ? "<-" : ""}[:${relationship}]${direction === "out" ? "->" : ""} (no Cypher match)`,
+        );
       }
     }
 
@@ -270,11 +275,7 @@ function inferRelationshipDetails(relName: string): {
 /**
  * Generates import statements for the descriptor.
  */
-function generateImports(
-  parsed: ParsedEntity,
-  relationships: RelationshipConfig[],
-  entityDir: string
-): string[] {
+function generateImports(parsed: ParsedEntity, relationships: RelationshipConfig[], entityDir: string): string[] {
   const imports: string[] = [];
 
   // Always needed imports - use package imports
@@ -284,7 +285,7 @@ function generateImports(
   // Check if AiStatus is needed
   const hasAiStatus = parsed.entityType.fields.some((f) => f.name === "aiStatus");
   if (hasAiStatus) {
-    imports.push(`import { AiStatus } from "src/common/enums/ai.status";`);
+    imports.push(`import { AiStatus } from "@carlonicora/nestjs-neo4jsonapi";`);
   }
 
   // Add relationship model imports (keep original imports for related entity types)
@@ -302,7 +303,7 @@ function generateImports(
     // Include imports that reference entity types used in the type definition
     if (
       imp.includes("/entities/") &&
-      (imp.includes(".entity") || !imp.includes(".meta") && !imp.includes(".model") && !imp.includes(".map"))
+      (imp.includes(".entity") || (!imp.includes(".meta") && !imp.includes(".model") && !imp.includes(".map")))
     ) {
       imports.push(imp);
     }
@@ -335,7 +336,7 @@ function findMetaImport(parsed: ParsedEntity, metaName: string): string | null {
   // Fallback: construct import from meta name
   const baseName = metaName.replace("Meta", "");
   if (baseName === "author" || baseName === "user") {
-    return `import { ${metaName} } from "src/foundations/user/entities/user.meta";`;
+    return `import { ${metaName} } from "@carlonicora/nestjs-neo4jsonapi";`;
   }
   if (baseName === "topic") {
     return `import { ${metaName} } from "src/features/topic/entities/topic.meta";`;
@@ -344,7 +345,7 @@ function findMetaImport(parsed: ParsedEntity, metaName: string): string | null {
     return `import { ${metaName} } from "src/features/expertise/entities/expertise.meta";`;
   }
   if (baseName === "company") {
-    return `import { ${metaName} } from "src/foundations/company/entities/company.meta";`;
+    return `import { ${metaName} } from "@carlonicora/nestjs-neo4jsonapi";`;
   }
 
   return null;
@@ -358,7 +359,7 @@ function generateDescriptorCode(
   entityName: string,
   fields: FieldConfig[],
   computed: ComputedConfig[],
-  relationships: RelationshipConfig[]
+  relationships: RelationshipConfig[],
 ): string {
   const descriptorName = `${meta.labelName}Descriptor`;
 
@@ -442,11 +443,7 @@ export type ${descriptorName}Type = typeof ${descriptorName};
 /**
  * Generates the complete new entity file content.
  */
-export function generateEntityFile(
-  parsed: ParsedEntity,
-  entityDir: string,
-  options: GeneratorOptions = {}
-): string {
+export function generateEntityFile(parsed: ParsedEntity, entityDir: string, options: GeneratorOptions = {}): string {
   const descriptor = generateDescriptor(parsed, entityDir, options);
 
   // Start with imports

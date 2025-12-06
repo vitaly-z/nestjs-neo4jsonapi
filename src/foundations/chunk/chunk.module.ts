@@ -1,5 +1,4 @@
-import { BullModule } from "@nestjs/bullmq";
-import { DynamicModule, Module, OnModuleInit } from "@nestjs/common";
+import { Module, OnModuleInit } from "@nestjs/common";
 import { GraphCreatorModule } from "../../agents/graph.creator/graph.creator.module";
 import { createWorkerProvider } from "../../common/decorators/conditional-service.decorator";
 import { modelRegistry } from "../../common/registries/registry";
@@ -15,39 +14,20 @@ import { ChunkRepository } from "./repositories/chunk.repository";
 import { ChunkSerialiser } from "./serialisers/chunk.serialiser";
 import { ChunkService } from "./services/chunk.service";
 
-export interface ChunkModuleOptions {
-  /**
-   * Queue IDs to register with BullMQ
-   */
-  queueIds: string[];
-}
-
+/**
+ * ChunkModule - Handles document chunking and graph generation.
+ *
+ * This is a fully static module. Queue registration is handled centrally
+ * by QueueModule (which is @Global), so ChunkProcessor can inject queues
+ * via @InjectQueue() without needing to register them here.
+ */
 @Module({
   controllers: [ChunkController],
-  providers: [ChunkService, ChunkRepository, ChunkSerialiser],
+  providers: [ChunkService, ChunkRepository, ChunkSerialiser, createWorkerProvider(ChunkProcessor)],
   exports: [ChunkService, ChunkRepository, ChunkSerialiser],
+  imports: [AtomicFactModule, GraphCreatorModule, KeyConceptModule, S3Module, LLMModule, TokenUsageModule],
 })
 export class ChunkModule implements OnModuleInit {
-  static forRoot(options: ChunkModuleOptions): DynamicModule {
-    const queueImports = options.queueIds.map((queueId) => BullModule.registerQueue({ name: queueId }));
-
-    return {
-      module: ChunkModule,
-      controllers: [ChunkController],
-      providers: [ChunkService, ChunkRepository, ChunkSerialiser, createWorkerProvider(ChunkProcessor)],
-      exports: [ChunkService, ChunkRepository, ChunkSerialiser],
-      imports: [
-        ...queueImports,
-        AtomicFactModule,
-        GraphCreatorModule,
-        KeyConceptModule,
-        S3Module,
-        LLMModule,
-        TokenUsageModule,
-      ],
-    };
-  }
-
   onModuleInit() {
     modelRegistry.register(ChunkModel);
   }

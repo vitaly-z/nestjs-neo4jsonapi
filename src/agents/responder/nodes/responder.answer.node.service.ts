@@ -1,7 +1,7 @@
-import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { z } from "zod";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
-import { RESPONDER_ANSWER_PROMPT } from "../../prompts/prompt.tokens";
 import { ResponderContext, ResponderContextState } from "../../responder/contexts/responder.context";
 
 export const defaultAnswerPrompt = `
@@ -314,11 +314,8 @@ export class ResponderAnswerNodeService {
   private readonly logger = new Logger(ResponderAnswerNodeService.name);
   private readonly systemPrompt: string;
 
-  constructor(
-    private readonly llmService: LLMService,
-    @Optional() @Inject(RESPONDER_ANSWER_PROMPT) customPrompt?: string,
-  ) {
-    this.systemPrompt = customPrompt ?? defaultAnswerPrompt;
+  constructor(private readonly llmService: LLMService) {
+    this.systemPrompt = baseConfig.prompts.responder ?? defaultAnswerPrompt;
   }
 
   async execute(params: { state: typeof ResponderContext.State }): Promise<ResponderContextState> {

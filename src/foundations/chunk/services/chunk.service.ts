@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
-import { GraphCreatorService } from "../../../agents";
+import { GraphCreatorService } from "../../../agents/graph.creator/services/graph.creator.service";
 import { AiStatus } from "../../../common/enums/ai.status";
 import { ChunkAnalysisInterface } from "../../../common/interfaces/agents/graph.creator.interface";
 import { JobName } from "../../../config/enums/job.name";

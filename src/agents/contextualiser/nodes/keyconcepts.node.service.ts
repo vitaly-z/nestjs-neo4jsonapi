@@ -1,6 +1,7 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 import { KeyConcept } from "../../../foundations/keyconcept/entities/key.concept.entity";
@@ -9,7 +10,6 @@ import {
   ContextualiserContext,
   ContextualiserContextState,
 } from "../../contextualiser/contexts/contextualiser.context";
-import { CONTEXTUALISER_KEYCONCEPTS_PROMPT } from "../../prompts/prompt.tokens";
 
 export const defaultKeyConceptsPrompt = `
 As an intelligent assistant, your primary objective is to score a list of key concepts in relation to the user question.
@@ -82,9 +82,8 @@ export class KeyConceptsNodeService {
     private readonly keyConceptRepository: KeyConceptRepository,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
-    @Optional() @Inject(CONTEXTUALISER_KEYCONCEPTS_PROMPT) customPrompt?: string,
   ) {
-    this.systemPrompt = customPrompt ?? defaultKeyConceptsPrompt;
+    this.systemPrompt = baseConfig.prompts.contextualiser?.keyConceptExtractor ?? defaultKeyConceptsPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

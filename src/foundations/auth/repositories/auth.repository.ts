@@ -1,6 +1,6 @@
-import { RoleId } from "../../../common/constants/system.roles";
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { RoleId } from "../../../common/constants/system.roles";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
 import { AuthCode } from "../../auth/entities/auth.code.entity";
@@ -70,8 +70,9 @@ export class AuthRepository implements OnModuleInit {
       OPTIONAL MATCH (auth_user)-[:MEMBER_OF]->(auth_user_role:Role)
       OPTIONAL MATCH (auth_user)-[:MEMBER_OF]->(auth_user_group:Group) 
       OPTIONAL MATCH (auth_user)-[:BELONGS_TO]->(auth_user_company:Company)
+      OPTIONAL MATCH (auth_user_company)-[:HAS_CONFIGURATION]->(auth_user_company_configuration:Configuration)
       OPTIONAL MATCH (auth_user_company)-[:HAS_FEATURE]->(auth_user_company_feature:Feature)
-      RETURN auth, auth_user, auth_user_role, auth_user_group, auth_user_company, auth_user_company_feature
+      RETURN auth, auth_user, auth_user_role, auth_user_group, auth_user_company, auth_user_company_configuration, auth_user_company_feature
     `;
 
     const auth = await this.neo4j.readOne(query);
@@ -373,7 +374,8 @@ WITH auth, auth_user, auth_user_role, module,
       OPTIONAL MATCH (auth_user)-[:MEMBER_OF]->(auth_user_role:Role)
       OPTIONAL MATCH (auth_user)-[:BELONGS_TO]->(auth_user_company:Company)
       OPTIONAL MATCH (auth_user_company)-[:HAS_FEATURE]->(auth_user_company_feature:Feature)
-      RETURN auth, auth_user, auth_user_role, auth_user_company, auth_user_company_feature
+      OPTIONAL MATCH (auth_user_company)-[:HAS_CONFIGURATION]->(auth_user_company_configuration:Configuration)
+      RETURN auth, auth_user, auth_user_role, auth_user_company, auth_user_company_feature, auth_user_company_configuration
     `;
 
     const auth = await this.neo4j.writeOne(query);
@@ -462,8 +464,9 @@ WITH auth, auth_user, auth_user_role, module,
       WITH auth, auth_user
       OPTIONAL MATCH (auth_user)-[:MEMBER_OF]->(auth_user_role:Role)
       OPTIONAL MATCH (auth_user)-[:BELONGS_TO]->(auth_user_company:Company)
+      OPTIONAL MATCH (auth_user_company)-[:HAS_CONFIGURATION]->(auth_user_company_configuration:Configuration)
       OPTIONAL MATCH (auth_user_company)-[:HAS_FEATURE]->(auth_user_company_feature:Feature)
-      RETURN auth, auth_user, auth_user_role, auth_user_company, auth_user_company_feature
+      RETURN auth, auth_user, auth_user_role, auth_user_company, auth_user_company_feature, auth_user_company_configuration
     `;
 
     const auth = await this.neo4j.writeOne(query);

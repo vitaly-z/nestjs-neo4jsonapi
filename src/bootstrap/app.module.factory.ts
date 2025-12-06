@@ -103,11 +103,11 @@ export function createAppModule(options: BootstrapOptions): Type<any> {
           // Library's core infrastructure modules
           CoreModule.forRoot({ companyConfigurations: options.companyConfigurations }),
 
-          // Library's foundation/domain modules
-          FoundationsModule.forRoot({ chunkQueueIds: options.queueIds }),
+          // Library's foundation/domain modules (queues configured via baseConfig.chunkQueues)
+          FoundationsModule,
 
-          // Library's AI agents with optional custom prompts
-          AgentsModule.forRoot(options.prompts ? { prompts: options.prompts } : undefined),
+          // Library's AI agents (prompts configured via baseConfig.prompts)
+          AgentsModule,
 
           // User's app-specific modules
           ...options.appModules,

@@ -11,4 +11,5 @@ export type Content = Entity & {
   relevance?: number;
 
   owner: User;
+  author: User;
 };

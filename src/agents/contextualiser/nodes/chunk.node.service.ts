@@ -1,7 +1,8 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 import { Chunk } from "../../../foundations/chunk/entities/chunk.entity";
@@ -10,7 +11,6 @@ import {
   ContextualiserContext,
   ContextualiserContextState,
 } from "../../contextualiser/contexts/contextualiser.context";
-import { CONTEXTUALISER_CHUNK_PROMPT } from "../../prompts/prompt.tokens";
 
 export const defaultChunkPrompt = `
 As an intelligent assistant, your primary objective is to assess a specific **text chunk** and determine whether the available information suffices to answer the question.
@@ -89,9 +89,8 @@ export class ChunkNodeService {
     private readonly chunkRepository: ChunkRepository,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
-    @Optional() @Inject(CONTEXTUALISER_CHUNK_PROMPT) customPrompt?: string,
   ) {
-    this.systemPrompt = customPrompt ?? defaultChunkPrompt;
+    this.systemPrompt = baseConfig.prompts.contextualiser?.chunk ?? defaultChunkPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

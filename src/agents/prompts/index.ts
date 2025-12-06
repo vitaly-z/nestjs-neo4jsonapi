@@ -1,8 +1,5 @@
-// Prompt tokens
-export * from "./prompt.tokens";
-
-// Prompt interfaces for customization
-export * from "./prompt.interfaces";
+// Prompt configuration is now via baseConfig.prompts (see ConfigPromptsInterface)
+// This file exports the default prompts for reference
 
 // Default prompts - re-exported from services for reference
 export { prompt as defaultGraphCreatorPrompt } from "../graph.creator/services/graph.creator.service";

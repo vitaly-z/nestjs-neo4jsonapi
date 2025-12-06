@@ -1,12 +1,12 @@
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
+import { randomUUID } from "crypto";
 import { RoleId } from "../../../common/constants/system.roles";
 import {
   COMPANY_CONFIGURATIONS_FACTORY,
   CompanyConfigurationsFactory,
   CompanyConfigurationsInterface,
 } from "../../../common/tokens";
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
-import { randomUUID } from "crypto";
 import { EmailService } from "../../../core/email/services/email.service";
 import { checkPassword, hashPassword, SecurityService } from "../../../core/security/services/security.service";
 import { AuthPostLoginDataDTO } from "../../auth/dtos/auth.post.login.dto";
@@ -110,6 +110,7 @@ export class AuthService {
 
       let companyConfigurations: CompanyConfigurationsInterface;
       const companyConfigFactory = this.getCompanyConfigFactory();
+
       if (companyConfigFactory) {
         companyConfigurations = await companyConfigFactory({
           companyId: auth.user.company.id,

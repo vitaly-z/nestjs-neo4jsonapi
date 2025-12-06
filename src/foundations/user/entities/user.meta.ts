@@ -19,32 +19,8 @@ export const assigneeMeta: DataMeta = {
   nodeName: "assignee",
 };
 
-export const readerMeta: DataMeta = {
+export const authorMeta: DataMeta = {
   ...userMeta,
-  endpoint: "readers",
-  nodeName: "reader",
-};
-
-export const toUserMeta: DataMeta = {
-  ...userMeta,
-  endpoint: "tousers",
-  nodeName: "touser",
-};
-
-export const fromUserMeta: DataMeta = {
-  ...userMeta,
-  endpoint: "fromusers",
-  nodeName: "fromuser",
-};
-
-export const ccUserMeta: DataMeta = {
-  ...userMeta,
-  endpoint: "ccusers",
-  nodeName: "ccuser",
-};
-
-export const bccUserMeta: DataMeta = {
-  ...userMeta,
-  endpoint: "bccusers",
-  nodeName: "bccuser",
+  endpoint: "authors",
+  nodeName: "author",
 };

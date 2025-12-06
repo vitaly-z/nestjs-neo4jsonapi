@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface } from "../../../config/interfaces";
 import { AbstractJsonApiSerialiser } from "../../../core/jsonapi/abstracts/abstract.jsonapi.serialiser";
 import { JsonApiSerialiserFactory } from "../../../core/jsonapi/factories/jsonapi.serialiser.factory";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
@@ -14,6 +16,7 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
   constructor(
     serialiserFactory: JsonApiSerialiserFactory,
     protected readonly s3Service: S3Service,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
     super(serialiserFactory);
   }
@@ -38,6 +41,8 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
       licenseExpirationDate: (data: Company) => data.licenseExpirationDate?.toISOString(),
     };
 
+    const companyConfigurationModel = this.configService.get("companyConfigurationModel");
+
     this.relationships = {
       feature: {
         name: `features`,
@@ -47,6 +52,12 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
         name: `modules`,
         data: this.serialiserFactory.create(ModuleModel),
       },
+      ...(companyConfigurationModel && {
+        configuration: {
+          name: `configurations`,
+          data: this.serialiserFactory.create(companyConfigurationModel),
+        },
+      }),
     };
 
     return super.create();

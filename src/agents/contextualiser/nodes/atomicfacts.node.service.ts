@@ -1,7 +1,8 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { TracingService } from "../../../core/tracing/services/tracing.service";
@@ -12,7 +13,6 @@ import {
   ContextualiserContext,
   ContextualiserContextState,
 } from "../../contextualiser/contexts/contextualiser.context";
-import { CONTEXTUALISER_ATOMICFACTS_PROMPT } from "../../prompts/prompt.tokens";
 
 export const defaultAtomicFactsPrompt = `
 As an intelligent assistant, your primary objective is to evaluate the atomic facts provided, to determine whether they are contextually relevant to the user question.
@@ -77,9 +77,8 @@ export class AtomicFactsNodeService {
     private readonly tracer: TracingService,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
-    @Optional() @Inject(CONTEXTUALISER_ATOMICFACTS_PROMPT) customPrompt?: string,
   ) {
-    this.systemPrompt = customPrompt ?? defaultAtomicFactsPrompt;
+    this.systemPrompt = baseConfig.prompts.contextualiser?.atomicFactsExtractor ?? defaultAtomicFactsPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

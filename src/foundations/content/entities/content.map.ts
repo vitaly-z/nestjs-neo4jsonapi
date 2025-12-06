@@ -14,5 +14,6 @@ export const mapContent = (params: { data: any; record: any; entityFactory: Enti
     relevance: params.record.has("totalScore") ? Number(params.record.get("totalScore")) : 0,
 
     owner: undefined,
+    author: undefined,
   };
 };

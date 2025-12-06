@@ -1,13 +1,13 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 import {
   ContextualiserContext,
   ContextualiserContextState,
 } from "../../contextualiser/contexts/contextualiser.context";
-import { CONTEXTUALISER_QUESTION_REFINER_PROMPT } from "../../prompts/prompt.tokens";
 
 export const defaultQuestionRefinerPrompt = `
 Your task: Create a single, focused question that captures the user's current intent based on the conversation history.
@@ -82,9 +82,8 @@ export class QuestionRefinerNodeService {
     private readonly llmService: LLMService,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
-    @Optional() @Inject(CONTEXTUALISER_QUESTION_REFINER_PROMPT) customPrompt?: string,
   ) {
-    this.systemPrompt = customPrompt ?? defaultQuestionRefinerPrompt;
+    this.systemPrompt = baseConfig.prompts.contextualiser?.questionRefiner ?? defaultQuestionRefinerPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

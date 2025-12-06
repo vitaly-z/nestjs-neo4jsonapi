@@ -1,6 +1,7 @@
 import { Document } from "@langchain/core/documents";
 import { Injectable } from "@nestjs/common";
-import { contentTypes } from "../../../config/enums/content.types";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface, ConfigContentTypesInterface } from "../../../config/interfaces";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
@@ -16,7 +17,12 @@ export class ContentRepository {
     private readonly neo4j: Neo4jService,
     private readonly contentCypherService: ContentCypherService,
     private readonly securityService: SecurityService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {}
+
+  private getContentTypes(): string[] {
+    return this.configService.get<ConfigContentTypesInterface>("contentTypes")?.types ?? [];
+  }
 
   async find(params: {
     fetchAll?: boolean;
@@ -57,7 +63,7 @@ export class ContentRepository {
     };
 
     query.query += `
-        MATCH (${contentMeta.nodeName}:${contentTypes.map((type: string) => `${type}`).join("|")})-[:BELONGS_TO]->(company)
+        MATCH (${contentMeta.nodeName}:${this.getContentTypes().join("|")})-[:BELONGS_TO]->(company)
         WHERE ${contentMeta.nodeName}.id IN $ids 
         AND ${contentMeta.nodeName}.tldr IS NOT NULL
         AND ${contentMeta.nodeName}.tldr <> ""

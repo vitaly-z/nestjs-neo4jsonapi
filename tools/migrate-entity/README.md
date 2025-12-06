@@ -144,7 +144,7 @@ Open node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity/MIGRATION
 1. Read the MANDATORY CHECKLIST in MIGRATION-GUIDE.md (at the very top)
 2. Read the WRONG vs CORRECT examples in MIGRATION-GUIDE.md (immediately after checklist)
 3. Read node_modules/@carlonicora/nestjs-neo4jsonapi/src/core/neo4j/abstracts/abstract.repository.ts - understand what methods are inherited
-4. Read node_modules/@carlonicora/nestjs-neo4jsonapi/src/core/neo4j/abstracts/abstract.service.ts - understand what methods are inherited
+4. Read node_modules/@carlonicora/nestjs-neo4jsonapi/@carlonicora/nestjs-neo4jsonapi.ts - understand what methods are inherited
 5. Read the current repository at src/features/{module}/repositories/
 6. Read the current service at src/features/{module}/services/
 

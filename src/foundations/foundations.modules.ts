@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module, Type } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { AtomicFactModule } from "./atomicfact/atomicfact.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
@@ -18,12 +18,14 @@ import { TokenUsageModule } from "./tokenusage/tokenusage.module";
 import { UserModule } from "./user/user.module";
 
 /**
- * Base foundation modules (without ChunkModule which needs forRoot options)
+ * All foundation modules - fully static.
+ * Queue registration is handled centrally by QueueModule (via baseConfig.chunkQueues).
  */
-const BASE_FOUNDATION_MODULES = [
+const ALL_FOUNDATION_MODULES = [
   AtomicFactModule,
   AuditModule,
   AuthModule,
+  ChunkModule,
   ChunkerModule,
   CompanyModule,
   ContentModule,
@@ -39,13 +41,6 @@ const BASE_FOUNDATION_MODULES = [
   UserModule,
 ];
 
-export interface FoundationsModuleOptions {
-  /**
-   * Queue IDs for ChunkModule to register with BullMQ
-   */
-  chunkQueueIds: string[];
-}
-
 /**
  * FoundationsModule - Centralized module for all foundation/domain modules
  *
@@ -58,36 +53,21 @@ export interface FoundationsModuleOptions {
  * - Notifications (NotificationModule, PushModule)
  * - And more...
  *
+ * Queue configuration is now via baseConfig.chunkQueues - no forRoot() needed.
+ *
  * Usage:
  * ```typescript
  * @Module({
  *   imports: [
  *     CoreModule.forRoot(),
- *     FoundationsModule.forRoot({
- *       chunkQueueIds: [QueueId.CHUNK, QueueId.ARTICLE, QueueId.DOCUMENT],
- *     }),
+ *     FoundationsModule,
  *   ],
  * })
  * export class AppModule {}
  * ```
  */
-@Global()
-@Module({})
-export class FoundationsModule {
-  /**
-   * Import all foundation modules
-   */
-  static forRoot(options: FoundationsModuleOptions): DynamicModule {
-    const allModules: (Type<any> | DynamicModule)[] = [
-      ...BASE_FOUNDATION_MODULES,
-      ChunkModule.forRoot({ queueIds: options.chunkQueueIds }),
-    ];
-
-    return {
-      module: FoundationsModule,
-      imports: allModules,
-      exports: [...BASE_FOUNDATION_MODULES, ChunkModule],
-      global: true,
-    };
-  }
-}
+@Module({
+  imports: ALL_FOUNDATION_MODULES,
+  exports: ALL_FOUNDATION_MODULES,
+})
+export class FoundationsModule {}

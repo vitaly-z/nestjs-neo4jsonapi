@@ -13,7 +13,7 @@ This document provides instructions for Claude Code to migrate repository and se
 ```
 # If using the package:
 node_modules/@carlonicora/nestjs-neo4jsonapi/src/core/neo4j/abstracts/abstract.repository.ts
-node_modules/@carlonicora/nestjs-neo4jsonapi/src/core/neo4j/abstracts/abstract.service.ts
+node_modules/@carlonicora/nestjs-neo4jsonapi/@carlonicora/nestjs-neo4jsonapi.ts
 ```
 
 **You MUST understand what methods are already inherited before proceeding.**

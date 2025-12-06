@@ -1,11 +1,11 @@
 import { Document } from "@langchain/core/documents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { UsageMetadata } from "../../../common/interfaces/langchain.usage.interface";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
+import { baseConfig } from "../../../config/base.config";
 import { ModelService } from "../../../core/llm/services/model.service";
 import { Chunk } from "../../../foundations/chunk/entities/chunk.entity";
-import { SUMMARISER_COMBINE_PROMPT, SUMMARISER_MAP_PROMPT, SUMMARISER_TLDR_PROMPT } from "../../prompts/prompt.tokens";
 
 export const defaultMapPrompt = `Summarize the following content in Italian using clean markdown formatting.
 
@@ -40,15 +40,10 @@ export class SummariserService {
   private readonly combinePromptText: string;
   private readonly tldrPromptText: string;
 
-  constructor(
-    private readonly modelService: ModelService,
-    @Optional() @Inject(SUMMARISER_MAP_PROMPT) customMapPrompt?: string,
-    @Optional() @Inject(SUMMARISER_COMBINE_PROMPT) customCombinePrompt?: string,
-    @Optional() @Inject(SUMMARISER_TLDR_PROMPT) customTldrPrompt?: string,
-  ) {
-    this.mapPromptText = customMapPrompt ?? defaultMapPrompt;
-    this.combinePromptText = customCombinePrompt ?? defaultCombinePrompt;
-    this.tldrPromptText = customTldrPrompt ?? defaultTldrPrompt;
+  constructor(private readonly modelService: ModelService) {
+    this.mapPromptText = baseConfig.prompts.summariser?.map ?? defaultMapPrompt;
+    this.combinePromptText = baseConfig.prompts.summariser?.combine ?? defaultCombinePrompt;
+    this.tldrPromptText = baseConfig.prompts.summariser?.tldr ?? defaultTldrPrompt;
   }
 
   async summarise(params: { chunks: Chunk[] }): Promise<{

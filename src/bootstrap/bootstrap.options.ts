@@ -1,6 +1,5 @@
 import { DynamicModule, Type } from "@nestjs/common";
 import { AbstractCompanyConfigurations } from "../common/abstracts/abstract.company.configuration";
-import { AgentPromptsOptions } from "../agents/prompts/prompt.interfaces";
 
 /**
  * i18n configuration options
@@ -34,12 +33,6 @@ export interface BootstrapOptions {
   companyConfigurations: Type<AbstractCompanyConfigurations>;
 
   /**
-   * Queue IDs for background job processing with BullMQ.
-   * These are used by FoundationsModule to register chunk processing queues.
-   */
-  queueIds: string[];
-
-  /**
    * App-specific feature modules to import.
    * These are your application's domain modules.
    */
@@ -50,12 +43,6 @@ export interface BootstrapOptions {
    * If not provided, defaults to English with "./i18n" path.
    */
   i18n?: I18nOptions;
-
-  /**
-   * Custom prompts for AI agents (GraphCreator, Contextualiser, Responder, Summariser).
-   * All prompts are optional - the library includes working defaults.
-   */
-  prompts?: AgentPromptsOptions;
 
   /**
    * Custom configuration loader that extends baseConfig.

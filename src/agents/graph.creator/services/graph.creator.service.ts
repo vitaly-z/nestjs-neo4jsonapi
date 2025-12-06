@@ -1,9 +1,9 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { z } from "zod";
+import { baseConfig } from "../../../config/base.config";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { ChunkAnalysisInterface } from "../../graph.creator/interfaces/chunk.analysis.interface";
-import { GRAPH_CREATOR_PROMPT } from "../../prompts/prompt.tokens";
 
 export const prompt = `
 You are an intelligent assistant that extracts structured knowledge from text.
@@ -326,9 +326,8 @@ export class GraphCreatorService {
   constructor(
     private readonly llmService: LLMService,
     private readonly logger: AppLoggingService,
-    @Optional() @Inject(GRAPH_CREATOR_PROMPT) customPrompt?: string,
   ) {
-    this.systemPrompt = customPrompt ?? prompt;
+    this.systemPrompt = baseConfig.prompts.graphCreator ?? prompt;
   }
 
   async generateGraph(params: { content: string }): Promise<ChunkAnalysisInterface> {

@@ -11,6 +11,6 @@ export const CompanyModel: DataModelInterface<Company> = {
   entity: undefined as unknown as Company,
   mapper: mapCompany,
   serialiser: CompanySerialiser,
-  singleChildrenTokens: [],
+  singleChildrenTokens: [`configuration`],
   childrenTokens: [featureMeta.nodeName, moduleMeta.nodeName],
 };

@@ -301,7 +301,29 @@ import { Module } from "@nestjs/common";
 export class FeaturesModules {}
 ```
 
-### 3. Bootstrap Your Application
+### 3. Create Configuration File (Optional)
+
+If you need custom queues or content types, create a config file:
+
+```typescript
+// src/config/config.ts
+import { baseConfig } from "@carlonicora/nestjs-neo4jsonapi";
+import { QueueId } from "./enums/queue.id";
+
+export default () => ({
+  ...baseConfig,
+  // Register queue IDs for background job processing
+  chunkQueues: {
+    queueIds: Object.values(QueueId),
+  },
+  // Register content type labels for multi-label Neo4j queries
+  contentTypes: {
+    types: ["Article", "Document", "Hyperlink"],
+  },
+});
+```
+
+### 4. Bootstrap Your Application
 
 ```typescript
 // src/main.ts
@@ -313,16 +335,17 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 import { bootstrap } from "@carlonicora/nestjs-neo4jsonapi";
 import { CompanyConfigurations } from "./config/company.configurations";
+import config from "./config/config"; // Optional: only if you have custom config
 import { FeaturesModules } from "./features/features.modules";
 
 bootstrap({
   companyConfigurations: CompanyConfigurations,
-  queueIds: ["chunk"],
   appModules: [FeaturesModules],
   i18n: {
-    fallbackLanguage: "it",
+    fallbackLanguage: "en",
     path: path.join(__dirname, "i18n"),
   },
+  config, // Optional: pass custom config to extend baseConfig
 });
 ```
 
@@ -339,11 +362,19 @@ That's it! The `bootstrap()` function handles:
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `companyConfigurations` | `Type<AbstractCompanyConfigurations>` | Yes | Your custom class extending `AbstractCompanyConfigurations` |
-| `queueIds` | `string[]` | Yes | Queue IDs for background job processing with BullMQ |
 | `appModules` | `(Type<any> \| DynamicModule)[]` | Yes | Your app-specific feature modules |
 | `i18n` | `I18nOptions` | No | i18n configuration (fallbackLanguage, path) |
-| `prompts` | `AgentPromptsOptions` | No | Custom prompts for AI agents |
-| `config` | `() => Record<string, any>` | No | Custom config that extends baseConfig |
+| `config` | `() => Record<string, any>` | No | Custom config that extends baseConfig (merged with library defaults) |
+
+### Configuration Options (via `config`)
+
+The `config` function returns an object that is merged with `baseConfig`. Available options:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `chunkQueues.queueIds` | `string[]` | Queue IDs for BullMQ registration (for background job processing) |
+| `contentTypes.types` | `string[]` | Neo4j labels for content types (used in multi-label content queries) |
+| `prompts.*` | Various | Custom AI agent prompts (see [Customizing Agent Prompts](#customizing-agent-prompts-optional)) |
 
 ---
 
@@ -355,14 +386,36 @@ If you need more control over the bootstrap process, you can manually configure 
 
 ```typescript
 // src/config/config.ts
-import { baseConfig, ConfigInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { baseConfig } from "@carlonicora/nestjs-neo4jsonapi";
+import { QueueId } from "./enums/queue.id";
+// Import your content type metas
+import { articleMeta } from "src/features/article/entities/article.meta";
+import { documentMeta } from "src/features/document/entities/document.meta";
 
-export default (): ConfigInterface => {
-  return {
-    ...baseConfig,
-    // Add app-specific config here (optional)
-  };
-};
+export default () => ({
+  ...baseConfig,
+  // Register all app queue IDs for background job processing
+  chunkQueues: {
+    queueIds: Object.values(QueueId),
+  },
+  // Register content type labels for multi-label Neo4j queries
+  contentTypes: {
+    types: [
+      articleMeta.labelName,
+      documentMeta.labelName,
+      // Add your content type labels here
+    ],
+  },
+});
+```
+
+```typescript
+// src/config/enums/queue.id.ts
+export enum QueueId {
+  CHUNK = "chunk",
+  DOCUMENT = "document",
+  // Add your custom queue IDs here
+}
 ```
 
 ### 2. Create Company Configurations
@@ -425,13 +478,8 @@ import {
   FoundationsModule,
 } from "@carlonicora/nestjs-neo4jsonapi";
 
-// App configuration
+// App configuration (includes chunkQueues config)
 import config from "./config/config";
-
-// Define your queue IDs
-enum QueueId {
-  CHUNK = "chunk",
-}
 
 // App-specific modules
 import { CompanyConfigurations } from "src/config/company.configurations";
@@ -492,12 +540,12 @@ export class AppModule {
         CoreModule.forRoot({ companyConfigurations: CompanyConfigurations }),
 
         // Foundation domain modules (User, Company, Auth, etc.)
-        FoundationsModule.forRoot({
-          chunkQueueIds: [QueueId.CHUNK],
-        }),
+        // Queues are configured via baseConfig.chunkQueues in config.ts
+        FoundationsModule,
 
         // AI Agents (GraphRAG, Summariser, Responder, etc.)
-        AgentsModule.forRoot(),
+        // Prompts are configured via baseConfig.prompts
+        AgentsModule,
 
         // ========================================
         // YOUR APP-SPECIFIC MODULES
@@ -516,12 +564,6 @@ export class AppModule {
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `companyConfigurations` | `Type<AbstractCompanyConfigurations>` | No | Your custom class extending `AbstractCompanyConfigurations`. When provided, the library uses this class to load company-specific context (modules, features, settings) for each authenticated request. If not provided, a minimal stub is used. |
-
-#### FoundationsModule.forRoot() Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `chunkQueueIds` | `string[]` | Yes | Queue IDs for the ChunkModule to register with BullMQ for document processing. |
 
 ### 4. Setup main.ts (Bootstrap)
 
@@ -1069,34 +1111,55 @@ The library includes default prompts. Customization is entirely optional.
 
 ### Available Prompts
 
-| Agent              | Prompt                                   | Purpose                               |
-| ------------------ | ---------------------------------------- | ------------------------------------- |
-| **GraphCreator**   | `GRAPH_CREATOR_PROMPT`                   | Extract atomic facts and key concepts |
-| **Contextualiser** | `CONTEXTUALISER_QUESTION_REFINER_PROMPT` | Refine user questions                 |
-| **Contextualiser** | `CONTEXTUALISER_RATIONAL_PROMPT`         | Create rational plans                 |
-| **Contextualiser** | `CONTEXTUALISER_KEYCONCEPTS_PROMPT`      | Score key concepts                    |
-| **Contextualiser** | `CONTEXTUALISER_ATOMICFACTS_PROMPT`      | Evaluate atomic facts                 |
-| **Contextualiser** | `CONTEXTUALISER_CHUNK_PROMPT`            | Assess text chunks                    |
-| **Responder**      | `RESPONDER_ANSWER_PROMPT`                | Generate final answers                |
-| **Summariser**     | `SUMMARISER_MAP_PROMPT`                  | Summarize individual chunks           |
-| **Summariser**     | `SUMMARISER_COMBINE_PROMPT`              | Combine summaries                     |
-| **Summariser**     | `SUMMARISER_TLDR_PROMPT`                 | Create TLDR                           |
+| Agent              | Config Key                                   | Purpose                               |
+| ------------------ | -------------------------------------------- | ------------------------------------- |
+| **GraphCreator**   | `prompts.graphCreator`                       | Extract atomic facts and key concepts |
+| **Contextualiser** | `prompts.contextualiser.questionRefiner`     | Refine user questions                 |
+| **Contextualiser** | `prompts.contextualiser.rationalPlan`        | Create rational plans                 |
+| **Contextualiser** | `prompts.contextualiser.keyConceptExtractor` | Score key concepts                    |
+| **Contextualiser** | `prompts.contextualiser.atomicFactsExtractor`| Evaluate atomic facts                 |
+| **Contextualiser** | `prompts.contextualiser.chunk`               | Assess text chunks                    |
+| **Contextualiser** | `prompts.contextualiser.chunkVector`         | Vector-based chunk retrieval          |
+| **Responder**      | `prompts.responder`                          | Generate final answers                |
+| **Summariser**     | `prompts.summariser.map`                     | Summarize individual chunks           |
+| **Summariser**     | `prompts.summariser.combine`                 | Combine summaries                     |
+| **Summariser**     | `prompts.summariser.tldr`                    | Create TLDR                           |
 
 ### Custom Prompts Example
 
+Prompts are configured via `createBaseConfig()`:
+
 ```typescript
-// src/app.module.ts
-AgentsModule.forRoot({
+// src/config/config.ts
+import { createBaseConfig } from "@carlonicora/nestjs-neo4jsonapi";
+
+export const config = createBaseConfig({
+  appName: "my-app",
   prompts: {
     graphCreator: "Your custom graph creator prompt...",
     contextualiser: {
       questionRefiner: "Your custom question refiner prompt...",
+      rationalPlan: "Your custom rational plan prompt...",
     },
     summariser: {
       map: "Your custom map prompt...",
     },
   },
-}),
+});
+```
+
+Or extend baseConfig via `BootstrapOptions.config`:
+
+```typescript
+// src/main.ts
+bootstrap({
+  // ... other options
+  config: () => ({
+    prompts: {
+      graphCreator: "Your custom graph creator prompt...",
+    },
+  }),
+});
 ```
 
 ## License

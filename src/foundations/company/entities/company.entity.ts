@@ -14,4 +14,5 @@ export type Company = Entity & {
 
   feature: Feature[];
   module: Module[];
+  configuration?: any;
 };

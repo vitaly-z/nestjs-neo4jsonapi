@@ -1,4 +1,7 @@
 import { BaseConfigInterface } from "./interfaces/base.config.interface";
+import { ConfigChunkQueuesInterface } from "./interfaces/config.chunk.queues.interface";
+import { ConfigContentTypesInterface } from "./interfaces/config.content.types.interface";
+import { ConfigPromptsInterface } from "./interfaces/config.prompts.interface";
 
 /**
  * Options for createBaseConfig
@@ -15,6 +18,25 @@ export interface BaseConfigOptions {
    * @default 'api'
    */
   environmentType?: "api" | "worker";
+
+  /**
+   * Custom prompts for AI agents (GraphCreator, Contextualiser, Responder, Summariser).
+   * All prompts are optional - the library includes working defaults.
+   */
+  prompts?: ConfigPromptsInterface;
+
+  /**
+   * Additional queue IDs for chunk processing.
+   * The library always registers its own CHUNK queue.
+   * Use this to register additional queues that ChunkService needs to add jobs to.
+   */
+  chunkQueues?: ConfigChunkQueuesInterface;
+
+  /**
+   * Content type labels for multi-label content queries.
+   * These are the Neo4j labels used for content nodes (e.g., ["Article", "Document"]).
+   */
+  contentTypes?: ConfigContentTypesInterface;
 }
 
 /**
@@ -187,6 +209,9 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       portalReturnUrl: process.env.STRIPE_PORTAL_RETURN_URL || "",
       portalConfigurationId: process.env.STRIPE_PORTAL_CONFIGURATION_ID || "",
     },
+    prompts: options?.prompts ?? {},
+    chunkQueues: options?.chunkQueues ?? { queueIds: [] },
+    contentTypes: options?.contentTypes ?? { types: [] },
   };
   return config;
 }

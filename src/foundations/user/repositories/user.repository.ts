@@ -1,7 +1,7 @@
-import { RoleId } from "../../../common/constants/system.roles";
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
+import { RoleId } from "../../../common/constants/system.roles";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { companyMeta } from "../../company/entities/company.meta";
@@ -78,6 +78,7 @@ export class UserRepository implements OnModuleInit {
       
       OPTIONAL MATCH (user)-[:MEMBER_OF]->(user_role:Role)
       OPTIONAL MATCH (user)-[:BELONGS_TO]->(user_company:Company)
+      OPTIONAL MATCH (user_company)-[:HAS_CONFIGURATION]->(user_company_configuration:Configuration)
       OPTIONAL MATCH (user_company)-[:HAS_FEATURE]->(user_company_feature:Feature)
       RETURN user, user_role, user_company, user_company_feature
     `;

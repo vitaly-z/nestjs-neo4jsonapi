@@ -4,16 +4,7 @@ import { moduleMeta } from "../../module/entities/module.meta";
 import { roleMeta } from "../../role/entities/role.meta";
 import { User } from "../../user/entities/user.entity";
 import { mapUser } from "../../user/entities/user.map";
-import {
-  assigneeMeta,
-  bccUserMeta,
-  ccUserMeta,
-  fromUserMeta,
-  ownerMeta,
-  readerMeta,
-  toUserMeta,
-  userMeta,
-} from "../../user/entities/user.meta";
+import { assigneeMeta, authorMeta, ownerMeta, userMeta } from "../../user/entities/user.meta";
 import { UserSerialiser } from "../../user/serialisers/user.serialiser";
 
 export const UserModel: DataModelInterface<User> = {
@@ -35,27 +26,7 @@ export const AssigneeModel: DataModelInterface<User> = {
   ...assigneeMeta,
 };
 
-export const ReaderModel: DataModelInterface<User> = {
+export const AuthorModel: DataModelInterface<User> = {
   ...UserModel,
-  ...readerMeta,
-};
-
-export const ToUserModel: DataModelInterface<User> = {
-  ...UserModel,
-  ...toUserMeta,
-};
-
-export const FromUserModel: DataModelInterface<User> = {
-  ...UserModel,
-  ...fromUserMeta,
-};
-
-export const CcUserModel: DataModelInterface<User> = {
-  ...UserModel,
-  ...ccUserMeta,
-};
-
-export const BccUserModel: DataModelInterface<User> = {
-  ...UserModel,
-  ...bccUserMeta,
+  ...authorMeta,
 };

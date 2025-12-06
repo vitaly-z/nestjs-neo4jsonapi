@@ -16,5 +16,6 @@ export const mapCompany = (params: { data: any; record: any; entityFactory: Enti
 
     feature: [],
     module: [],
+    configuration: undefined,
   };
 };

@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigPromptsInterface } from "../../../config/interfaces";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { TracingService } from "../../../core/tracing/services/tracing.service";
@@ -77,8 +78,10 @@ export class AtomicFactsNodeService {
     private readonly tracer: TracingService,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
-    this.systemPrompt = baseConfig.prompts.contextualiser?.atomicFactsExtractor ?? defaultAtomicFactsPrompt;
+    const prompts = this.configService.get<ConfigPromptsInterface>("prompts");
+    this.systemPrompt = prompts?.contextualiser?.atomicFactsExtractor ?? defaultAtomicFactsPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

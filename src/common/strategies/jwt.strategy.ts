@@ -1,15 +1,20 @@
 import { HttpException, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ClsService } from "nestjs-cls";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { baseConfig } from "../../config/base.config";
+import { BaseConfigInterface, ConfigJwtInterface } from "../../config/interfaces";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly cls: ClsService) {
+  constructor(
+    private readonly cls: ClsService,
+    configService: ConfigService<BaseConfigInterface>,
+  ) {
+    const jwtConfig = configService.get<ConfigJwtInterface>("jwt");
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: baseConfig.jwt?.secret,
+      secretOrKey: jwtConfig?.secret,
       passReqToCallback: true,
     });
   }

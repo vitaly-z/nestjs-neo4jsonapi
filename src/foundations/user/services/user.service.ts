@@ -1,11 +1,12 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { EmailService } from "../../../core/email/services/email.service";
 import { hashPassword } from "../../../core/security/services/security.service";
 import { UserPostDataDTO } from "../../user/dtos/user.post.dto";
 import { UserPutDataDTO } from "../../user/dtos/user.put.dto";
 
 import { randomUUID } from "crypto";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigAppInterface } from "../../../config/interfaces";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
 import { JsonApiPaginator } from "../../../core/jsonapi/serialisers/jsonapi.paginator";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
@@ -16,13 +17,16 @@ import { UserRepository } from "../repositories/user.repository";
 
 @Injectable()
 export class UserService {
-  private readonly appConfig = baseConfig.app;
-
   constructor(
     private readonly builder: JsonApiService,
     private readonly db: UserRepository,
     private readonly emailService: EmailService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {}
+
+  private get appConfig(): ConfigAppInterface {
+    return this.configService.get<ConfigAppInterface>("app");
+  }
 
   async expectNotExists(params: { email: string }): Promise<void> {
     const user = await this.db.findByEmail({ email: params.email });

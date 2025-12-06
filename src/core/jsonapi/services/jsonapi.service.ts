@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigApiInterface } from "../../../config/interfaces";
 import { DataModelInterface, JsonApiSerialiserFactory } from "../factories/jsonapi.serialiser.factory";
 import { JsonApiDataInterface } from "../interfaces/jsonapi.data.interface";
 import { JsonApiPaginator } from "../serialisers/jsonapi.paginator";
@@ -15,12 +16,15 @@ export interface LoggingService {
 
 @Injectable()
 export class JsonApiService {
-  private readonly apiConfig = baseConfig.api;
-
   constructor(
     private readonly serialiserFactory: JsonApiSerialiserFactory,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {}
+
+  private get apiConfig(): ConfigApiInterface {
+    return this.configService.get<ConfigApiInterface>("api");
+  }
 
   async buildSingle<T extends DataModelInterface<any>>(model: T, record: any): Promise<any> {
     const builder = this.serialiserFactory.create(model) as any;

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigPromptsInterface } from "../../../config/interfaces";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { ChunkAnalysisInterface } from "../../graph.creator/interfaces/chunk.analysis.interface";
@@ -326,8 +327,10 @@ export class GraphCreatorService {
   constructor(
     private readonly llmService: LLMService,
     private readonly logger: AppLoggingService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
-    this.systemPrompt = baseConfig.prompts.graphCreator ?? prompt;
+    const prompts = this.configService.get<ConfigPromptsInterface>("prompts");
+    this.systemPrompt = prompts?.graphCreator ?? prompt;
   }
 
   async generateGraph(params: { content: string }): Promise<ChunkAnalysisInterface> {

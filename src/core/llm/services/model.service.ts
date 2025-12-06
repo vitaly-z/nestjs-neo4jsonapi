@@ -2,10 +2,11 @@ import { EmbeddingsInterface } from "@langchain/core/embeddings";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { AzureOpenAIEmbeddings, ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import * as fs from "fs";
 import { ClsService } from "nestjs-cls";
 import OpenAI, { AzureOpenAI } from "openai";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigAiInterface } from "../../../config/interfaces";
 
 interface LLMParameters {
   apiKey: string;
@@ -21,10 +22,16 @@ interface LLMParameters {
 @Injectable()
 export class ModelService {
   private _modelCache: Map<string, BaseChatModel>;
-  private readonly aiConfig = baseConfig.ai;
 
-  constructor(private readonly clsService: ClsService) {
+  constructor(
+    private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {
     this._modelCache = new Map();
+  }
+
+  private get aiConfig(): ConfigAiInterface {
+    return this.configService.get<ConfigAiInterface>("ai");
   }
 
   /**

@@ -16,6 +16,7 @@ export * from "./config.environment.interface";
 export * from "./config.jwt.interface";
 export * from "./config.logging.interface";
 export * from "./config.neo4j.interface";
+export * from "./config.prompts.interface";
 export * from "./config.ratelimit.interface";
 export * from "./config.redis.interface";
 export * from "./config.s3.interface";

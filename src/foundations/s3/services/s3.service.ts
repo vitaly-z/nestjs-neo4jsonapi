@@ -16,9 +16,10 @@ import {
   generateBlobSASQueryParameters,
 } from "@azure/storage-blob";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigS3Interface } from "../../../config/interfaces";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { S3Model } from "../../s3/entities/s3.model";
@@ -31,12 +32,16 @@ export class S3Service {
   private _bucket: string;
   private _endpoint: string;
   private _storageType: string;
-  private readonly s3Config = baseConfig.s3;
 
   constructor(
     private readonly builder: JsonApiService,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {}
+
+  private get s3Config(): ConfigS3Interface {
+    return this.configService.get<ConfigS3Interface>("s3");
+  }
 
   private async _loadConfiguration(): Promise<void> {
     const type = this.s3Config.type;

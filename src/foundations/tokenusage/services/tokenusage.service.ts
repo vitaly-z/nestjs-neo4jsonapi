@@ -1,15 +1,21 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigAiInterface } from "../../../config/interfaces";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
 import { TokenUsageType } from "../../tokenusage/enums/tokenusage.type";
 import { TokenUsageRepository } from "../../tokenusage/repositories/tokenusage.repository";
 
 @Injectable()
 export class TokenUsageService {
-  private readonly aiConfig = baseConfig.ai;
+  constructor(
+    private readonly tokenUsageRepository: TokenUsageRepository,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {}
 
-  constructor(private readonly tokenUsageRepository: TokenUsageRepository) {}
+  private get aiConfig(): ConfigAiInterface {
+    return this.configService.get<ConfigAiInterface>("ai");
+  }
 
   async recordTokenUsage(params: {
     tokens: TokenUsageInterface;

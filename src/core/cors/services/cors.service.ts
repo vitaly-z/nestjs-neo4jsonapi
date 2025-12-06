@@ -1,10 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
-import { baseConfig } from "../../../config/base.config";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface, ConfigCorsInterface } from "../../../config/interfaces";
 
 @Injectable()
 export class CorsService {
-  private readonly corsConfig = baseConfig.cors;
+  constructor(private readonly configService: ConfigService<BaseConfigInterface>) {}
+
+  private get corsConfig(): ConfigCorsInterface {
+    return this.configService.get<ConfigCorsInterface>("cors");
+  }
 
   getCorsConfiguration(): CorsOptions {
     return {

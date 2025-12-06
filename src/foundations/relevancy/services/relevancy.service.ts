@@ -6,6 +6,7 @@ import { JsonApiPaginator } from "../../../core/jsonapi/serialisers/jsonapi.pagi
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { RelevanceServiceInterface } from "../../relevancy/interfaces/relevance.service.interface";
 import { RelevancyRepository } from "../../relevancy/repositories/relevancy.repository";
+import { UserModel } from "../../user";
 
 @Injectable()
 export class RelevancyService<T> implements RelevanceServiceInterface {
@@ -70,5 +71,19 @@ export class RelevancyService<T> implements RelevanceServiceInterface {
       id: params.id,
       query: params.query,
     });
+  }
+
+  async findRelevantUsers(params: { cypherService: any; id: string; query?: any }): Promise<JsonApiDataInterface> {
+    const paginator: JsonApiPaginator = new JsonApiPaginator(params.query);
+
+    return this.builder.buildList(
+      UserModel,
+      await this.relevancyRepository.findUsersById({
+        cypherService: params.cypherService,
+        id: params.id,
+        cursor: paginator.generateCursor(),
+      }),
+      paginator,
+    );
   }
 }

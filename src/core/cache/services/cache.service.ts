@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Redis } from "ioredis";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigCacheInterface, ConfigRedisInterface } from "../../../config/interfaces";
 import { AppLoggingService } from "../../logging/services/logging.service";
 
 interface JsonApiResource {
@@ -22,16 +23,22 @@ export class CacheService {
   private redis: Redis;
   private readonly CACHE_KEY_PREFIX = "api_cache:";
   private readonly ELEMENT_KEY_PREFIX = "element:";
-  private readonly cacheConfig = baseConfig.cache;
-  private readonly redisConfig = baseConfig.redis;
 
-  constructor(private readonly logger: AppLoggingService) {
+  constructor(
+    private readonly logger: AppLoggingService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {
+    const redisConfig = this.configService.get<ConfigRedisInterface>("redis");
     this.redis = new Redis({
-      host: this.redisConfig.host,
-      port: this.redisConfig.port,
-      username: this.redisConfig.username,
-      password: this.redisConfig.password,
+      host: redisConfig.host,
+      port: redisConfig.port,
+      username: redisConfig.username,
+      password: redisConfig.password,
     });
+  }
+
+  private get cacheConfig(): ConfigCacheInterface {
+    return this.configService.get<ConfigCacheInterface>("cache");
   }
 
   generateCacheKey(userId: string, method: string, url: string, query?: any, body?: any): string {

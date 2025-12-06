@@ -1,7 +1,8 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Redis } from "ioredis";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigRedisInterface } from "../../../config/interfaces";
 
 export interface NotificationMessage {
   type: "user" | "company" | "broadcast";
@@ -17,9 +18,15 @@ export class RedisMessagingService implements OnModuleInit, OnModuleDestroy {
   private publisher!: Redis;
   private subscriber!: Redis;
   private readonly CHANNEL = "websocket_notifications";
-  private readonly redisConfig = baseConfig.redis;
 
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor(
+    private eventEmitter: EventEmitter2,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {}
+
+  private get redisConfig(): ConfigRedisInterface {
+    return this.configService.get<ConfigRedisInterface>("redis");
+  }
 
   onModuleInit() {
     if (!this.redisConfig) {

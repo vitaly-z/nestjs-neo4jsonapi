@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigPromptsInterface } from "../../../config/interfaces";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 import { KeyConcept } from "../../../foundations/keyconcept/entities/key.concept.entity";
@@ -82,8 +83,10 @@ export class KeyConceptsNodeService {
     private readonly keyConceptRepository: KeyConceptRepository,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
-    this.systemPrompt = baseConfig.prompts.contextualiser?.keyConceptExtractor ?? defaultKeyConceptsPrompt;
+    const prompts = this.configService.get<ConfigPromptsInterface>("prompts");
+    this.systemPrompt = prompts?.contextualiser?.keyConceptExtractor ?? defaultKeyConceptsPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

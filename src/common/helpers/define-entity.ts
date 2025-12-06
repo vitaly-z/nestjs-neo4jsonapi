@@ -1,4 +1,5 @@
 import { Injectable, Type } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ModuleRef } from "@nestjs/core";
 import { mapEntity } from "../abstracts/entity";
 import { DataModelInterface } from "../interfaces/datamodel.interface";
@@ -9,6 +10,7 @@ import {
   FieldDef,
   RelationshipDef,
 } from "../interfaces/entity.schema.interface";
+import { BaseConfigInterface } from "../../config/interfaces";
 import { JsonApiSerialiserFactory } from "../../core/jsonapi/factories/jsonapi.serialiser.factory";
 import { DescriptorBasedSerialiser } from "../../core/jsonapi/serialisers/descriptor.based.serialiser";
 
@@ -22,8 +24,12 @@ function createSerialiserForDescriptor<T, R extends Record<string, RelationshipD
 ): Type<DescriptorBasedSerialiser> {
   @Injectable()
   class AutoSerialiser extends DescriptorBasedSerialiser {
-    constructor(serialiserFactory: JsonApiSerialiserFactory, moduleRef: ModuleRef) {
-      super(serialiserFactory, moduleRef);
+    constructor(
+      serialiserFactory: JsonApiSerialiserFactory,
+      moduleRef: ModuleRef,
+      configService: ConfigService<BaseConfigInterface>,
+    ) {
+      super(serialiserFactory, moduleRef, configService);
       this.setDescriptor(descriptor);
     }
   }

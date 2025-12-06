@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Redis } from "ioredis";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigRedisInterface } from "../../../config/interfaces";
 
 interface ClientInfo {
   userId: string;
@@ -15,14 +16,14 @@ export class RedisClientStorageService implements OnModuleDestroy {
   private readonly CLIENT_KEY_PREFIX = "ws_client:";
   private readonly USER_CLIENTS_KEY_PREFIX = "user_clients:";
   private readonly COMPANY_USERS_KEY_PREFIX = "company_users:";
-  private readonly redisConfig = baseConfig.redis;
 
-  constructor() {
+  constructor(private readonly configService: ConfigService<BaseConfigInterface>) {
+    const redisConfig = this.configService.get<ConfigRedisInterface>("redis");
     this.redis = new Redis({
-      host: this.redisConfig.host,
-      port: this.redisConfig.port,
-      username: this.redisConfig.username,
-      password: this.redisConfig.password,
+      host: redisConfig.host,
+      port: redisConfig.port,
+      username: redisConfig.username,
+      password: redisConfig.password,
     });
   }
 

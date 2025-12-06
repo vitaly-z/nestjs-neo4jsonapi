@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface } from "../../../config/interfaces";
 import { AbstractJsonApiSerialiser } from "../../../core/jsonapi/abstracts/abstract.jsonapi.serialiser";
 import { DynamicRelationshipFactory } from "../../../core/jsonapi/factories/dynamic.relationship.factory";
 import { JsonApiSerialiserFactory } from "../../../core/jsonapi/factories/jsonapi.serialiser.factory";
@@ -10,10 +12,11 @@ import { UserModel } from "../../user/entities/user.model";
 @Injectable()
 export class AuditSerialiser extends AbstractJsonApiSerialiser implements JsonApiServiceInterface {
   constructor(
-    protected readonly serialiserFactory: JsonApiSerialiserFactory,
+    serialiserFactory: JsonApiSerialiserFactory,
     private readonly dynamicRelationshipFactory: DynamicRelationshipFactory,
+    configService: ConfigService<BaseConfigInterface>,
   ) {
-    super(serialiserFactory);
+    super(serialiserFactory, configService);
   }
 
   get type(): string {

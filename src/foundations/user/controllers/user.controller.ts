@@ -1,4 +1,3 @@
-import { RoleId } from "../../../common/constants/system.roles";
 import {
   Body,
   Controller,
@@ -17,6 +16,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import { RoleId } from "../../../common/constants/system.roles";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { SecurityService } from "../../../core/security/services/security.service";
 
@@ -28,11 +28,15 @@ import { CacheService } from "../../../core/cache/services/cache.service";
 import { CompanyPostDataDTO } from "../../company/dtos/company.post.dto";
 import { companyMeta } from "../../company/entities/company.meta";
 import { CompanyService } from "../../company/services/company.service";
+import { contentMeta } from "../../content";
+import { RelevancyService } from "../../relevancy";
 import { roleMeta } from "../../role/entities/role.meta";
 import { UserPatchRateDTO } from "../../user/dtos/user.patch.rate.dto";
 import { UserPostDTO } from "../../user/dtos/user.post.dto";
 import { UserPutDTO } from "../../user/dtos/user.put.dto";
 import { userMeta } from "../../user/entities/user.meta";
+import { User } from "../entities/user.entity";
+import { UserCypherService } from "../services/user.cypher.service";
 import { UserService } from "../services/user.service";
 
 @Controller()
@@ -44,6 +48,8 @@ export class UserController {
     private readonly companyService: CompanyService,
     private readonly cacheService: CacheService,
     private readonly clsService: ClsService,
+    private readonly relevancyService: RelevancyService<User>,
+    private readonly cypherService: UserCypherService,
   ) {}
 
   @Get(userMeta.endpoint)
@@ -304,5 +310,14 @@ export class UserController {
 
     await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
     await this.cacheService.invalidateByElement(roleMeta.endpoint, roleId);
+  }
+
+  @Get(`${contentMeta.endpoint}/:contentId/user-relevance`)
+  async findContentsRelevantForContent(@Query() query: any, @Param("contentId") contentId: string) {
+    return await this.relevancyService.findRelevantUsers({
+      cypherService: this.cypherService,
+      id: contentId,
+      query: query,
+    });
   }
 }

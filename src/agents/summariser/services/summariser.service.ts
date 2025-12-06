@@ -1,9 +1,10 @@
 import { Document } from "@langchain/core/documents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { UsageMetadata } from "../../../common/interfaces/langchain.usage.interface";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigPromptsInterface } from "../../../config/interfaces";
 import { ModelService } from "../../../core/llm/services/model.service";
 import { Chunk } from "../../../foundations/chunk/entities/chunk.entity";
 
@@ -40,10 +41,14 @@ export class SummariserService {
   private readonly combinePromptText: string;
   private readonly tldrPromptText: string;
 
-  constructor(private readonly modelService: ModelService) {
-    this.mapPromptText = baseConfig.prompts.summariser?.map ?? defaultMapPrompt;
-    this.combinePromptText = baseConfig.prompts.summariser?.combine ?? defaultCombinePrompt;
-    this.tldrPromptText = baseConfig.prompts.summariser?.tldr ?? defaultTldrPrompt;
+  constructor(
+    private readonly modelService: ModelService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {
+    const prompts = this.configService.get<ConfigPromptsInterface>("prompts");
+    this.mapPromptText = prompts?.summariser?.map ?? defaultMapPrompt;
+    this.combinePromptText = prompts?.summariser?.combine ?? defaultCombinePrompt;
+    this.tldrPromptText = prompts?.summariser?.tldr ?? defaultTldrPrompt;
   }
 
   async summarise(params: { chunks: Chunk[] }): Promise<{

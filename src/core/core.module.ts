@@ -1,9 +1,10 @@
 import { DynamicModule, Global, Module, Provider, Type } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { AbstractCompanyConfigurations } from "../common";
 import { COMPANY_CONFIGURATIONS_FACTORY, CompanyConfigurationsFactory } from "../common/tokens";
-import { baseConfig } from "../config/base.config";
+import { BaseConfigInterface, ConfigJwtInterface } from "../config/interfaces";
 
 // Import all core modules
 import { BlockNoteModule } from "./blocknote/blocknote.module";
@@ -36,13 +37,22 @@ import { WebsocketModule } from "./websocket/websocket.module";
  * QueueModule is loaded for ALL modes:
  * - API mode needs it to add jobs to queues (BullModule.registerQueue)
  * - Worker mode needs it to process jobs
+ *
+ * @param queueIds - Additional queue IDs to register (library's CHUNK queue is always included)
  */
-function getCoreModules() {
+function getCoreModules(queueIds: string[] = []) {
   return [
-    // JWT and Passport for authentication
-    JwtModule.register({
-      secret: baseConfig.jwt.secret,
-      signOptions: { expiresIn: baseConfig.jwt.expiresIn as any },
+    // JWT and Passport for authentication - uses ConfigService async
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService<BaseConfigInterface>) => {
+        const jwt = configService.get<ConfigJwtInterface>("jwt");
+        return {
+          secret: jwt?.secret,
+          signOptions: { expiresIn: jwt?.expiresIn as any },
+        };
+      },
     }),
     PassportModule,
     // 1. Config-dependent but no external connections
@@ -57,8 +67,8 @@ function getCoreModules() {
     Neo4JModule,
     RedisModule,
     CacheModule,
-    // 3. Queue module - needed for both API (add jobs) and Worker (process jobs)
-    QueueModule,
+    // 3. Queue module - uses ConfigService for Redis, explicit queue IDs for registration
+    QueueModule.forRootWithQueues(queueIds),
     // 4. Services using external connections
     EmailModule.forRoot(),
     StripeModule.forRoot(),
@@ -105,18 +115,28 @@ export interface CoreModuleOptions {
    * This class will be used to create configuration instances for each request.
    */
   companyConfigurations?: Type<AbstractCompanyConfigurations>;
+
+  /**
+   * Queue IDs to register with BullMQ.
+   * The library's CHUNK queue is always registered automatically.
+   * Pass additional queue IDs here for app-specific queues.
+   */
+  queueIds?: string[];
 }
 
 /**
  * CoreModule - Centralized module that provides all core infrastructure
  *
- * All services use `baseConfig` directly - no DI token injection needed.
+ * All services use ConfigService for configuration - no static baseConfig usage.
  *
  * Usage:
  * ```typescript
  * @Module({
  *   imports: [
- *     CoreModule.forRoot({ companyConfigurations: MyCompanyConfigurations }),
+ *     CoreModule.forRoot({
+ *       companyConfigurations: MyCompanyConfigurations,
+ *       queueIds: ['my-queue-1', 'my-queue-2'],
+ *     }),
  *   ],
  * })
  * export class AppModule {}
@@ -157,7 +177,7 @@ export class CoreModule {
 
     return {
       module: CoreModule,
-      imports: getCoreModules(),
+      imports: getCoreModules(options?.queueIds ?? []),
       providers,
       exports: [...getCoreModuleExports(), COMPANY_CONFIGURATIONS_FACTORY],
       global: true,

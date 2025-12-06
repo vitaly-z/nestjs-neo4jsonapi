@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { baseConfig } from "../../../config/base.config";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface, ConfigVapidInterface } from "../../../config/interfaces";
 import { PushSubscriptionDTO } from "../../push/dtos/subscription.push.dto";
 import { Push } from "../../push/entities/push.entity";
 import { PushRepository } from "../../push/repositories/push.repository";
@@ -8,19 +9,19 @@ import * as webPush from "web-push";
 @Injectable()
 export class PushService {
   private _isActive = true;
-  private readonly vapidConfig = baseConfig.vapid;
 
-  constructor(private readonly pushRepository: PushRepository) {
-    if (!this.vapidConfig?.publicKey || !this.vapidConfig?.privateKey) {
+  constructor(
+    private readonly pushRepository: PushRepository,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {
+    const vapidConfig = this.configService.get<ConfigVapidInterface>("vapid");
+
+    if (!vapidConfig?.publicKey || !vapidConfig?.privateKey) {
       this._isActive = false;
       return;
     }
 
-    webPush.setVapidDetails(
-      `mailto:${this.vapidConfig.email}`,
-      this.vapidConfig.publicKey,
-      this.vapidConfig.privateKey,
-    );
+    webPush.setVapidDetails(`mailto:${vapidConfig.email}`, vapidConfig.publicKey, vapidConfig.privateKey);
   }
 
   async registerSubscription(params: { subscription: PushSubscriptionDTO }): Promise<void> {

@@ -4,7 +4,8 @@ import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
 import { RelevanceRepositoryInterface } from "../../relevancy/interfaces/relevance.repository.interface";
-import { authorQuery, contentQuery } from "../../relevancy/queries/relevance";
+import { authorQuery, contentQuery, contentToAuthorQuery } from "../../relevancy/queries/relevance";
+import { User, UserModel } from "../../user";
 
 @Injectable()
 export class RelevancyRepository<T> implements RelevanceRepositoryInterface<T> {
@@ -96,5 +97,22 @@ export class RelevancyRepository<T> implements RelevanceRepositoryInterface<T> {
       id: params.id,
       cursor: params.cursor,
     });
+  }
+
+  async findUsersById(params: { cypherService: any; id: string; cursor: JsonApiCursorInterface }): Promise<User[]> {
+    const query = this.neo4j.initQuery({ serialiser: UserModel, cursor: params.cursor });
+
+    query.queryParams = {
+      ...query.queryParams,
+      id: params.id,
+    };
+
+    query.query += `
+      ${contentToAuthorQuery({})}
+      WITH author as user, totalScore
+      RETURN user, totalScore
+    `;
+
+    return this.neo4j.readMany(query);
   }
 }

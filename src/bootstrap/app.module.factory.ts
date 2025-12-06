@@ -36,8 +36,12 @@ export function createAppModule(options: BootstrapOptions): Type<any> {
   @Module({})
   class GeneratedAppModule {
     static forRoot(modeConfig: AppModeConfig): DynamicModule {
+      // Get app config for extracting queue IDs (needed at module definition time)
+      const appConfig = options.config ? options.config() : {};
+      const queueIds = appConfig.chunkQueues?.queueIds ?? [];
+
       // Merge baseConfig with optional custom config
-      const configLoader = options.config ? () => ({ ...baseConfig, ...options.config() }) : () => baseConfig;
+      const configLoader = options.config ? () => ({ ...baseConfig, ...appConfig }) : () => baseConfig;
 
       // Resolve i18n path - use absolute path or resolve from cwd
       const i18nPath = options.i18n?.path
@@ -101,7 +105,10 @@ export function createAppModule(options: BootstrapOptions): Type<any> {
           ...(modeConfig.enableCronJobs ? [ScheduleModule.forRoot()] : []),
 
           // Library's core infrastructure modules
-          CoreModule.forRoot({ companyConfigurations: options.companyConfigurations }),
+          CoreModule.forRoot({
+            companyConfigurations: options.companyConfigurations,
+            queueIds,
+          }),
 
           // Library's foundation/domain modules (queues configured via baseConfig.chunkQueues)
           FoundationsModule,

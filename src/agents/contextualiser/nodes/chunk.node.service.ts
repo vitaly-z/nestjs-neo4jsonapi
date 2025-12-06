@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
 import { z } from "zod";
 import { TokenUsageInterface } from "../../../common/interfaces/token.usage.interface";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigPromptsInterface } from "../../../config/interfaces";
 import { LLMService } from "../../../core/llm/services/llm.service";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 import { Chunk } from "../../../foundations/chunk/entities/chunk.entity";
@@ -89,8 +90,10 @@ export class ChunkNodeService {
     private readonly chunkRepository: ChunkRepository,
     private readonly webSocketService: WebSocketService,
     private readonly clsService: ClsService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
-    this.systemPrompt = baseConfig.prompts.contextualiser?.chunk ?? defaultChunkPrompt;
+    const prompts = this.configService.get<ConfigPromptsInterface>("prompts");
+    this.systemPrompt = prompts?.contextualiser?.chunk ?? defaultChunkPrompt;
   }
 
   async execute(params: { state: typeof ContextualiserContext.State }): Promise<Partial<ContextualiserContextState>> {

@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ModuleRef } from "@nestjs/core";
+import { BaseConfigInterface } from "../../../config/interfaces";
 import { EntityDescriptor, RelationshipDef } from "../../../common/interfaces/entity.schema.interface";
 import { modelRegistry } from "../../../common/registries/registry";
 import { AbstractJsonApiSerialiser } from "../abstracts/abstract.jsonapi.serialiser";
@@ -21,8 +23,9 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
   constructor(
     serialiserFactory: JsonApiSerialiserFactory,
     protected readonly moduleRef: ModuleRef,
+    configService: ConfigService<BaseConfigInterface>,
   ) {
-    super(serialiserFactory);
+    super(serialiserFactory, configService);
   }
 
   /**

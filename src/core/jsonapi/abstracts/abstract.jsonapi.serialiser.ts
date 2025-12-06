@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { baseConfig } from "../../../config/base.config";
+import { ConfigService } from "@nestjs/config";
+import { BaseConfigInterface, ConfigApiInterface } from "../../../config/interfaces";
 import { JsonApiSerialiserFactory } from "../factories/jsonapi.serialiser.factory";
 import { JsonApiDataInterface } from "../interfaces/jsonapi.data.interface";
 import { JsonApiServiceInterface } from "../interfaces/jsonapi.service.interface";
@@ -8,7 +9,7 @@ import { JsonApiServiceInterface } from "../interfaces/jsonapi.service.interface
 export abstract class AbstractJsonApiSerialiser implements JsonApiServiceInterface {
   private _id: string;
   private _attributes: any = {};
-  private readonly apiConfig = baseConfig.api;
+  private readonly apiConfig: ConfigApiInterface;
 
   private _meta: any = {
     createdAt: "createdAt",
@@ -16,16 +17,21 @@ export abstract class AbstractJsonApiSerialiser implements JsonApiServiceInterfa
     recordCount: "recordCount",
   };
 
-  private _links: any = {
-    self: (data: any) => {
-      return `${this.apiConfig.url}${this.endpoint}/${data[this.id]}`;
-    },
-  };
+  private _links: any;
 
   private _relationships: any = {};
 
-  constructor(protected readonly serialiserFactory: JsonApiSerialiserFactory) {
+  constructor(
+    protected readonly serialiserFactory: JsonApiSerialiserFactory,
+    protected readonly configService: ConfigService<BaseConfigInterface>,
+  ) {
     this._id = "id";
+    this.apiConfig = this.configService.get<ConfigApiInterface>("api");
+    this._links = {
+      self: (data: any) => {
+        return `${this.apiConfig.url}${this.endpoint}/${data[this.id]}`;
+      },
+    };
   }
 
   abstract get type(): string;

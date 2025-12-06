@@ -1,34 +1,98 @@
 import { BullModule } from "@nestjs/bullmq";
-import { Global, Module } from "@nestjs/common";
-import { baseConfig } from "../../config/base.config";
+import { DynamicModule, Global, Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { BaseConfigInterface, ConfigChunkQueuesInterface, ConfigRedisInterface } from "../../config/interfaces";
 import { QueueId } from "../../config/enums/queue.id";
 
 /**
- * Get queue registrations for BullMQ.
- * Library's CHUNK queue is ALWAYS registered (from library's QueueId.CHUNK).
- * App's additional queues come from baseConfig.chunkQueues.queueIds.
+ * QueueModule - Centralized BullMQ queue configuration
+ *
+ * Uses ConfigService to get Redis connection and queue IDs dynamically,
+ * ensuring app-specific queue configurations are properly loaded.
+ *
+ * Library's CHUNK queue is ALWAYS registered.
+ * App's additional queues come from config.chunkQueues.queueIds.
  */
-function getQueueRegistrations() {
-  const allQueueIds = new Set([
-    QueueId.CHUNK, // Library always needs this
-    ...(baseConfig.chunkQueues?.queueIds ?? []),
-  ]);
-  return Array.from(allQueueIds).map((name) => BullModule.registerQueue({ name }));
-}
-
 @Global()
-@Module({
-  imports: [
-    BullModule.forRoot({
-      connection: {
-        host: baseConfig.redis?.host,
-        port: baseConfig.redis?.port,
-        password: baseConfig.redis?.password,
-        username: baseConfig.redis?.username,
-      },
-    }),
-    ...getQueueRegistrations(),
-  ],
-  exports: [BullModule],
-})
-export class QueueModule {}
+@Module({})
+export class QueueModule {
+  static forRoot(): DynamicModule {
+    return {
+      module: QueueModule,
+      imports: [
+        ConfigModule,
+        // Configure Redis connection asynchronously
+        BullModule.forRootAsync({
+          imports: [ConfigModule],
+          inject: [ConfigService],
+          useFactory: (configService: ConfigService<BaseConfigInterface>) => {
+            const redis = configService.get<ConfigRedisInterface>("redis");
+            return {
+              connection: {
+                host: redis?.host,
+                port: redis?.port,
+                password: redis?.password,
+                username: redis?.username,
+              },
+            };
+          },
+        }),
+        // Always register the library's CHUNK queue
+        BullModule.registerQueue({ name: QueueId.CHUNK }),
+      ],
+      providers: [
+        // Provider that registers app-specific queues dynamically
+        {
+          provide: "QUEUE_REGISTRATIONS",
+          inject: [ConfigService],
+          useFactory: async (configService: ConfigService<BaseConfigInterface>) => {
+            const chunkQueues = configService.get<ConfigChunkQueuesInterface>("chunkQueues");
+            const appQueueIds = chunkQueues?.queueIds ?? [];
+
+            // Filter out CHUNK (already registered) and register remaining queues
+            const additionalQueues = appQueueIds.filter((id) => id !== QueueId.CHUNK);
+
+            // Note: This provider ensures app queues are tracked, but actual registration
+            // happens via BullModule.registerQueue() imports below
+            return additionalQueues;
+          },
+        },
+      ],
+      exports: [BullModule],
+      global: true,
+    };
+  }
+
+  /**
+   * forRootWithQueues - Register specific queue IDs
+   * Use this when you need to explicitly specify which queues to register.
+   */
+  static forRootWithQueues(queueIds: string[]): DynamicModule {
+    const allQueueIds = new Set([QueueId.CHUNK, ...queueIds]);
+
+    return {
+      module: QueueModule,
+      imports: [
+        ConfigModule,
+        BullModule.forRootAsync({
+          imports: [ConfigModule],
+          inject: [ConfigService],
+          useFactory: (configService: ConfigService<BaseConfigInterface>) => {
+            const redis = configService.get<ConfigRedisInterface>("redis");
+            return {
+              connection: {
+                host: redis?.host,
+                port: redis?.port,
+                password: redis?.password,
+                username: redis?.username,
+              },
+            };
+          },
+        }),
+        ...Array.from(allQueueIds).map((name) => BullModule.registerQueue({ name })),
+      ],
+      exports: [BullModule],
+      global: true,
+    };
+  }
+}

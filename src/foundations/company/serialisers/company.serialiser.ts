@@ -16,9 +16,9 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
   constructor(
     serialiserFactory: JsonApiSerialiserFactory,
     protected readonly s3Service: S3Service,
-    private readonly configService: ConfigService<BaseConfigInterface>,
+    configService: ConfigService<BaseConfigInterface>,
   ) {
-    super(serialiserFactory);
+    super(serialiserFactory, configService);
   }
 
   get type(): string {

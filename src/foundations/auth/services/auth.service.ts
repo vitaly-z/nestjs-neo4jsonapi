@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ModuleRef } from "@nestjs/core";
 import { randomUUID } from "crypto";
 import { RoleId } from "../../../common/constants/system.roles";
@@ -12,7 +13,7 @@ import { checkPassword, hashPassword, SecurityService } from "../../../core/secu
 import { AuthPostLoginDataDTO } from "../../auth/dtos/auth.post.login.dto";
 
 import { ClsService } from "nestjs-cls";
-import { baseConfig } from "../../../config/base.config";
+import { BaseConfigInterface, ConfigAppInterface } from "../../../config/interfaces";
 import { CompanyConfigurations } from "../../../config/company.configurations";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
@@ -30,8 +31,6 @@ import { UserService } from "../../user/services/user.service";
 
 @Injectable()
 export class AuthService {
-  private readonly appConfig = baseConfig.app;
-
   constructor(
     private readonly builder: JsonApiService,
     private readonly repository: AuthRepository,
@@ -43,7 +42,12 @@ export class AuthService {
     private readonly clsService: ClsService,
     private readonly neo4j: Neo4jService,
     private readonly moduleRef: ModuleRef,
+    private readonly configService: ConfigService<BaseConfigInterface>,
   ) {}
+
+  private get appConfig(): ConfigAppInterface {
+    return this.configService.get<ConfigAppInterface>("app");
+  }
 
   /**
    * Get the company configurations factory from the global CoreModule provider.

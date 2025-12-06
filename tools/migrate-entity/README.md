@@ -26,22 +26,22 @@ feature/entities/
 # From your project's root directory:
 
 # Migrate a single module by path
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --path src/features/article
+pnpm neo4jsonapi-migrate --path src/features/article
 
 # Migrate a foundation module
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --path src/foundations/user
+pnpm neo4jsonapi-migrate --path src/foundations/user
 
 # Migrate a specific entity in a multi-entity module
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --path src/foundations/auth --entity auth.code
+pnpm neo4jsonapi-migrate --path src/foundations/auth --entity auth.code
 
 # Migrate all entities in the codebase
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --all
+pnpm neo4jsonapi-migrate --all
 
 # Dry run (preview changes without writing files)
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --path src/features/article --dry-run
+pnpm neo4jsonapi-migrate --path src/features/article --dry-run
 
 # Verbose output
-npx ts-node node_modules/@carlonicora/nestjs-neo4jsonapi/tools/migrate-entity --path src/features/article --verbose
+pnpm neo4jsonapi-migrate --path src/features/article --verbose
 ```
 
 ## CLI Options

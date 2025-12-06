@@ -6,6 +6,9 @@
   "license": "GPL-3.0-or-later",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "neo4jsonapi-migrate": "./dist/tools/migrate-entity/index.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -45,7 +48,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc -p tools/migrate-entity/tsconfig.json",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "lint": "eslint \"src/**/*.ts\" --fix",
@@ -136,7 +139,6 @@
   },
   "files": [
     "dist",
-    "tools",
     "README.md"
   ],
   "keywords": [

@@ -1,14 +1,14 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
 /**
  * Entity Migration CLI
  *
  * Migrates old-style entities (5 files) to new descriptor-based pattern (1 file).
  *
  * Usage:
- *   npx ts-node tools/migrate-entity --path src/features/article
- *   npx ts-node tools/migrate-entity --path src/foundations/user
- *   npx ts-node tools/migrate-entity --all
- *   npx ts-node tools/migrate-entity --path src/features/article --dry-run
+ *   pnpm neo4jsonapi-migrate --path src/features/article
+ *   pnpm neo4jsonapi-migrate --path src/foundations/user
+ *   pnpm neo4jsonapi-migrate --all
+ *   pnpm neo4jsonapi-migrate --path src/features/article --dry-run
  */
 
 import { Command } from "commander";
@@ -17,7 +17,7 @@ import { EntityMigrator, printMigrationSummary } from "./lib/entity-migrator";
 const program = new Command();
 
 program
-  .name("migrate-entity")
+  .name("neo4jsonapi-migrate")
   .description("Migrate old-style entities to new descriptor-based architecture")
   .option("-p, --path <module-path>", "Path to module folder (e.g., src/features/article)")
   .option("-e, --entity <name>", "Entity name if module has multiple (e.g., auth.code)")

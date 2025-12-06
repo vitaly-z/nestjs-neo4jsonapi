@@ -9,7 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "outDir": "./dist",
+    "outDir": "../../dist/tools/migrate-entity",
     "rootDir": "."
   },
   "include": ["./**/*.ts"],

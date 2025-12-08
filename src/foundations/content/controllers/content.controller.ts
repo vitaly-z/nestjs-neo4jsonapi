@@ -9,7 +9,7 @@ import { ContentModel } from "../../content/entities/content.model";
 import { ContentCypherService } from "../../content/services/content.cypher.service";
 import { ContentService } from "../../content/services/content.service";
 import { RelevancyService } from "../../relevancy/services/relevancy.service";
-import { ownerMeta } from "../../user/entities/user.meta";
+import { authorMeta, ownerMeta } from "../../user/entities/user.meta";
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -57,6 +57,27 @@ export class ContentController {
   ) {
     const response = await this.contentService.findByOwner({
       ownerId: ownerId,
+      term: search,
+      query: query,
+      fetchAll: fetchAll,
+      orderBy: orderBy,
+    });
+
+    reply.send(response);
+  }
+
+  @Get(`${authorMeta.endpoint}/:authorId/${contentMeta.endpoint}`)
+  async findByAuthor(
+    @Req() req: AuthenticatedRequest,
+    @Res() reply: FastifyReply,
+    @Param("authorId") authorId: string,
+    @Query() query: any,
+    @Query("search") search?: string,
+    @Query("fetchAll") fetchAll?: boolean,
+    @Query("orderBy") orderBy?: string,
+  ) {
+    const response = await this.contentService.findByOwner({
+      ownerId: authorId,
       term: search,
       query: query,
       fetchAll: fetchAll,

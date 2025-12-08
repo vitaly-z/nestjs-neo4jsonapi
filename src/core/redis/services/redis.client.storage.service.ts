@@ -13,12 +13,17 @@ interface ClientInfo {
 @Injectable()
 export class RedisClientStorageService implements OnModuleDestroy {
   private redis: Redis;
-  private readonly CLIENT_KEY_PREFIX = "ws_client:";
-  private readonly USER_CLIENTS_KEY_PREFIX = "user_clients:";
-  private readonly COMPANY_USERS_KEY_PREFIX = "company_users:";
+  private readonly CLIENT_KEY_PREFIX: string;
+  private readonly USER_CLIENTS_KEY_PREFIX: string;
+  private readonly COMPANY_USERS_KEY_PREFIX: string;
 
   constructor(private readonly configService: ConfigService<BaseConfigInterface>) {
     const redisConfig = this.configService.get<ConfigRedisInterface>("redis");
+
+    this.CLIENT_KEY_PREFIX = `${redisConfig.queue}:ws_client:`;
+    this.USER_CLIENTS_KEY_PREFIX = `${redisConfig.queue}:user_clients:`;
+    this.COMPANY_USERS_KEY_PREFIX = `${redisConfig.queue}:company_users:`;
+
     this.redis = new Redis({
       host: redisConfig.host,
       port: redisConfig.port,

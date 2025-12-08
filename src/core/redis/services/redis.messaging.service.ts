@@ -17,7 +17,7 @@ export interface NotificationMessage {
 export class RedisMessagingService implements OnModuleInit, OnModuleDestroy {
   private publisher!: Redis;
   private subscriber!: Redis;
-  private readonly CHANNEL = "websocket_notifications";
+  private channel: string;
 
   constructor(
     private eventEmitter: EventEmitter2,
@@ -32,6 +32,8 @@ export class RedisMessagingService implements OnModuleInit, OnModuleDestroy {
     if (!this.redisConfig) {
       return;
     }
+
+    this.channel = `${this.redisConfig.queue}:websocket_notifications`;
 
     this.publisher = new Redis({
       host: this.redisConfig.host,
@@ -48,11 +50,11 @@ export class RedisMessagingService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Subscribe to notifications channel
-    this.subscriber.subscribe(this.CHANNEL);
+    this.subscriber.subscribe(this.channel);
 
     // Handle incoming messages
     this.subscriber.on("message", (channel: string, message: string) => {
-      if (channel === this.CHANNEL) {
+      if (channel === this.channel) {
         try {
           const notification: NotificationMessage = JSON.parse(message);
           // Emit local event for WebSocketService to handle
@@ -76,7 +78,7 @@ export class RedisMessagingService implements OnModuleInit, OnModuleDestroy {
       source: process.env.APP_MODE === "worker" ? "worker" : "api",
     };
 
-    await this.publisher.publish(this.CHANNEL, JSON.stringify(fullNotification));
+    await this.publisher.publish(this.channel, JSON.stringify(fullNotification));
   }
 
   async publishUserNotification(userId: string, event: string, data: any): Promise<void> {

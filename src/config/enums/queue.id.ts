@@ -4,4 +4,5 @@
  */
 export enum QueueId {
   CHUNK = "chunk",
+  COMPANY = "company",
 }

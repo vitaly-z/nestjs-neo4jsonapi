@@ -1,8 +1,8 @@
 import { BullModule } from "@nestjs/bullmq";
 import { DynamicModule, Global, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { BaseConfigInterface, ConfigChunkQueuesInterface, ConfigRedisInterface } from "../../config/interfaces";
 import { QueueId } from "../../config/enums/queue.id";
+import { BaseConfigInterface, ConfigChunkQueuesInterface, ConfigRedisInterface } from "../../config/interfaces";
 
 /**
  * QueueModule - Centralized BullMQ queue configuration
@@ -34,11 +34,13 @@ export class QueueModule {
                 password: redis?.password,
                 username: redis?.username,
               },
+              prefix: redis?.queue,
             };
           },
         }),
         // Always register the library's CHUNK queue
         BullModule.registerQueue({ name: QueueId.CHUNK }),
+        BullModule.registerQueue({ name: QueueId.COMPANY }),
       ],
       providers: [
         // Provider that registers app-specific queues dynamically
@@ -50,7 +52,7 @@ export class QueueModule {
             const appQueueIds = chunkQueues?.queueIds ?? [];
 
             // Filter out CHUNK (already registered) and register remaining queues
-            const additionalQueues = appQueueIds.filter((id) => id !== QueueId.CHUNK);
+            const additionalQueues = appQueueIds.filter((id) => id !== QueueId.CHUNK && id !== QueueId.COMPANY);
 
             // Note: This provider ensures app queues are tracked, but actual registration
             // happens via BullModule.registerQueue() imports below
@@ -68,7 +70,7 @@ export class QueueModule {
    * Use this when you need to explicitly specify which queues to register.
    */
   static forRootWithQueues(queueIds: string[]): DynamicModule {
-    const allQueueIds = new Set([QueueId.CHUNK, ...queueIds]);
+    const allQueueIds = new Set([QueueId.CHUNK, QueueId.COMPANY, ...queueIds]);
 
     return {
       module: QueueModule,
@@ -86,6 +88,7 @@ export class QueueModule {
                 password: redis?.password,
                 username: redis?.username,
               },
+              prefix: redis?.queue,
             };
           },
         }),

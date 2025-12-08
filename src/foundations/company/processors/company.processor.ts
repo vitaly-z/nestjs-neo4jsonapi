@@ -2,11 +2,12 @@ import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { ModuleRef } from "@nestjs/core";
 import { Job } from "bullmq";
 import { ClsService } from "nestjs-cls";
+import { QueueId } from "../../../config";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { CompanyRepository } from "../../company/repositories/company.repository";
 
-@Processor(`${process.env.QUEUE}_company`, { concurrency: 5, lockDuration: 1000 * 60 })
+@Processor(QueueId.COMPANY, { concurrency: 5, lockDuration: 1000 * 60 })
 export class CompanyProcessor extends WorkerHost {
   constructor(
     private readonly companyRepository: CompanyRepository,

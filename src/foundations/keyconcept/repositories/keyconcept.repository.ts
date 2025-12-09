@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
 import { aiSourceQuery } from "../../../common/repositories/ai.source.query";
 import { DataLimits } from "../../../common/types/data.limits";
-import { ModelService } from "../../../core/llm/services/model.service";
+import { EmbedderService } from "../../../core";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
 import { KeyConcept } from "../../keyconcept/entities/key.concept.entity";
@@ -14,7 +14,7 @@ import { KeyConceptModel } from "../../keyconcept/entities/key.concept.model";
 export class KeyConceptRepository implements OnModuleInit {
   constructor(
     private readonly neo4j: Neo4jService,
-    private readonly modelService: ModelService,
+    private readonly embedderService: EmbedderService,
     private readonly securityService: SecurityService,
     private readonly clsService: ClsService,
   ) {}
@@ -80,7 +80,7 @@ export class KeyConceptRepository implements OnModuleInit {
   async findPotentialKeyConcepts(params: { question: string; dataLimits: DataLimits }): Promise<KeyConcept[]> {
     const query = this.neo4j.initQuery({ serialiser: KeyConceptModel });
 
-    const queryEmbedding = await this.modelService.vectoriseText({ text: params.question });
+    const queryEmbedding = await this.embedderService.vectoriseText({ text: params.question });
 
     query.queryParams = {
       ...query.queryParams,
@@ -167,7 +167,7 @@ export class KeyConceptRepository implements OnModuleInit {
   }
 
   async createOrphanKeyConcepts(params: { keyConceptValues: string[] }): Promise<void> {
-    const vectors = await this.modelService.vectoriseTextBatch(params.keyConceptValues);
+    const vectors = await this.embedderService.vectoriseTextBatch(params.keyConceptValues);
 
     const data = params.keyConceptValues.map((keyConceptId: string, index: number) => ({
       query: `MERGE (keyconcept: KeyConcept {value: $keyConceptId}) ON CREATE SET keyconcept.id="${randomUUID()}", keyconcept.embedding = $vector`,
@@ -193,7 +193,7 @@ export class KeyConceptRepository implements OnModuleInit {
 
     let vector = null;
     if (!existingNode.length) {
-      vector = await this.modelService.vectoriseText({
+      vector = await this.embedderService.vectoriseText({
         text: params.keyConceptValue,
       });
     }

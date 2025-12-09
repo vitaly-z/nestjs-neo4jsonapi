@@ -217,9 +217,10 @@ AI_API_KEY=sk-...
 AI_MODEL=gpt-4o-mini
 
 # Embedder (optional)
-EMBEDDER_PROVIDER=openai
+EMBEDDER_PROVIDER=openrouter
 EMBEDDER_API_KEY=sk-...
-EMBEDDER_MODEL=text-embedding-3-small
+EMBEDDER_MODEL=openai/text-embedding-3-large
+EMBEDDER_DIMENSIONS=3072
 
 # Logging - Loki (optional)
 LOKI_ENABLED=false

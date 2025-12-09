@@ -25,5 +25,6 @@ export interface ConfigAiInterface {
     model: string;
     instance?: string;
     apiVersion?: string;
+    dimensions: number;
   };
 }

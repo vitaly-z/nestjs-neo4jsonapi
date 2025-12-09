@@ -186,6 +186,10 @@ export class ModelService {
     return response;
   }
 
+  getEmbedderDimensions(): number {
+    return this.aiConfig.embedder.dimensions;
+  }
+
   async transcribeAudio(params: { filePath: string; prompt: string; language?: string }): Promise<any> {
     return await this.getTranscriber().audio.transcriptions.create({
       file: fs.createReadStream(params.filePath),
@@ -193,13 +197,5 @@ export class ModelService {
       prompt: params.prompt,
       response_format: "json",
     });
-  }
-
-  async vectoriseText(params: { text: string }): Promise<any> {
-    return this.getEmbedder().embedQuery(params.text);
-  }
-
-  async vectoriseTextBatch(texts: string[]): Promise<any[]> {
-    return this.getEmbedder().embedDocuments(texts);
   }
 }

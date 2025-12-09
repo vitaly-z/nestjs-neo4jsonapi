@@ -3,6 +3,7 @@ import { ClsService } from "nestjs-cls";
 import { AiStatus } from "../../../common/enums/ai.status";
 import { aiSourceQuery } from "../../../common/repositories/ai.source.query";
 import { DataLimits } from "../../../common/types/data.limits";
+import { EmbedderService } from "../../../core";
 import { ModelService } from "../../../core/llm/services/model.service";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
@@ -14,6 +15,7 @@ export class ChunkRepository implements OnModuleInit {
   constructor(
     private readonly neo4j: Neo4jService,
     private readonly modelService: ModelService,
+    private readonly embedderService: EmbedderService,
     private readonly clsService: ClsService,
     private readonly securityService: SecurityService,
   ) {}
@@ -23,13 +25,14 @@ export class ChunkRepository implements OnModuleInit {
       query: `CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (chunk:Chunk) REQUIRE chunk.id IS UNIQUE`,
     });
 
+    const dimensions = this.modelService.getEmbedderDimensions();
     await this.neo4j.writeOne({
       query: `
         CREATE VECTOR INDEX chunks IF NOT EXISTS
         FOR (chunk:Chunk)
         ON chunk.embedding
         OPTIONS { indexConfig: {
-        \`vector.dimensions\`: 1536,
+        \`vector.dimensions\`:  ${dimensions},
         \`vector.similarity_function\`: 'cosine'
         }};
         `,
@@ -39,7 +42,7 @@ export class ChunkRepository implements OnModuleInit {
   async findPotentialChunks(params: { question: string; dataLimits: DataLimits }): Promise<Chunk[]> {
     const query = this.neo4j.initQuery({ serialiser: ChunkModel });
 
-    const queryEmbedding = await this.modelService.vectoriseText({ text: params.question });
+    const queryEmbedding = await this.embedderService.vectoriseText({ text: params.question });
 
     query.queryParams = {
       ...query.queryParams,
@@ -145,7 +148,7 @@ export class ChunkRepository implements OnModuleInit {
   }): Promise<void> {
     const query = this.neo4j.initQuery();
 
-    const vector = await this.modelService.vectoriseText({ text: params.content });
+    const vector = await this.embedderService.vectoriseText({ text: params.content });
 
     query.queryParams = {
       ...query.queryParams,

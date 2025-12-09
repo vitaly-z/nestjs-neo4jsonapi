@@ -197,6 +197,7 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
         model: process.env.EMBEDDER_MODEL || "",
         instance: process.env.EMBEDDER_INSTANCE || "",
         apiVersion: process.env.EMBEDDER_API_VERSION || "",
+        dimensions: parseInt(process.env.EMBEDDER_DIMENSIONS || "0"),
       },
     },
     rateLimit: {

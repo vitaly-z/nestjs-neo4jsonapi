@@ -133,7 +133,7 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       email: process.env.VAPID_EMAIL || "",
     },
     email: {
-      emailProvider: (process.env.EMAIL_PROVIDER === "smtp" ? "smtp" : "sendgrid") as "sendgrid" | "smtp",
+      emailProvider: process.env.EMAIL_PROVIDER as "sendgrid" | "smtp" | "brevo",
       emailApiKey: process.env.EMAIL_API_KEY || "",
       emailFrom: process.env.EMAIL_FROM || "",
       emailHost: process.env.EMAIL_HOST || "",

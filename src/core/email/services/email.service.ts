@@ -83,7 +83,9 @@ export class EmailService {
     const subject = emailParams.subject || extractedTitle;
 
     try {
-      if (this.emailConfig.emailProvider === "sendgrid") {
+      if (this.emailConfig.emailProvider === "brevo") {
+        await this.sendEmailWithBrevo(to, subject, html);
+      } else if (this.emailConfig.emailProvider === "sendgrid") {
         await this.sendEmailWithSendGrid(to, subject, html);
       } else {
         await this.sendEmailWithSmtp(to, subject, html);
@@ -91,6 +93,25 @@ export class EmailService {
     } catch (error) {
       console.error("Error sending email:", error);
       throw error;
+    }
+  }
+  private async sendEmailWithBrevo(to: string | string[], subject: string, html: string): Promise<void> {
+    const brevo = require("@getbrevo/brevo");
+    const apiInstance = new brevo.TransactionalEmailsApi();
+
+    apiInstance.authentications.apiKey.apiKey = this.emailConfig.emailApiKey;
+
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = html;
+    sendSmtpEmail.sender = this.convertToEmailAddressArray(this.emailConfig.emailFrom)[0];
+    sendSmtpEmail.to = this.convertToEmailAddressArray(to);
+
+    try {
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
+    } catch (error) {
+      console.error(error);
     }
   }
 

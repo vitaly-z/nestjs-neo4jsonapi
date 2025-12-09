@@ -208,6 +208,27 @@ export class CompanyRepository implements OnModuleInit {
     await this.neo4j.writeOne(query);
   }
 
+  async updateConfigurations(params: { companyId: string; configurations: string }): Promise<void> {
+    const updateParams: string[] = [];
+    updateParams.push("company.configurations = $configurations");
+    updateParams.push("company.updatedAt = datetime()");
+    const update = updateParams.join(", ");
+
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      configurations: params.configurations ?? "",
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET ${update}
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
+
   async createByName(params: { name: string }): Promise<Company> {
     const query = this.neo4j.initQuery({ serialiser: CompanyModel });
 

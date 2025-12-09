@@ -1,4 +1,3 @@
-import { RoleId } from "../../../common/constants/system.roles";
 import {
   Body,
   Controller,
@@ -16,6 +15,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
+import { RoleId } from "../../../common/constants/system.roles";
 import { Roles } from "../../../common/decorators/roles.decorator";
 import { AdminJwtAuthGuard } from "../../../common/guards/jwt.auth.admin.guard";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
@@ -27,6 +27,7 @@ import { CompanyPostDTO } from "../../company/dtos/company.post.dto";
 import { CompanyPutDTO } from "../../company/dtos/company.put.dto";
 import { companyMeta } from "../../company/entities/company.meta";
 import { CompanyService } from "../../company/services/company.service";
+import { CompanyConfigurationsPutDTO } from "../dtos/company.configurations.put.dto";
 
 @Controller()
 export class CompanyController {
@@ -88,6 +89,27 @@ export class CompanyController {
       throw new HttpException("Company Id does not match the {json:api} id", HttpStatus.PRECONDITION_FAILED);
 
     const response = await this.companyService.update({ data: body.data });
+    reply.send(response);
+
+    await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
+  @Put(`${companyMeta.endpoint}/:companyId/configurations`)
+  async updateConfigurations(
+    @Req() request: AuthenticatedRequest,
+    @Res() reply: FastifyReply,
+    @Body() body: CompanyConfigurationsPutDTO,
+    @Param("companyId") companyId: string,
+  ) {
+    if (request.user.companyId !== companyId && !request.user.roles.includes(RoleId.Administrator))
+      throw new HttpException("Unauthorised", 401);
+
+    if (companyId !== body.data.id)
+      throw new HttpException("Company Id does not match the {json:api} id", HttpStatus.PRECONDITION_FAILED);
+
+    const response = await this.companyService.updateConfigurations({ data: body.data });
     reply.send(response);
 
     await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);

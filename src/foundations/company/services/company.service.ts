@@ -17,6 +17,7 @@ import { CompanyPutDataDTO } from "../../company/dtos/company.put.dto";
 import { Company } from "../../company/entities/company.entity";
 import { CompanyModel } from "../../company/entities/company.model";
 import { CompanyRepository } from "../../company/repositories/company.repository";
+import { CompanyConfigurationsPutDataDTO } from "../dtos/company.configurations.put.dto";
 
 const LICENSE_SERVICE_URL = "http://localhost:3300/licenses/:installationId/validate";
 
@@ -91,6 +92,18 @@ export class CompanyService {
       availableTokens: params.data.attributes.availableTokens,
       featureIds: params.data.relationships?.features?.data.map((feature) => feature.id),
       moduleIds: params.data.relationships?.modules?.data.map((module) => module.id),
+    });
+
+    return this.builder.buildSingle(
+      CompanyModel,
+      await this.companyRepository.findByCompanyId({ companyId: params.data.id }),
+    );
+  }
+
+  async updateConfigurations(params: { data: CompanyConfigurationsPutDataDTO }): Promise<JsonApiDataInterface> {
+    await this.companyRepository.updateConfigurations({
+      companyId: params.data.id,
+      configurations: params.data.attributes.configurations,
     });
 
     return this.builder.buildSingle(

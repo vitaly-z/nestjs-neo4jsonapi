@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.0.0...v1.0.1) (2025-12-10)
+
+### 🐛 Bug Fixes
+
+* enable provenance for npm OIDC publishing ([d0c98c7](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d0c98c7e61d7898e9c26ccdf354495a0fd9b3cb3))
+
 ## 1.0.0 (2025-12-09)
 
 ### 🚀 Features

@@ -1,3 +1,9 @@
+## [1.0.3](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.0.2...v1.0.3) (2025-12-10)
+
+### 🐛 Bug Fixes
+
+* upgrade npm to 11.5+ for OIDC trusted publishing ([5855f1f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/5855f1f86bcae1a3b373ee4b5b09a14d5a2d27a5))
+
 ## [1.0.2](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.0.1...v1.0.2) (2025-12-10)
 
 ### 🐛 Bug Fixes

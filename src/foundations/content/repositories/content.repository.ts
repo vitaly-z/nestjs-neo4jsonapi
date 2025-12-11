@@ -1,13 +1,14 @@
 import { Document } from "@langchain/core/documents";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
+import { modelRegistry } from "../../../common/registries/registry";
 import { BaseConfigInterface, ConfigContentTypesInterface } from "../../../config/interfaces";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
 import { Content } from "../../content/entities/content.entity";
 import { contentMeta } from "../../content/entities/content.meta";
-import { ContentModel } from "../../content/entities/content.model";
 import { ContentCypherService } from "../../content/services/content.cypher.service";
 import { ownerMeta } from "../../user/entities/user.meta";
 
@@ -24,6 +25,17 @@ export class ContentRepository {
     return this.configService.get<ConfigContentTypesInterface>("contentTypes")?.types ?? [];
   }
 
+  /**
+   * Get the ContentModel from registry (may be extended with additional childrenTokens)
+   */
+  private getContentModel(): DataModelInterface<Content> {
+    const model = modelRegistry.get(contentMeta.nodeName);
+    if (!model) {
+      throw new Error(`ContentModel not found in registry for nodeName: ${contentMeta.nodeName}`);
+    }
+    return model as DataModelInterface<Content>;
+  }
+
   async find(params: {
     fetchAll?: boolean;
     term?: string;
@@ -32,7 +44,7 @@ export class ContentRepository {
   }): Promise<Content[]> {
     const query = this.neo4j.initQuery({
       cursor: params.cursor,
-      serialiser: ContentModel,
+      serialiser: this.getContentModel(),
       fetchAll: params.fetchAll,
     });
 
@@ -44,7 +56,7 @@ export class ContentRepository {
     query.query += `
       ${this.contentCypherService.default()}
       ${this.securityService.userHasAccess({ validator: this.contentCypherService.userHasAccess })}
-      
+
       ORDER BY ${contentMeta.nodeName}.${params.orderBy ? `${params.orderBy}` : `updatedAt DESC`}
       {CURSOR}
 
@@ -55,7 +67,7 @@ export class ContentRepository {
   }
 
   async findByIds(params: { contentIds: string[] }): Promise<Document[]> {
-    const query = this.neo4j.initQuery({ serialiser: ContentModel });
+    const query = this.neo4j.initQuery({ serialiser: this.getContentModel() });
 
     query.queryParams = {
       ...query.queryParams,
@@ -82,7 +94,7 @@ export class ContentRepository {
     cursor?: JsonApiCursorInterface;
   }) {
     const query = this.neo4j.initQuery({
-      serialiser: ContentModel,
+      serialiser: this.getContentModel(),
       cursor: params.cursor,
       fetchAll: params.fetchAll,
     });

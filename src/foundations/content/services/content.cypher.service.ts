@@ -1,16 +1,20 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
 import { BaseConfigInterface, ConfigContentTypesInterface } from "../../../config/interfaces";
 import { companyMeta } from "../../company/entities/company.meta";
 import { contentMeta } from "../../content/entities/content.meta";
 import { authorMeta, ownerMeta } from "../../user/entities/user.meta";
+import { ContentExtensionConfig, CONTENT_EXTENSION_CONFIG } from "../interfaces/content.extension.interface";
 
 @Injectable()
 export class ContentCypherService {
   constructor(
     private readonly clsService: ClsService,
     private readonly configService: ConfigService<BaseConfigInterface>,
+    @Optional()
+    @Inject(CONTENT_EXTENSION_CONFIG)
+    private readonly extension?: ContentExtensionConfig,
   ) {}
 
   private getContentTypes(): string[] {
@@ -40,15 +44,49 @@ export class ContentCypherService {
   };
 
   returnStatement = (params?: { useTotalScore?: boolean }) => {
-    return `
+    // Base MATCH clauses for core relationships
+    let query = `
       MATCH (${contentMeta.nodeName})-[:BELONGS_TO]->(${contentMeta.nodeName}_${companyMeta.nodeName}:${companyMeta.labelName})
       MATCH (${contentMeta.nodeName})<-[:PUBLISHED]-(${contentMeta.nodeName}_${ownerMeta.nodeName}:${ownerMeta.labelName})
-      MATCH (${contentMeta.nodeName})<-[:PUBLISHED]-(${contentMeta.nodeName}_${authorMeta.nodeName}:${authorMeta.labelName})
+      MATCH (${contentMeta.nodeName})<-[:PUBLISHED]-(${contentMeta.nodeName}_${authorMeta.nodeName}:${authorMeta.labelName})`;
+
+    // Add OPTIONAL MATCH for extension relationships
+    if (this.extension?.additionalRelationships) {
+      for (const rel of this.extension.additionalRelationships) {
+        // Build relationship pattern based on direction
+        // "in" means relationship points TO content: (other)-[:REL]->(content)
+        // "out" means relationship points FROM content: (content)-[:REL]->(other)
+        const relPattern =
+          rel.direction === "in"
+            ? `(${contentMeta.nodeName})<-[:${rel.relationship}]-(${contentMeta.nodeName}_${rel.model.nodeName}:${rel.model.labelName})`
+            : `(${contentMeta.nodeName})-[:${rel.relationship}]->(${contentMeta.nodeName}_${rel.model.nodeName}:${rel.model.labelName})`;
+
+        query += `
+      OPTIONAL MATCH ${relPattern}`;
+      }
+    }
+
+    // Base RETURN clause
+    query += `
       RETURN ${contentMeta.nodeName},
         ${contentMeta.nodeName}_${companyMeta.nodeName},
         ${contentMeta.nodeName}_${ownerMeta.nodeName},
-        ${contentMeta.nodeName}_${authorMeta.nodeName}
-        ${params?.useTotalScore ? `, totalScore` : ``}
-    `;
+        ${contentMeta.nodeName}_${authorMeta.nodeName}`;
+
+    // Add extension relationship nodes to RETURN
+    if (this.extension?.additionalRelationships) {
+      for (const rel of this.extension.additionalRelationships) {
+        query += `,
+        ${contentMeta.nodeName}_${rel.model.nodeName}`;
+      }
+    }
+
+    // Add optional totalScore
+    if (params?.useTotalScore) {
+      query += `,
+        totalScore`;
+    }
+
+    return query;
   };
 }

@@ -63,6 +63,10 @@ export abstract class AbstractJsonApiSerialiser implements JsonApiServiceInterfa
     this._links = links;
   }
 
+  get relationships(): any {
+    return this._relationships;
+  }
+
   set relationships(relationships: any) {
     this._relationships = relationships;
   }

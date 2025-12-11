@@ -1,4 +1,5 @@
 import { DynamicModule, Type } from "@nestjs/common";
+import { ContentExtensionConfig } from "../foundations/content/interfaces/content.extension.interface";
 
 /**
  * i18n configuration options
@@ -41,4 +42,20 @@ export interface BootstrapOptions {
    * Return an object that will be merged with the library's baseConfig.
    */
   config?: () => Record<string, any>;
+
+  /**
+   * Optional extension for Content module to add additional relationships.
+   * When provided, Content queries and serialization will include the
+   * specified relationships.
+   *
+   * @example
+   * ```typescript
+   * contentExtension: {
+   *   additionalRelationships: [
+   *     { model: topicMeta, relationship: 'HAS_KNOWLEDGE', direction: 'in', cardinality: 'many', dtoKey: 'topics' },
+   *   ],
+   * }
+   * ```
+   */
+  contentExtension?: ContentExtensionConfig;
 }

@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { DynamicModule, Module } from "@nestjs/common";
 import { AtomicFactModule } from "./atomicfact/atomicfact.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
@@ -6,6 +6,7 @@ import { ChunkModule } from "./chunk/chunk.module";
 import { ChunkerModule } from "./chunker/chunker.module";
 import { CompanyModule } from "./company/company.module";
 import { ContentModule } from "./content/content.module";
+import { ContentExtensionConfig } from "./content/interfaces/content.extension.interface";
 import { FeatureModule } from "./feature/feature.module";
 import { KeyConceptModule } from "./keyconcept/keyconcept.module";
 import { ModuleModule } from "./module/module.module";
@@ -18,17 +19,24 @@ import { TokenUsageModule } from "./tokenusage/tokenusage.module";
 import { UserModule } from "./user/user.module";
 
 /**
- * All foundation modules - fully static.
+ * Configuration options for FoundationsModule.
+ */
+export interface FoundationsModuleConfig {
+  /** Optional extension for Content module to add additional relationships */
+  contentExtension?: ContentExtensionConfig;
+}
+
+/**
+ * All static foundation modules (excluding ContentModule which is dynamic).
  * Queue registration is handled centrally by QueueModule (via baseConfig.chunkQueues).
  */
-const ALL_FOUNDATION_MODULES = [
+const STATIC_FOUNDATION_MODULES = [
   AtomicFactModule,
   AuditModule,
   AuthModule,
   ChunkModule,
   ChunkerModule,
   CompanyModule,
-  ContentModule,
   FeatureModule,
   KeyConceptModule,
   ModuleModule,
@@ -53,21 +61,34 @@ const ALL_FOUNDATION_MODULES = [
  * - Notifications (NotificationModule, PushModule)
  * - And more...
  *
- * Queue configuration is now via baseConfig.chunkQueues - no forRoot() needed.
- *
- * Usage:
+ * @example
  * ```typescript
- * @Module({
- *   imports: [
- *     CoreModule.forRoot(),
- *     FoundationsModule,
- *   ],
+ * // Without content extension
+ * FoundationsModule.forRoot()
+ *
+ * // With content extension
+ * FoundationsModule.forRoot({
+ *   contentExtension: {
+ *     additionalRelationships: [
+ *       { model: topicMeta, relationship: 'HAS_KNOWLEDGE', direction: 'in', cardinality: 'many' },
+ *     ],
+ *   },
  * })
- * export class AppModule {}
  * ```
  */
-@Module({
-  imports: ALL_FOUNDATION_MODULES,
-  exports: ALL_FOUNDATION_MODULES,
-})
-export class FoundationsModule {}
+@Module({})
+export class FoundationsModule {
+  /**
+   * Configure FoundationsModule with optional extensions.
+   *
+   * @param config - Optional configuration for foundation modules
+   * @returns DynamicModule with all foundation modules configured
+   */
+  static forRoot(config?: FoundationsModuleConfig): DynamicModule {
+    return {
+      module: FoundationsModule,
+      imports: [...STATIC_FOUNDATION_MODULES, ContentModule.forRoot(config?.contentExtension)],
+      exports: [...STATIC_FOUNDATION_MODULES, ContentModule],
+    };
+  }
+}

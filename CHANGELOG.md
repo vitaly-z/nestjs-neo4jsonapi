@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.0.3...v1.1.0) (2025-12-11)
+
+### 🚀 Features
+
+* add version controller ([614c809](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/614c8096abc73e38d1715ef95d77566016c42bde))
+
 ## [1.0.3](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.0.2...v1.0.3) (2025-12-10)
 
 ### 🐛 Bug Fixes

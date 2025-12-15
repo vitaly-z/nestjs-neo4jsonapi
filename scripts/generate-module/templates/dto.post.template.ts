@@ -1,4 +1,5 @@
 import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
+import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
 
 /**
  * Generate POST DTO file content
@@ -16,7 +17,9 @@ export function generatePostDTOFile(data: TemplateData): string {
     // Skip contextKey relationships (like Author)
     if (rel.contextKey) continue;
 
-    const importPath = `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
+    const importPath = isFoundationImport(rel.relatedEntity.directory)
+      ? FOUNDATION_PACKAGE
+      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
 
     if (!dtoImportPaths.has(importPath)) {
       dtoImportPaths.set(importPath, new Set());

@@ -1,4 +1,5 @@
 import { TemplateData } from "../types/template-data.interface";
+import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
 
 /**
  * Generate PUT DTO file content
@@ -17,7 +18,9 @@ export function generatePutDTOFile(data: TemplateData): string {
     // Skip contextKey relationships (like Author) - same as POST
     if (rel.contextKey) continue;
 
-    const importPath = `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
+    const importPath = isFoundationImport(rel.relatedEntity.directory)
+      ? FOUNDATION_PACKAGE
+      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
 
     if (!dtoImportPaths.has(importPath)) {
       dtoImportPaths.set(importPath, new Set());

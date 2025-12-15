@@ -1,4 +1,5 @@
 import { TemplateData } from "../types/template-data.interface";
+import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
 
 /**
  * Generate entity file content (Type + Descriptor)
@@ -27,7 +28,9 @@ export function generateEntityFile(data: TemplateData): string {
       uniqueEntityImports.add(rel.relatedEntity.name);
 
       // Group by import path
-      const importPath = `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.entity`;
+      const importPath = isFoundationImport(rel.relatedEntity.directory)
+        ? FOUNDATION_PACKAGE
+        : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.entity`;
       if (!entityImportsByPath.has(importPath)) {
         entityImportsByPath.set(importPath, []);
       }
@@ -44,7 +47,9 @@ export function generateEntityFile(data: TemplateData): string {
       uniqueMetaImports.add(rel.model);
 
       // Group by import path
-      const importPath = `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
+      const importPath = isFoundationImport(rel.relatedEntity.directory)
+        ? FOUNDATION_PACKAGE
+        : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
       if (!metaImportsByPath.has(importPath)) {
         metaImportsByPath.set(importPath, []);
       }

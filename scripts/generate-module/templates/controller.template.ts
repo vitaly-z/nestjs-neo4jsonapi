@@ -1,4 +1,5 @@
 import { TemplateData } from "../types/template-data.interface";
+import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
 
 /**
  * Generate controller file content with CRUD and nested routes
@@ -13,7 +14,9 @@ export function generateControllerFile(data: TemplateData): string {
   const metaImportPaths = new Map<string, string[]>();
   for (const route of nestedRoutes) {
     const rel = data.relationships.find((r) => r.model === route.relatedMeta)!;
-    const path = `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
+    const path = isFoundationImport(rel.relatedEntity.directory)
+      ? FOUNDATION_PACKAGE
+      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
     if (!metaImportPaths.has(path)) {
       metaImportPaths.set(path, []);
     }
@@ -31,7 +34,7 @@ export function generateControllerFile(data: TemplateData): string {
   const nestedRouteMethods = nestedRoutes
     .map(
       (route) => `
-  @Get(\`\${${route.relatedMeta}.endpoint}/:\${${route.paramName}}/\${${names.pascalCase}Descriptor.model.endpoint}\`)
+  @Get(\`\${${route.relatedMeta}.endpoint}/:${route.paramName}/\${${names.pascalCase}Descriptor.model.endpoint}\`)
   async ${route.methodName}(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,

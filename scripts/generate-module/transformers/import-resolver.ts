@@ -1,4 +1,23 @@
 /**
+ * Foundation package name constant
+ */
+export const FOUNDATION_PACKAGE = "@carlonicora/nestjs-neo4jsonapi";
+
+/**
+ * Check if a directory represents a foundation import (from the package)
+ *
+ * @param directory - The directory string from relationship definition
+ * @returns True if this should import from the foundation package
+ *
+ * @example
+ * isFoundationImport("@foundation") // true
+ * isFoundationImport("features/campaign") // false
+ */
+export function isFoundationImport(directory: string): boolean {
+  return directory === "@foundation" || directory.startsWith("@foundation/");
+}
+
+/**
  * Resolve relative import path between two modules
  *
  * @param params - From and to directories and modules

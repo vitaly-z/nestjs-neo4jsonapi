@@ -166,7 +166,7 @@ export class CommunityDetectorService {
         'MATCH (kc1:KeyConcept)<-[:RELATES_TO]-(rel:KeyConceptRelationship)-[:RELATES_TO]->(kc2:KeyConcept)
          MATCH (rel)-[:BELONGS_TO]->(company:Company {id: $companyId})
          RETURN id(kc1) AS source, id(kc2) AS target, coalesce(rel.weight, 1.0) AS weight',
-        { parameters: { companyId: $companyId } }
+        { parameters: { companyId: $companyId }, validateRelationships: false }
       )
       YIELD graphName, nodeCount, relationshipCount
       RETURN graphName, nodeCount, relationshipCount

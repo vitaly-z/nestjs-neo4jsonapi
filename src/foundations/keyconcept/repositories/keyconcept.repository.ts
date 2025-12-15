@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
 import { aiSourceQuery } from "../../../common/repositories/ai.source.query";
 import { DataLimits } from "../../../common/types/data.limits";
-import { EmbedderService } from "../../../core";
+import { EmbedderService, ModelService } from "../../../core";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { SecurityService } from "../../../core/security/services/security.service";
 import { KeyConcept } from "../../keyconcept/entities/key.concept.entity";
@@ -15,6 +15,7 @@ export class KeyConceptRepository implements OnModuleInit {
   constructor(
     private readonly neo4j: Neo4jService,
     private readonly embedderService: EmbedderService,
+    private readonly modelService: ModelService,
     private readonly securityService: SecurityService,
     private readonly clsService: ClsService,
   ) {}
@@ -28,13 +29,14 @@ export class KeyConceptRepository implements OnModuleInit {
       query: `CREATE CONSTRAINT keyconcept_value IF NOT EXISTS FOR (keyconcept:KeyConcept) REQUIRE keyconcept.value IS UNIQUE`,
     });
 
+    const dimensions = this.modelService.getEmbedderDimensions();
     await this.neo4j.writeOne({
       query: `
         CREATE VECTOR INDEX keyconcepts IF NOT EXISTS
         FOR (keyconcept:KeyConcept)
         ON keyconcept.embedding
         OPTIONS { indexConfig: {
-        \`vector.dimensions\`: 1536,
+        \`vector.dimensions\`: ${dimensions},
         \`vector.similarity_function\`: 'cosine'
         }};
         `,

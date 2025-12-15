@@ -6,6 +6,7 @@ export const mapKeyConcept = (params: { data: any; record: any; entityFactory: E
   return {
     ...mapEntity({ record: params.data }),
     value: params.data.value,
+    description: params.data.description,
     embedding: params.data.embedding,
     atomicfact: undefined,
   };

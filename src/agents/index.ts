@@ -4,6 +4,20 @@ export { AgentsModule } from "./agents.modules";
 // Default prompts for reference
 export * from "./prompts";
 
+// Community Detector (DRIFT)
+export { CommunityDetectorModule } from "./community.detector/community.detector.module";
+export { CommunityDetectorService } from "./community.detector/services/community.detector.service";
+
+// Community Summariser (DRIFT)
+export { CommunitySummariserModule } from "./community.summariser/community.summariser.module";
+export { CommunitySummariserService } from "./community.summariser/services/community.summariser.service";
+
+// DRIFT Search
+export { DriftModule } from "./drift/drift.module";
+export { DriftSearchService, DriftSearchResult, DriftConfig } from "./drift/services/drift.search.service";
+export { DriftMigrationService, MigrationResult } from "./drift/services/drift.migration.service";
+export { FollowUpAnswer, DriftContextState } from "./drift/contexts/drift.context";
+
 // Contextualiser (GraphRAG)
 export { ContextualiserModule } from "./contextualiser/contextualiser.module";
 export { ContextualiserService } from "./contextualiser/services/contextualiser.service";

@@ -120,6 +120,19 @@ If the text contains:
 - Cannot be pure punctuation or special characters
 - Cannot be random character sequences
 
+## Key Concept Descriptions
+
+For each unique key concept extracted, generate a brief description (1-2 sentences) that:
+- Explains what the entity is in the context of the document
+- Captures its role, type, or significance
+- Uses information from the text to provide context
+
+**Examples:**
+- "joe bauer" → "A person born in London who studied at university"
+- "tribunale di roma" → "The court of Rome, an Italian judicial institution"
+- "upu" → "Universal Postal Union, an international postal organization"
+- "15/2/2023" → "Date when the president granted an extension"
+
 ## Relationships Rules
 
 **Key Concepts Relationships**: Analyze relationships between key concepts to create a network graph.
@@ -188,6 +201,18 @@ const outputSchema = z.object({
       }),
     )
     .describe(`List of all the key concepts in the atomic facts and their relationships to one another`),
+  keyConceptDescriptions: z
+    .array(
+      z.object({
+        keyConcept: z.string().describe(`The key concept value (lowercase, exact match from atomicFacts)`),
+        description: z
+          .string()
+          .describe(
+            `Brief 1-2 sentence description of what this entity is in the context of the document. Explains its role, type, or significance.`,
+          ),
+      }),
+    )
+    .describe(`Descriptions for each unique key concept extracted from the atomic facts`),
 });
 
 const inputSchema = z.object({
@@ -342,6 +367,7 @@ export class GraphCreatorService {
     const response: ChunkAnalysisInterface = {
       atomicFacts: [],
       keyConceptsRelationships: [],
+      keyConceptDescriptions: [],
       tokens: { input: 0, output: 0 },
     };
 
@@ -458,13 +484,38 @@ export class GraphCreatorService {
       })
       .filter(Boolean);
 
+    // Collect all valid key concepts from atomicFacts for filtering descriptions
+    const validKeyConcepts = new Set<string>();
+    response.atomicFacts.forEach((fact) => {
+      fact.keyConcepts.forEach((kc) => validKeyConcepts.add(kc));
+    });
+
+    // Process key concept descriptions - only keep those for valid key concepts
+    response.keyConceptDescriptions = (llmResponse.keyConceptDescriptions || [])
+      ?.map((desc: { keyConcept: string; description: string }) => {
+        const cleanKeyConcept = (desc.keyConcept || "").trim().toLowerCase();
+
+        // Only include descriptions for key concepts that exist in our valid set
+        if (isValidKeyConcept(cleanKeyConcept) && validKeyConcepts.has(cleanKeyConcept) && desc.description) {
+          return {
+            keyConcept: cleanKeyConcept,
+            description: desc.description.trim(),
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
     response.tokens = llmResponse.tokenUsage;
 
     this.logger.debug("Post-LLM filtering completed", "GraphCreatorService", {
       llmExtractedFacts: llmResponse.atomicFacts?.length || 0,
       llmExtractedRelationships: llmResponse.keyConceptsRelationships?.length || 0,
+      llmExtractedDescriptions: llmResponse.keyConceptDescriptions?.length || 0,
       finalAtomicFacts: response.atomicFacts.length,
       finalRelationships: response.keyConceptsRelationships.length,
+      finalDescriptions: response.keyConceptDescriptions.length,
       factsFilteredOut: (llmResponse.atomicFacts?.length || 0) - response.atomicFacts.length,
       relationshipsFilteredOut:
         (llmResponse.keyConceptsRelationships?.length || 0) - response.keyConceptsRelationships.length,

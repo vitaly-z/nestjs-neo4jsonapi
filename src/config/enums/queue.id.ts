@@ -5,4 +5,5 @@
 export enum QueueId {
   CHUNK = "chunk",
   COMPANY = "company",
+  COMMUNITY_SUMMARISER = "community-summariser",
 }

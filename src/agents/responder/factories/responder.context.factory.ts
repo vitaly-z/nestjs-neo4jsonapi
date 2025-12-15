@@ -14,12 +14,15 @@ export class ResponderContextFactoryService {
     contentId: string;
     contentType: string;
     dataLimits: DataLimits;
+    useDrift?: boolean;
   }): ResponderContextState {
     const response: ResponderContextState = {
       companyId: params.companyId,
       contentId: params.contentId,
       contentType: params.contentType,
       dataLimits: params.dataLimits,
+      useDrift: params.useDrift ?? false,
+      driftContext: undefined,
       context: undefined,
       tokens: undefined,
       finalAnswer: undefined,

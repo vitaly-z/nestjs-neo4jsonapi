@@ -14,4 +14,10 @@ export interface ConfigPromptsInterface {
     combine?: string;
     tldr?: string;
   };
+  // DRIFT-related prompts
+  communitySummariser?: string;
+  hydeGenerator?: string;
+  driftPrimer?: string;
+  driftFollowup?: string;
+  driftSearch?: string;
 }

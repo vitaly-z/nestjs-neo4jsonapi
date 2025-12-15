@@ -3,6 +3,7 @@ import { AtomicFact } from "../../atomicfact/entities/atomic.fact.entity";
 
 export type KeyConcept = Entity & {
   value: string;
+  description?: string;
   embedding?: any;
 
   atomicfact: AtomicFact;

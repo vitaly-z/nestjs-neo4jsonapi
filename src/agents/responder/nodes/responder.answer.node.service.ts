@@ -324,6 +324,29 @@ export class ResponderAnswerNodeService {
   }
 
   async execute(params: { state: typeof ResponderContext.State }): Promise<ResponderContextState> {
+    const hasDriftContext = params.state.useDrift && params.state.driftContext;
+    const hasContextualiserContext = params.state.context;
+
+    // Hybrid mode: both DRIFT and Contextualiser available
+    if (hasDriftContext && hasContextualiserContext) {
+      return this.executeHybridMode(params);
+    }
+
+    // DRIFT-only mode (fallback, shouldn't happen with current flow)
+    if (hasDriftContext) {
+      return this.executeDriftMode(params);
+    }
+
+    // Contextualiser-only mode (default)
+    return this.executeContextualiserMode(params);
+  }
+
+  /**
+   * Execute answer generation using Contextualiser data (traditional mode)
+   */
+  private async executeContextualiserMode(params: {
+    state: typeof ResponderContext.State;
+  }): Promise<ResponderContextState> {
     const inputParams: z.infer<typeof inputSchema> = {
       question: params.state.context.question,
       annotations: params.state.context.annotations,
@@ -375,5 +398,176 @@ export class ResponderAnswerNodeService {
     };
 
     return params.state;
+  }
+
+  /**
+   * Execute answer generation using both DRIFT (global) and Contextualiser (local) data
+   * Combines community-level insights with chunk-level citations
+   */
+  private async executeHybridMode(params: { state: typeof ResponderContext.State }): Promise<ResponderContextState> {
+    const driftContext = params.state.driftContext;
+    const contextualiserContext = params.state.context;
+
+    // Build enhanced context that includes DRIFT global insights
+    const globalContext = this.buildGlobalContextSection(driftContext);
+
+    // Create enhanced input with both global and local context
+    const inputParams: z.infer<typeof inputSchema> = {
+      question: contextualiserContext.question,
+      annotations: `${contextualiserContext.annotations}\n\n--- GLOBAL CONTEXT FROM KNOWLEDGE COMMUNITIES ---\n${globalContext}`,
+      notebook: contextualiserContext.notebook,
+    };
+
+    const llmResponse = await this.llmService.call<z.infer<typeof outputSchema>>({
+      inputSchema: inputSchema,
+      inputParams: inputParams,
+      outputSchema: outputSchema,
+      systemPrompts: [this.systemPrompt],
+      temperature: 0.1,
+    });
+
+    // Process citations from contextualiser notebook
+    const sources = llmResponse.citations.map((citation) => ({
+      chunkId: citation.chunkId ?? "",
+      relevance: citation.relevance ?? 0,
+      reason: "",
+    }));
+
+    const filteredSources = [];
+    for (const source of sources) {
+      const existingSource = filteredSources.find((s) => s.chunkId === source.chunkId);
+      const existingNote = contextualiserContext.notebook.find((n) => n.chunkId === source.chunkId);
+
+      if (existingNote) source.reason = existingNote.reason;
+
+      if (!existingSource) {
+        filteredSources.push(source);
+        continue;
+      }
+
+      if (source.relevance > existingSource.relevance) {
+        existingSource.relevance = source.relevance;
+      }
+    }
+
+    params.state.sources = filteredSources;
+    params.state.ontologies = contextualiserContext.ontology;
+
+    // Combine token usage from both DRIFT and this call
+    params.state.tokens = {
+      input: (params.state.tokens?.input || 0) + (llmResponse.tokenUsage?.input || 0),
+      output: (params.state.tokens?.output || 0) + (llmResponse.tokenUsage?.output || 0),
+    };
+
+    params.state.finalAnswer = {
+      title: llmResponse.title,
+      answer: llmResponse.finalAnswer,
+      analysis: llmResponse.analyse,
+      questions: llmResponse.questions,
+      hasAnswer: true,
+    };
+
+    return params.state;
+  }
+
+  /**
+   * Build global context section from DRIFT search results
+   */
+  private buildGlobalContextSection(driftContext: typeof ResponderContext.State.driftContext): string {
+    const sections: string[] = [];
+
+    // Add matched communities summary
+    if (driftContext.matchedCommunities?.length > 0) {
+      sections.push("## Relevant Knowledge Communities\n");
+      for (const community of driftContext.matchedCommunities) {
+        sections.push(`### ${community.name || "Community"}`);
+        if (community.summary) {
+          sections.push(community.summary);
+        }
+        sections.push("");
+      }
+    }
+
+    // Add DRIFT's initial answer as additional context
+    if (driftContext.initialAnswer) {
+      sections.push("## Initial Analysis\n");
+      sections.push(driftContext.initialAnswer);
+      sections.push("");
+    }
+
+    // Add follow-up investigation findings
+    if (driftContext.followUpAnswers?.length > 0) {
+      sections.push("## Additional Findings\n");
+      for (const followUp of driftContext.followUpAnswers) {
+        sections.push(`**${followUp.question}**`);
+        sections.push(followUp.answer);
+        sections.push("");
+      }
+    }
+
+    // Add confidence indicator
+    if (driftContext.confidence !== undefined) {
+      const confidenceLevel =
+        driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
+      sections.push(`_Global search confidence: ${confidenceLevel} (${driftContext.confidence}%)_`);
+    }
+
+    return sections.join("\n");
+  }
+
+  /**
+   * Execute answer generation using DRIFT search data
+   * DRIFT already provides a synthesized answer, so we format it for the response
+   */
+  private async executeDriftMode(params: { state: typeof ResponderContext.State }): Promise<ResponderContextState> {
+    const driftContext = params.state.driftContext;
+
+    // Extract questions from follow-up answers
+    const questions = driftContext.followUpAnswers?.slice(0, 5).map((f) => f.question) ?? [];
+
+    // Generate title from matched communities
+    const communityNames = driftContext.matchedCommunities?.map((c) => c.name).filter(Boolean) ?? [];
+    const title =
+      communityNames.length > 0 ? `Answer based on: ${communityNames.slice(0, 3).join(", ")}` : "DRIFT Search Result";
+
+    // Build analysis from DRIFT information
+    const analysis = this.buildDriftAnalysis(driftContext);
+
+    // Sources from matched communities (no chunk-level sources in DRIFT)
+    params.state.sources = [];
+    params.state.ontologies = [];
+
+    params.state.finalAnswer = {
+      title,
+      answer: driftContext.answer,
+      analysis,
+      questions,
+      hasAnswer: driftContext.confidence > 10,
+    };
+
+    return params.state;
+  }
+
+  /**
+   * Build analysis text from DRIFT context
+   */
+  private buildDriftAnalysis(driftContext: typeof ResponderContext.State.driftContext): string {
+    const parts: string[] = [];
+
+    if (driftContext.matchedCommunities?.length > 0) {
+      parts.push(`Searched ${driftContext.matchedCommunities.length} knowledge communities.`);
+    }
+
+    if (driftContext.confidence !== undefined) {
+      const confidenceLevel =
+        driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
+      parts.push(`Confidence level: ${confidenceLevel} (${driftContext.confidence}%).`);
+    }
+
+    if (driftContext.followUpAnswers?.length > 0) {
+      parts.push(`Conducted ${driftContext.followUpAnswers.length} follow-up investigations for depth.`);
+    }
+
+    return parts.join(" ");
   }
 }

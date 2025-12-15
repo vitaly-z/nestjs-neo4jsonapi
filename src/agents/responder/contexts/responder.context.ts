@@ -1,5 +1,6 @@
 import { Annotation } from "@langchain/langgraph";
 import { ContextualiserContext } from "../../contextualiser/contexts/contextualiser.context";
+import { DriftSearchResult } from "../../drift/services/drift.search.service";
 import { ResponderAnswerContext } from "../../responder/contexts/responder.answer.context";
 import { TokenUsageContext } from "../../../common/contexts/tokenusage.context";
 import { DataLimits } from "../../../common/types/data.limits";
@@ -9,7 +10,15 @@ export const ResponderContext = Annotation.Root({
   contentId: Annotation<string>,
   contentType: Annotation<string>,
   dataLimits: Annotation<DataLimits>(),
+  useDrift: Annotation<boolean>({
+    default: () => false,
+    reducer: (current, update) => update ?? current,
+  }),
   context: Annotation<typeof ContextualiserContext.State>({
+    default: () => undefined,
+    reducer: (current, update) => (current === undefined ? update : current),
+  }),
+  driftContext: Annotation<DriftSearchResult>({
     default: () => undefined,
     reducer: (current, update) => (current === undefined ? update : current),
   }),

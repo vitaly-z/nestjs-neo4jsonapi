@@ -13,5 +13,9 @@ export interface ChunkAnalysisInterface {
     keyConcept2: string;
     relationship: string;
   }[];
+  keyConceptDescriptions: {
+    keyConcept: string;
+    description: string;
+  }[];
   tokens: TokenUsageInterface;
 }

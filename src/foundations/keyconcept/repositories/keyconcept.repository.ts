@@ -179,6 +179,27 @@ export class KeyConceptRepository implements OnModuleInit {
     await this.neo4j.executeInTransaction(data);
   }
 
+  /**
+   * Update descriptions for existing KeyConcepts (only if they don't have a description yet)
+   * This preserves existing descriptions and only adds new ones
+   */
+  async updateKeyConceptDescriptions(params: {
+    descriptions: { keyConcept: string; description: string }[];
+  }): Promise<void> {
+    if (params.descriptions.length === 0) return;
+
+    const data = params.descriptions.map((item) => ({
+      query: `
+        MATCH (keyconcept:KeyConcept {value: $keyConceptValue})
+        WHERE keyconcept.description IS NULL OR keyconcept.description = ""
+        SET keyconcept.description = $description
+      `,
+      params: { keyConceptValue: item.keyConcept, description: item.description },
+    }));
+
+    await this.neo4j.executeInTransaction(data);
+  }
+
   async createKeyConcept(params: { keyConceptValue: string; atomicFactId: string }): Promise<void> {
     const queryCheck = this.neo4j.initQuery({ serialiser: KeyConceptModel, fetchAll: true });
 

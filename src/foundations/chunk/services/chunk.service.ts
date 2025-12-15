@@ -59,6 +59,7 @@ export class ChunkService {
     return {
       atomicFacts: [],
       keyConceptsRelationships: [],
+      keyConceptDescriptions: [],
       tokens: { input: 0, output: 0 },
     };
   }
@@ -251,6 +252,14 @@ export class ChunkService {
           });
 
           this.tracer.addSpanEvent("Write Key Concepts in Database");
+
+          // Update key concepts with descriptions (if available)
+          if (chunkAnalysis.keyConceptDescriptions && chunkAnalysis.keyConceptDescriptions.length > 0) {
+            await this.keyConceptRepository.updateKeyConceptDescriptions({
+              descriptions: chunkAnalysis.keyConceptDescriptions,
+            });
+            this.tracer.addSpanEvent("Write Key Concept Descriptions in Database");
+          }
 
           for (const atomicFact of chunkAnalysis.atomicFacts) {
             await this.atomicFactService.createAtomicFact({

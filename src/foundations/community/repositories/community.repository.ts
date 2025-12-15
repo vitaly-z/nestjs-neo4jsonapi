@@ -160,14 +160,15 @@ export class CommunityRepository implements OnModuleInit {
    */
   async findStaleCommunities(limit: number): Promise<Community[]> {
     const query = this.neo4j.initQuery({ serialiser: CommunityModel });
-    query.queryParams = { ...query.queryParams, limit };
+    query.queryParams = { ...query.queryParams, limit: Number(limit) };
     query.query += `
       MATCH (community:Community {isStale: true})-[:BELONGS_TO]->(company)
       RETURN community
       ORDER BY community.staleSince ASC
-      LIMIT $limit
+      LIMIT toInteger($limit)
     `;
-    return this.neo4j.readMany(query);
+    const result = await this.neo4j.readMany(query);
+    return result ?? [];
   }
 
   /**
@@ -367,7 +368,7 @@ export class CommunityRepository implements OnModuleInit {
       ORDER BY level ASC
     `;
     const result = await this.neo4j.readMany(query);
-    return result as unknown as { level: number; count: number }[];
+    return (result as unknown as { level: number; count: number }[]) ?? [];
   }
 
   /**

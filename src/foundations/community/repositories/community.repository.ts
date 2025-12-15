@@ -165,7 +165,7 @@ export class CommunityRepository implements OnModuleInit {
       MATCH (community:Community {isStale: true})-[:BELONGS_TO]->(company)
       RETURN community
       ORDER BY community.staleSince ASC
-      LIMIT $limit
+      LIMIT toInteger($limit)
     `;
     return this.neo4j.readMany(query);
   }
@@ -228,7 +228,7 @@ export class CommunityRepository implements OnModuleInit {
       ${whereClause}
       RETURN community, score
       ORDER BY score DESC
-      LIMIT $topK
+      LIMIT toInteger($topK)
     `;
     return this.neo4j.readMany(query);
   }

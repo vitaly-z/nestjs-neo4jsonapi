@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
+import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { CommunityRepository } from "../../../foundations/community/repositories/community.repository";
 
 interface CommunityDetectionResult {
@@ -53,7 +53,10 @@ export class CommunityDetectorService {
         const resolution = this.louvainResolutions[levelIndex];
         const level = levelIndex;
 
-        this.logger.debug(`Detecting communities at level ${level} (resolution: ${resolution})`, "CommunityDetectorService");
+        this.logger.debug(
+          `Detecting communities at level ${level} (resolution: ${resolution})`,
+          "CommunityDetectorService",
+        );
 
         const levelCommunities = await this.detectCommunitiesAtLevel(resolution, level);
         allDetectedCommunities.push(...levelCommunities);
@@ -148,10 +151,7 @@ export class CommunityDetectorService {
   /**
    * Run Louvain community detection algorithm
    */
-  private async runLouvain(
-    graphName: string,
-    resolution: number,
-  ): Promise<Map<string, number>> {
+  private async runLouvain(graphName: string, resolution: number): Promise<Map<string, number>> {
     const query = this.neo4j.initQuery();
 
     query.query += `

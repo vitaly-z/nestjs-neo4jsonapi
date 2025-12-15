@@ -17,8 +17,9 @@ interface DetectedCommunity {
 
 @Injectable()
 export class CommunityDetectorService {
-  // Louvain resolutions for hierarchical detection (higher = more granular communities)
-  private readonly louvainResolutions = [1.0, 0.5, 0.25];
+  // Note: OpenGDS doesn't support resolution parameter, so we only run single level
+  // Future: could use Leiden with gamma, or post-process for hierarchy
+  private readonly louvainResolutions = [1.0];
   private readonly minCommunitySize = 3;
 
   constructor(

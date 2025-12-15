@@ -46,6 +46,14 @@ export class CommunityDetectorService {
         return;
       }
 
+      // Check if there are any KeyConcepts for this company
+      const keyConceptCount = await this.countKeyConceptsForCompany();
+      if (keyConceptCount === 0) {
+        this.logger.warn("No KeyConcepts found for company, skipping community detection", "CommunityDetectorService");
+        return;
+      }
+      this.logger.debug(`Found ${keyConceptCount} KeyConcepts for community detection`, "CommunityDetectorService");
+
       // Detect communities at each resolution level
       const allDetectedCommunities: DetectedCommunity[] = [];
 
@@ -78,6 +86,20 @@ export class CommunityDetectorService {
       this.logger.error(`Community detection failed: ${error.message}`, "CommunityDetectorService");
       throw error;
     }
+  }
+
+  /**
+   * Count KeyConcepts for the current company
+   */
+  private async countKeyConceptsForCompany(): Promise<number> {
+    const query = this.neo4j.initQuery();
+    query.query += `
+      MATCH (company)<-[:BELONGS_TO]-()-[:HAS_CHUNK]->()-[:HAS_ATOMIC_FACT]->()-[:HAS_KEY_CONCEPT]->(kc:KeyConcept)
+      RETURN count(DISTINCT kc) AS count
+    `;
+
+    const result = await this.neo4j.readOne(query);
+    return result?.count?.toNumber?.() ?? result?.count ?? 0;
   }
 
   /**
@@ -130,15 +152,15 @@ export class CommunityDetectorService {
     const query = this.neo4j.initQuery();
 
     // GDS cypher projection needs parameters passed via configuration
+    // Path: Company <- BELONGS_TO - Content -> HAS_CHUNK -> Chunk -> HAS_ATOMIC_FACT -> AtomicFact -> HAS_KEY_CONCEPT -> KeyConcept
     query.query += `
       CALL gds.graph.project.cypher(
         $graphName,
-        'MATCH (kc:KeyConcept)<-[:HAS_KEY_CONCEPT]-()-[:HAS_CHUNK]->()-[:HAS_CHUNK|BELONGS_TO*1..2]->(company:Company)
-         WHERE company.id = $companyId
+        'MATCH (company:Company {id: $companyId})<-[:BELONGS_TO]-()-[:HAS_CHUNK]->()-[:HAS_ATOMIC_FACT]->()-[:HAS_KEY_CONCEPT]->(kc:KeyConcept)
          RETURN DISTINCT id(kc) AS id',
         'MATCH (kc1:KeyConcept)<-[:RELATES_TO]-(rel:KeyConceptRelationship)-[:RELATES_TO]->(kc2:KeyConcept)
          MATCH (rel)-[:BELONGS_TO]->(company:Company {id: $companyId})
-         RETURN id(kc1) AS source, id(kc2) AS target, rel.weight AS weight',
+         RETURN id(kc1) AS source, id(kc2) AS target, coalesce(rel.weight, 1.0) AS weight',
         { parameters: { companyId: $companyId } }
       )
       YIELD graphName, nodeCount, relationshipCount

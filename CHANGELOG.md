@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.2.0...v1.2.1) (2025-12-15)
+
+### 🐛 Bug Fixes
+
+* correct auth export ([00784a5](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/00784a5006d812115d8e00ef69f99f66fc50de6d))
+* correct auth query ([508be9d](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/508be9dfcf67dff7b54d740e98bb617e2264294f))
+
 ## [1.2.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.1.0...v1.2.0) (2025-12-11)
 
 ### 🚀 Features

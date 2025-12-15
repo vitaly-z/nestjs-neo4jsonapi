@@ -126,8 +126,8 @@ export class DriftMigrationService {
         const levelCounts = await this.communityRepository.countByLevel();
         const staleCommunities = await this.communityRepository.findStaleCommunities(1000);
 
-        const totalCommunities = levelCounts.reduce((sum, lc) => sum + lc.count, 0);
-        const staleCount = staleCommunities.length;
+        const totalCommunities = (levelCounts ?? []).reduce((sum, lc) => sum + lc.count, 0);
+        const staleCount = (staleCommunities ?? []).length;
 
         resolve({
           totalCommunities,

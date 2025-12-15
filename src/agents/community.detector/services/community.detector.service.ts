@@ -85,11 +85,16 @@ export class CommunityDetectorService {
    */
   private async checkGdsAvailability(): Promise<boolean> {
     try {
-      await this.neo4j.readOne({
-        query: `RETURN gds.version() AS version`,
-      });
-      return true;
-    } catch {
+      // Use raw read() to avoid initQuery() company/user context requirement
+      const result = await this.neo4j.read(`RETURN gds.version() AS version`, {});
+      if (result.records.length > 0) {
+        const version = result.records[0].get("version");
+        this.logger.log(`Neo4j GDS version ${version} detected`, "CommunityDetectorService");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      this.logger.warn(`Neo4j GDS check failed: ${(error as Error).message}`, "CommunityDetectorService");
       return false;
     }
   }

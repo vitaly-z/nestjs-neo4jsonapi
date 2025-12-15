@@ -72,7 +72,7 @@ export class CommunityRepository implements OnModuleInit {
       RETURN community
     `;
 
-    return this.neo4j.readOne(query);
+    return this.neo4j.writeOne(query);
   }
 
   /**

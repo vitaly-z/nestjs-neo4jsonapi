@@ -221,6 +221,10 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       portalReturnUrl: process.env.STRIPE_PORTAL_RETURN_URL || "",
       portalConfigurationId: process.env.STRIPE_PORTAL_CONFIGURATION_ID || "",
     },
+    discord: {
+      clientId: process.env.DISCORD_CLIENT_ID || "",
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+    },
     prompts: options?.prompts ?? {},
     chunkQueues: options?.chunkQueues ?? { queueIds: [] },
     contentTypes: options?.contentTypes ?? { types: [] },

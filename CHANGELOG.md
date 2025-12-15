@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.2.1...v1.3.0) (2025-12-15)
+
+### 🚀 Features
+
+* add discord login ([2587717](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/2587717526ec17ec6ae1f0f015a5540e4ec72505))
+
 ## [1.2.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.2.0...v1.2.1) (2025-12-15)
 
 ### 🐛 Bug Fixes

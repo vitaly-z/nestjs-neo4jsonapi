@@ -7,7 +7,7 @@ import { ChunkerModule } from "./chunker/chunker.module";
 import { CompanyModule } from "./company/company.module";
 import { ContentModule } from "./content/content.module";
 import { ContentExtensionConfig } from "./content/interfaces/content.extension.interface";
-import { DiscordModule } from "./discord/discord.module";
+import { DiscordUserModule } from "./discord-user/discord.module";
 import { FeatureModule } from "./feature/feature.module";
 import { KeyConceptModule } from "./keyconcept/keyconcept.module";
 import { ModuleModule } from "./module/module.module";
@@ -38,7 +38,7 @@ const STATIC_FOUNDATION_MODULES = [
   ChunkModule,
   ChunkerModule,
   CompanyModule,
-  DiscordModule,
+  DiscordUserModule,
   FeatureModule,
   KeyConceptModule,
   ModuleModule,

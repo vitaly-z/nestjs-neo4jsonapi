@@ -3,21 +3,21 @@ import { ConfigService } from "@nestjs/config";
 import axios from "axios";
 import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
+import { AuthService } from "..";
 import { RoleId } from "../../../common";
 import { BaseConfigInterface, ConfigApiInterface } from "../../../config";
 import { ConfigDiscordInterface } from "../../../config/interfaces/config.discord.interface";
-import { AuthService } from "../../auth";
 import { CompanyRepository } from "../../company";
+import { DiscordUser } from "../../discord-user/entities/discord-user";
+import { DiscordUserRepository } from "../../discord-user/repositories/discord-user.repository";
+import { discordUser } from "../../discord-user/types/discord.user.type";
 import { User, UserRepository } from "../../user";
-import { Discord } from "../entities/discord";
-import { DiscordRepository } from "../repositories/discord.repository";
-import { discordUser } from "../types/discord.user.type";
 
 @Injectable()
-export class DiscordService {
+export class AuthDiscordService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly discordRepository: DiscordRepository,
+    private readonly discordUserRepository: DiscordUserRepository,
     private readonly companyRepository: CompanyRepository,
     private readonly authService: AuthService,
     private readonly config: ConfigService<BaseConfigInterface>,
@@ -31,7 +31,9 @@ export class DiscordService {
   }
 
   async handleDiscordLogin(params: { userDetails: discordUser }): Promise<string> {
-    const discordUser: Discord = await this.discordRepository.findByDiscordId({ discordId: params.userDetails.id });
+    const discordUser: DiscordUser = await this.discordUserRepository.findByDiscordId({
+      discordId: params.userDetails.id,
+    });
     let user: User;
 
     if (discordUser) {
@@ -63,7 +65,7 @@ export class DiscordService {
       });
       this.clsService.set("userId", id);
 
-      await this.discordRepository.create({
+      await this.discordUserRepository.create({
         id: id,
         discordId: params.userDetails.id,
         name: params.userDetails.username,

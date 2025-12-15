@@ -2,7 +2,7 @@ import { defineEntity, Entity } from "../../../common";
 import { Company } from "../../company";
 import { User, userMeta } from "../../user";
 
-export type Discord = Entity & {
+export type DiscordUser = Entity & {
   name: string;
   discordId: string;
 
@@ -10,12 +10,12 @@ export type Discord = Entity & {
   user: User;
 };
 
-export const DiscordDescriptor = defineEntity<Discord>()({
+export const DiscordUserDescriptor = defineEntity<DiscordUser>()({
   // Meta properties
-  type: "discords",
-  endpoint: "discords",
-  nodeName: "discord",
-  labelName: "Discord",
+  type: "discordusers",
+  endpoint: "discordusers",
+  nodeName: "discorduser",
+  labelName: "DiscordUser",
 
   // Field definitions
   fields: {
@@ -36,4 +36,4 @@ export const DiscordDescriptor = defineEntity<Discord>()({
 });
 
 // Type export for the descriptor
-export type DiscordDescriptorType = typeof DiscordDescriptor;
+export type DiscordUserDescriptorType = typeof DiscordUserDescriptor;

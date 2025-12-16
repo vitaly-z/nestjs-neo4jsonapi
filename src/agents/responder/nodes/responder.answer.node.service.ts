@@ -507,8 +507,7 @@ export class ResponderAnswerNodeService {
 
     // Add confidence indicator
     if (driftContext.confidence !== undefined) {
-      const confidenceLevel =
-        driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
+      const confidenceLevel = driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
       sections.push(`_Global search confidence: ${confidenceLevel} (${driftContext.confidence}%)_`);
     }
 
@@ -559,8 +558,7 @@ export class ResponderAnswerNodeService {
     }
 
     if (driftContext.confidence !== undefined) {
-      const confidenceLevel =
-        driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
+      const confidenceLevel = driftContext.confidence >= 70 ? "high" : driftContext.confidence >= 40 ? "medium" : "low";
       parts.push(`Confidence level: ${confidenceLevel} (${driftContext.confidence}%).`);
     }
 

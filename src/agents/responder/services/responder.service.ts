@@ -41,35 +41,35 @@ export class ResponderService {
           messages: params.messages,
           question: params.question,
         });
-        state.context = context;
-        state.tokens = context.tokens;
 
-        return state;
+        // Return only modified fields to avoid parallel merge conflicts
+        return {
+          context,
+          tokens: context.tokens,
+        };
       })
-      .addNode("parallel", async (state) => {
-        // Run both DRIFT and Contextualiser in parallel
-        const question = params.question ?? params.messages[params.messages.length - 1]?.content ?? "";
+      .addNode("drift", async (_state) => {
+        let question = params.question ?? params.messages[params.messages.length - 1]?.content ?? "";
 
-        const [contextualiserResult, driftResult] = await Promise.all([
-          this.contextualiserService.run({
-            companyId: state.companyId,
-            contentId: state.contentId,
-            contentType: state.contentType,
-            dataLimits: params.dataLimits,
-            messages: params.messages,
-            question: params.question,
-          }),
-          this.driftSearchService.search({
-            question,
-            config: params.driftConfig,
-          }),
-        ]);
+        // Parse JSON if the question is a stringified message object
+        try {
+          const parsed = JSON.parse(question);
+          if (parsed.content) {
+            question = parsed.content;
+          }
+        } catch {
+          // Not JSON, use as-is
+        }
 
-        state.context = contextualiserResult;
-        state.driftContext = driftResult;
-        state.tokens = contextualiserResult.tokens;
+        const driftResult = await this.driftSearchService.search({
+          question,
+          config: params.driftConfig,
+        });
 
-        return state;
+        // Return only modified fields to avoid parallel merge conflicts
+        return {
+          driftContext: driftResult,
+        };
       })
       .addNode("answer", async (state: ResponderContextState) => {
         const result = await this.answerNode.execute({
@@ -77,9 +77,19 @@ export class ResponderService {
         });
         return result;
       })
-      .addEdge(START, useDrift ? "parallel" : "contextualiser")
+      // Conditional routing from START based on useDrift state
+      .addConditionalEdges(
+        START,
+        (state) => {
+          if (state.useDrift) {
+            return ["contextualiser", "drift"]; // Run both in parallel
+          }
+          return ["contextualiser"]; // Only contextualiser
+        },
+        ["contextualiser", "drift"], // Declare all possible destinations
+      )
       .addEdge("contextualiser", "answer")
-      .addEdge("parallel", "answer")
+      .addEdge("drift", "answer")
       .addEdge("answer", END);
 
     const threadId = randomUUID();

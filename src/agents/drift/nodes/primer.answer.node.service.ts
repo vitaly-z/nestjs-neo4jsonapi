@@ -32,9 +32,7 @@ Provide:
 
 const outputSchema = z.object({
   answer: z.string().describe("Initial broad answer synthesizing the community context (200-400 words)"),
-  followUpQuestions: z
-    .array(z.string())
-    .describe("2-4 specific follow-up questions to drill deeper into the topic"),
+  followUpQuestions: z.array(z.string()).describe("2-4 specific follow-up questions to drill deeper into the topic"),
   confidence: z.number().min(0).max(100).describe("Confidence score based on relevance of matched communities"),
 });
 

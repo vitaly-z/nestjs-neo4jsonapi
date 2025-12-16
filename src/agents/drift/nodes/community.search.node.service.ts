@@ -11,10 +11,7 @@ export class CommunitySearchNodeService {
   ) {}
 
   async execute(params: { state: typeof DriftContext.State }): Promise<Partial<DriftContextState>> {
-    this.logger.debug(
-      `Community Search Node: searching with topK=${params.state.topK}`,
-      "CommunitySearchNodeService",
-    );
+    this.logger.debug(`Community Search Node: searching with topK=${params.state.topK}`, "CommunitySearchNodeService");
 
     // Vector search against community summaries using HyDE embedding
     const matchedCommunities = await this.communityRepository.findByVector({
@@ -22,7 +19,10 @@ export class CommunitySearchNodeService {
       topK: params.state.topK,
     });
 
-    this.logger.debug(`Community Search Node: found ${matchedCommunities.length} communities`, "CommunitySearchNodeService");
+    this.logger.debug(
+      `Community Search Node: found ${matchedCommunities.length} communities`,
+      "CommunitySearchNodeService",
+    );
 
     if (matchedCommunities.length === 0) {
       return {

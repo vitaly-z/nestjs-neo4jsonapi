@@ -224,6 +224,8 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
     discord: {
       clientId: process.env.DISCORD_CLIENT_ID || "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+      token: process.env.DISCORD_TOKEN || "",
+      devGuildId: process.env.DISCORD_DEV_GUILD_ID || "",
     },
     prompts: options?.prompts ?? {},
     chunkQueues: options?.chunkQueues ?? { queueIds: [] },

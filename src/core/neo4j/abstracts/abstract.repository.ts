@@ -375,14 +375,22 @@ export abstract class AbstractRepository<
     // Apply defaults for fields not provided in params
     const mergedParams = { ...fieldDefaults, ...params };
 
-    // Build query parameters
+    // Only include fields that have actual values (not undefined)
+    const fieldsWithValues = fieldNames.filter((field) => mergedParams[field] !== undefined);
+
+    // Build query parameters (only for fields with values)
     query.queryParams = {
       ...query.queryParams,
-      ...mergedParams,
+      id: mergedParams.id,
     };
 
+    for (const field of fieldsWithValues) {
+      query.queryParams[field] = mergedParams[field];
+    }
+
     // Build field assignments for CREATE with proper Cypher type casting
-    const fieldAssignments = fieldNames
+    // Only include fields that have values
+    const fieldAssignments = fieldsWithValues
       .map((fieldName) => {
         const fieldDef = fields[fieldName as keyof typeof fields];
         if (fieldDef?.type === "datetime") {

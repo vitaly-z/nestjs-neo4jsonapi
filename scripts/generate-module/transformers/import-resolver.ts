@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 /**
  * Foundation package name constant
  */
@@ -15,6 +18,82 @@ export const FOUNDATION_PACKAGE = "@carlonicora/nestjs-neo4jsonapi";
  */
 export function isFoundationImport(directory: string): boolean {
   return directory === "@foundation" || directory.startsWith("@foundation/");
+}
+
+/**
+ * Check if a related entity uses the NEW structure (Descriptor pattern)
+ *
+ * Detection: Check if .meta.ts file exists
+ * - If exists → OLD structure (uses entityMeta pattern)
+ * - If not exists → NEW structure (uses EntityDescriptor.model pattern)
+ *
+ * @param params - Directory and module name of the related entity
+ * @returns True if NEW structure (no .meta.ts file), false if OLD structure
+ *
+ * @example
+ * isNewEntityStructure({ directory: "@foundation", moduleName: "user" })
+ * // Checks: packages/nestjs-neo4jsonapi/src/foundations/user/entities/user.meta.ts
+ *
+ * isNewEntityStructure({ directory: "features", moduleName: "character" })
+ * // Checks: apps/api/src/features/character/entities/character.meta.ts
+ */
+export function isNewEntityStructure(params: { directory: string; moduleName: string }): boolean {
+  const { directory, moduleName } = params;
+
+  let metaFilePath: string;
+
+  if (isFoundationImport(directory)) {
+    // Foundation module: check in nestjs-neo4jsonapi package
+    metaFilePath = path.resolve(
+      process.cwd(),
+      `packages/nestjs-neo4jsonapi/src/foundations/${moduleName}/entities/${moduleName}.meta.ts`,
+    );
+  } else {
+    // Feature module: check in apps/api
+    metaFilePath = path.resolve(process.cwd(), `apps/api/src/${directory}/${moduleName}/entities/${moduleName}.meta.ts`);
+  }
+
+  // NEW structure if .meta.ts file does NOT exist
+  return !fs.existsSync(metaFilePath);
+}
+
+/**
+ * Get the model reference string for a relationship
+ *
+ * @param params - Entity name and structure type
+ * @returns Model reference string for use in relationship definition
+ *
+ * @example
+ * getModelReference({ isNewStructure: false, entityName: "User", variantName: "owner" })
+ * // Returns: "ownerMeta"
+ *
+ * getModelReference({ isNewStructure: true, entityName: "Character" })
+ * // Returns: "CharacterDescriptor.model"
+ */
+export function getModelReference(params: {
+  isNewStructure: boolean;
+  entityName: string;
+  variantName?: string;
+}): string {
+  const { isNewStructure, entityName, variantName } = params;
+
+  if (isNewStructure) {
+    return `${entityName}Descriptor.model`;
+  } else {
+    // OLD structure: use variant name if provided, otherwise entity name
+    const baseName = variantName || entityName;
+    return `${baseName.charAt(0).toLowerCase()}${baseName.slice(1)}Meta`;
+  }
+}
+
+/**
+ * Get the Descriptor name for NEW structure entities
+ *
+ * @param entityName - PascalCase entity name
+ * @returns Descriptor name (e.g., "CharacterDescriptor")
+ */
+export function getDescriptorName(entityName: string): string {
+  return `${entityName}Descriptor`;
 }
 
 /**
@@ -124,4 +203,46 @@ export function resolveDtoImportPath(params: {
  */
 export function resolveModuleInternalPath(subpath: string): string {
   return `../${subpath}`;
+}
+
+// ============================================================================
+// NEW Structure Import Path Functions
+// ============================================================================
+
+/**
+ * Resolve import path for NEW structure entity file
+ * NEW structure uses absolute paths from src and no .entity suffix
+ *
+ * @param params - Directory and module info
+ * @returns Absolute import path for entity (e.g., "src/features/character/entities/character")
+ *
+ * @example
+ * resolveNewEntityImportPath({ directory: "features", moduleName: "character" })
+ * // Returns: "src/features/character/entities/character"
+ */
+export function resolveNewEntityImportPath(params: { directory: string; moduleName: string }): string {
+  const { directory, moduleName } = params;
+
+  if (isFoundationImport(directory)) {
+    // Foundation: use package path (when foundations are migrated to NEW structure)
+    return `src/foundations/${moduleName}/entities/${moduleName}`;
+  }
+
+  return `src/${directory}/${moduleName}/entities/${moduleName}`;
+}
+
+/**
+ * Resolve import path for NEW structure DTO file
+ *
+ * @param params - Directory and module info
+ * @returns Absolute import path for DTO (e.g., "src/features/character/dtos/character.dto")
+ */
+export function resolveNewDtoImportPath(params: { directory: string; moduleName: string }): string {
+  const { directory, moduleName } = params;
+
+  if (isFoundationImport(directory)) {
+    return `src/foundations/${moduleName}/dtos/${moduleName}.dto`;
+  }
+
+  return `src/${directory}/${moduleName}/dtos/${moduleName}.dto`;
 }

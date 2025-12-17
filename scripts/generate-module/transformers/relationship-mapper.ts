@@ -1,24 +1,30 @@
 import { JsonRelationshipDefinition } from "../types/json-schema.interface";
 import { DescriptorRelationship } from "../types/template-data.interface";
 import { toCamelCase, pluralize, transformNames } from "./name-transformer";
+import {
+  isNewEntityStructure,
+  getModelReference,
+  getDescriptorName,
+  resolveNewEntityImportPath,
+} from "./import-resolver";
 
 /**
  * Map JSON relationship definition to descriptor relationship
  *
  * Key mappings:
- * - toNode: true → direction: "in" (relationship TO this entity)
- * - toNode: false → direction: "out" (relationship FROM this entity)
+ * - toNode: true → direction: "out" (relationship FROM this entity TO related)
+ * - toNode: false → direction: "in" (relationship FROM related TO this entity)
  * - single: true → cardinality: "one"
  * - single: false → cardinality: "many"
  * - variant: "Author" → contextKey: "userId"
- * - variant: other → dtoKey: pluralized variant
+ * - variant: other → dtoKey: singular/plural based on cardinality
  *
  * @param rel - JSON relationship definition
  * @returns Descriptor relationship configuration
  */
 export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRelationship {
   // Core mappings
-  const direction = rel.toNode ? "in" : "out";
+  const direction = rel.toNode ? "out" : "in";
   const cardinality = rel.single ? "one" : "many";
 
   // Determine contextKey and dtoKey based on variant
@@ -29,21 +35,42 @@ export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRela
     // Special case: Author variant uses contextKey
     contextKey = "userId";
   } else if (rel.variant) {
-    // Other variants: use variant name as dtoKey (pluralized)
-    dtoKey = pluralize(rel.variant.toLowerCase());
+    // Other variants: use variant name as dtoKey
+    // Pluralize only for "many" cardinality
+    dtoKey = rel.single ? rel.variant.toLowerCase() : pluralize(rel.variant.toLowerCase());
   } else {
-    // No variant: use entity name as dtoKey (pluralized)
-    dtoKey = pluralize(rel.name.toLowerCase());
+    // No variant: use entity name as dtoKey
+    // Pluralize only for "many" cardinality
+    dtoKey = rel.single ? rel.name.toLowerCase() : pluralize(rel.name.toLowerCase());
   }
 
   // Determine relationship key (what it's called in the descriptor)
   const key = toCamelCase(rel.variant || rel.name);
 
-  // Meta import name (e.g., "userMeta", "discussionMeta")
-  const model = `${toCamelCase(rel.name)}Meta`;
-
   // Related entity name transformations
   const relatedEntityNames = transformNames(rel.name, pluralize(rel.name.toLowerCase()));
+
+  // Detect if related entity uses NEW structure (Descriptor pattern)
+  const isNewStructure = isNewEntityStructure({
+    directory: rel.directory,
+    moduleName: relatedEntityNames.kebabCase,
+  });
+
+  // Get model reference based on structure type
+  const model = getModelReference({
+    isNewStructure,
+    entityName: rel.name,
+    variantName: rel.variant,
+  });
+
+  // NEW structure specific fields
+  const descriptorName = isNewStructure ? getDescriptorName(rel.name) : undefined;
+  const importPath = isNewStructure
+    ? resolveNewEntityImportPath({
+        directory: rel.directory,
+        moduleName: relatedEntityNames.kebabCase,
+      })
+    : undefined;
 
   return {
     key,
@@ -61,6 +88,9 @@ export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRela
       camelCase: relatedEntityNames.camelCase,
       kebabCase: relatedEntityNames.kebabCase,
     },
+    isNewStructure,
+    descriptorName,
+    importPath,
   };
 }
 

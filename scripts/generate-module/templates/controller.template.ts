@@ -10,31 +10,55 @@ import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-r
 export function generateControllerFile(data: TemplateData): string {
   const { names, targetDir, nestedRoutes } = data;
 
-  // Build meta imports for nested routes
-  const metaImportPaths = new Map<string, string[]>();
-  for (const route of nestedRoutes) {
+  // Separate OLD and NEW structure routes
+  const oldStructureRoutes = nestedRoutes.filter((route) => !route.isNewStructure);
+  const newStructureRoutes = nestedRoutes.filter((route) => route.isNewStructure);
+
+  // Build meta imports for OLD structure nested routes
+  const oldMetaImportPaths = new Map<string, string[]>();
+  for (const route of oldStructureRoutes) {
     const rel = data.relationships.find((r) => r.model === route.relatedMeta)!;
     const path = isFoundationImport(rel.relatedEntity.directory)
       ? FOUNDATION_PACKAGE
       : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
-    if (!metaImportPaths.has(path)) {
-      metaImportPaths.set(path, []);
+    if (!oldMetaImportPaths.has(path)) {
+      oldMetaImportPaths.set(path, []);
     }
-    metaImportPaths.get(path)!.push(route.relatedMeta);
+    if (!oldMetaImportPaths.get(path)!.includes(route.relatedMeta)) {
+      oldMetaImportPaths.get(path)!.push(route.relatedMeta);
+    }
   }
 
-  const metaImportsCode =
-    metaImportPaths.size > 0
-      ? `\n${Array.from(metaImportPaths.entries())
-          .map(([path, items]) => `import { ${items.join(", ")} } from "${path}";`)
-          .join("\n")}\n`
-      : "";
+  // Build Descriptor imports for NEW structure nested routes
+  const newDescriptorImportPaths = new Map<string, string[]>();
+  for (const route of newStructureRoutes) {
+    if (route.importPath && route.descriptorName) {
+      if (!newDescriptorImportPaths.has(route.importPath)) {
+        newDescriptorImportPaths.set(route.importPath, []);
+      }
+      if (!newDescriptorImportPaths.get(route.importPath)!.includes(route.descriptorName)) {
+        newDescriptorImportPaths.get(route.importPath)!.push(route.descriptorName);
+      }
+    }
+  }
+
+  // Combine all import lines
+  const importLines: string[] = [];
+  for (const [path, items] of oldMetaImportPaths.entries()) {
+    importLines.push(`import { ${items.join(", ")} } from "${path}";`);
+  }
+  for (const [path, items] of newDescriptorImportPaths.entries()) {
+    importLines.push(`import { ${items.join(", ")} } from "${path}";`);
+  }
+
+  const metaImportsCode = importLines.length > 0 ? `\n${importLines.join("\n")}\n` : "";
 
   // Generate nested route methods
+  // The route.path is pre-computed by nested-route-generator with correct endpoint access pattern
   const nestedRouteMethods = nestedRoutes
     .map(
       (route) => `
-  @Get(\`\${${route.relatedMeta}.endpoint}/:${route.paramName}/\${${names.pascalCase}Descriptor.model.endpoint}\`)
+  @Get(\`${route.path}\`)
   async ${route.methodName}(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,

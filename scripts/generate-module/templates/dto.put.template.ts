@@ -1,5 +1,23 @@
-import { TemplateData } from "../types/template-data.interface";
-import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
+import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
+import { isFoundationImport, FOUNDATION_PACKAGE, resolveNewDtoImportPath } from "../transformers/import-resolver";
+
+/**
+ * Get the import path for a relationship's DTO
+ */
+function getDtoImportPath(rel: DescriptorRelationship): string {
+  if (rel.isNewStructure) {
+    // NEW structure: use absolute path from src
+    return resolveNewDtoImportPath({
+      directory: rel.relatedEntity.directory,
+      moduleName: rel.relatedEntity.kebabCase,
+    });
+  } else {
+    // OLD structure: foundation or relative path
+    return isFoundationImport(rel.relatedEntity.directory)
+      ? FOUNDATION_PACKAGE
+      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
+  }
+}
 
 /**
  * Generate PUT DTO file content
@@ -18,9 +36,7 @@ export function generatePutDTOFile(data: TemplateData): string {
     // Skip contextKey relationships (like Author) - same as POST
     if (rel.contextKey) continue;
 
-    const importPath = isFoundationImport(rel.relatedEntity.directory)
-      ? FOUNDATION_PACKAGE
-      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
+    const importPath = getDtoImportPath(rel);
 
     if (!dtoImportPaths.has(importPath)) {
       dtoImportPaths.set(importPath, new Set());

@@ -37,7 +37,7 @@ export interface TemplateField {
  */
 export interface DescriptorRelationship {
   key: string; // Relationship key in descriptor (e.g., "author", "discussion")
-  model: string; // Model import name (e.g., "authorMeta", "discussionMeta")
+  model: string; // Model import name (e.g., "authorMeta" or "CharacterDescriptor.model")
   direction: "in" | "out";
   relationship: string; // Neo4j relationship name (e.g., "PUBLISHED")
   cardinality: "one" | "many";
@@ -51,6 +51,10 @@ export interface DescriptorRelationship {
     camelCase: string;
     kebabCase: string;
   };
+  // NEW structure support
+  isNewStructure: boolean; // True if related entity uses Descriptor pattern (no .meta.ts file)
+  descriptorName?: string; // e.g., "CharacterDescriptor" (only for NEW structure)
+  importPath?: string; // Import path for NEW structure entities
 }
 
 /**
@@ -61,7 +65,11 @@ export interface NestedRoute {
   methodName: string; // e.g., "findByDiscussion"
   relationshipKey: string; // e.g., "discussion"
   paramName: string; // e.g., "discussionId"
-  relatedMeta: string; // e.g., "discussionMeta"
+  relatedMeta: string; // e.g., "discussionMeta" or "CharacterDescriptor.model"
+  // NEW structure support
+  isNewStructure: boolean; // True if related entity uses Descriptor pattern
+  descriptorName?: string; // e.g., "CharacterDescriptor" (only for NEW structure)
+  importPath?: string; // Import path for NEW structure entities
 }
 
 /**
@@ -83,6 +91,8 @@ export interface DTORelationship {
   isList: boolean;
   isOptional: boolean;
   importPath: string;
+  // NEW structure support
+  isNewStructure: boolean; // True if related entity uses Descriptor pattern
 }
 
 /**

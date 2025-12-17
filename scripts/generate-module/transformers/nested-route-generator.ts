@@ -28,10 +28,18 @@ export function generateNestedRoutes(
       const relatedName = rel.relatedEntity.camelCase;
       const relatedMeta = rel.model;
 
+      // For NEW structure, the endpoint is accessed via Descriptor.model.endpoint
+      // For OLD structure, it's accessed via meta.endpoint
+      const endpointAccess = rel.isNewStructure ? `${rel.descriptorName}.model.endpoint` : `${relatedMeta}.endpoint`;
+
+      // The current entity's Descriptor name (PascalCase)
+      const thisEntityDescriptor = `${toPascalCase(thisEntity.nodeName)}Descriptor`;
+
       return {
         // Path template using descriptor endpoint
-        // Example: ${discussionMeta.endpoint}/:discussionId/${CommentDescriptor.model.endpoint}
-        path: `\${${relatedMeta}.endpoint}/:${relatedName}Id/\${${thisEntity.nodeName}Descriptor.model.endpoint}`,
+        // OLD: ${discussionMeta.endpoint}/:discussionId/${CommentDescriptor.model.endpoint}
+        // NEW: ${CharacterDescriptor.model.endpoint}/:characterId/${AttributeDescriptor.model.endpoint}
+        path: `\${${endpointAccess}}/:${relatedName}Id/\${${thisEntityDescriptor}.model.endpoint}`,
 
         // Method name: findByDiscussion, findByTopic, etc.
         methodName: `findBy${toPascalCase(rel.key)}`,
@@ -43,8 +51,13 @@ export function generateNestedRoutes(
         // Parameter name in route: discussionId, topicId, etc.
         paramName: `${relatedName}Id`,
 
-        // Meta import name: discussionMeta, topicMeta, etc.
+        // Meta import name (for OLD structure) or endpoint access expression
         relatedMeta: relatedMeta,
+
+        // NEW structure support
+        isNewStructure: rel.isNewStructure,
+        descriptorName: rel.descriptorName,
+        importPath: rel.importPath,
       };
     });
 }

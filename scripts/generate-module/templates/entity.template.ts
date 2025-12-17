@@ -1,5 +1,23 @@
-import { TemplateData } from "../types/template-data.interface";
+import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
 import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
+
+/**
+ * Get the OLD structure entity import path
+ */
+function getOldEntityImportPath(rel: DescriptorRelationship): string {
+  return isFoundationImport(rel.relatedEntity.directory)
+    ? FOUNDATION_PACKAGE
+    : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.entity`;
+}
+
+/**
+ * Get the OLD structure meta import path
+ */
+function getOldMetaImportPath(rel: DescriptorRelationship): string {
+  return isFoundationImport(rel.relatedEntity.directory)
+    ? FOUNDATION_PACKAGE
+    : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
+}
 
 /**
  * Generate entity file content (Type + Descriptor)
@@ -11,7 +29,7 @@ import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-r
  * @returns Generated TypeScript code
  */
 export function generateEntityFile(data: TemplateData): string {
-  const { names, endpoint, nodeName, labelName, fields, relationships, entityImports, metaImports } = data;
+  const { names, endpoint, nodeName, labelName, fields, relationships } = data;
 
   // Build imports
   const libraryImports = ["defineEntity", "Entity"];
@@ -19,41 +37,53 @@ export function generateEntityFile(data: TemplateData): string {
     libraryImports.push("Company");
   }
 
-  // Add entity imports for relationships
-  const uniqueEntityImports = new Set<string>();
-  const entityImportsByPath = new Map<string, string[]>();
+  // Separate OLD and NEW structure relationships
+  const oldStructureRels = relationships.filter((rel) => !rel.isNewStructure);
+  const newStructureRels = relationships.filter((rel) => rel.isNewStructure);
 
-  for (const rel of relationships) {
-    if (!uniqueEntityImports.has(rel.relatedEntity.name)) {
-      uniqueEntityImports.add(rel.relatedEntity.name);
+  // OLD structure: entity imports (grouped by path)
+  const oldEntityImportsByPath = new Map<string, string[]>();
+  const processedOldEntities = new Set<string>();
 
-      // Group by import path
-      const importPath = isFoundationImport(rel.relatedEntity.directory)
-        ? FOUNDATION_PACKAGE
-        : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.entity`;
-      if (!entityImportsByPath.has(importPath)) {
-        entityImportsByPath.set(importPath, []);
+  for (const rel of oldStructureRels) {
+    if (!processedOldEntities.has(rel.relatedEntity.name)) {
+      processedOldEntities.add(rel.relatedEntity.name);
+      const importPath = getOldEntityImportPath(rel);
+      if (!oldEntityImportsByPath.has(importPath)) {
+        oldEntityImportsByPath.set(importPath, []);
       }
-      entityImportsByPath.get(importPath)!.push(rel.relatedEntity.name);
+      oldEntityImportsByPath.get(importPath)!.push(rel.relatedEntity.name);
     }
   }
 
-  // Add meta imports for relationships
-  const uniqueMetaImports = new Set<string>();
-  const metaImportsByPath = new Map<string, string[]>();
+  // OLD structure: meta imports (grouped by path)
+  const oldMetaImportsByPath = new Map<string, string[]>();
+  const processedOldMetas = new Set<string>();
 
-  for (const rel of relationships) {
-    if (!uniqueMetaImports.has(rel.model)) {
-      uniqueMetaImports.add(rel.model);
-
-      // Group by import path
-      const importPath = isFoundationImport(rel.relatedEntity.directory)
-        ? FOUNDATION_PACKAGE
-        : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
-      if (!metaImportsByPath.has(importPath)) {
-        metaImportsByPath.set(importPath, []);
+  for (const rel of oldStructureRels) {
+    // For OLD structure, model is like "userMeta" or "ownerMeta"
+    if (!processedOldMetas.has(rel.model)) {
+      processedOldMetas.add(rel.model);
+      const importPath = getOldMetaImportPath(rel);
+      if (!oldMetaImportsByPath.has(importPath)) {
+        oldMetaImportsByPath.set(importPath, []);
       }
-      metaImportsByPath.get(importPath)!.push(rel.model);
+      oldMetaImportsByPath.get(importPath)!.push(rel.model);
+    }
+  }
+
+  // NEW structure: combined entity + descriptor imports (grouped by path)
+  const newImportsByPath = new Map<string, string[]>();
+  const processedNewEntities = new Set<string>();
+
+  for (const rel of newStructureRels) {
+    if (!processedNewEntities.has(rel.relatedEntity.name) && rel.importPath && rel.descriptorName) {
+      processedNewEntities.add(rel.relatedEntity.name);
+      if (!newImportsByPath.has(rel.importPath)) {
+        newImportsByPath.set(rel.importPath, []);
+      }
+      // Import both entity type and Descriptor for NEW structure
+      newImportsByPath.get(rel.importPath)!.push(rel.relatedEntity.name, rel.descriptorName);
     }
   }
 
@@ -89,13 +119,28 @@ export function generateEntityFile(data: TemplateData): string {
     })
     .join("\n");
 
-  return `import { ${libraryImports.join(", ")} } from "@carlonicora/nestjs-neo4jsonapi";
-${Array.from(entityImportsByPath.entries())
-  .map(([path, items]) => `import { ${items.join(", ")} } from "${path}";`)
-  .join("\n")}
-${Array.from(metaImportsByPath.entries())
-  .map(([path, items]) => `import { ${items.join(", ")} } from "${path}";`)
-  .join("\n")}
+  // Build all import lines
+  const importLines: string[] = [];
+
+  // Library imports (always first)
+  importLines.push(`import { ${libraryImports.join(", ")} } from "@carlonicora/nestjs-neo4jsonapi";`);
+
+  // OLD structure entity imports
+  for (const [path, items] of oldEntityImportsByPath.entries()) {
+    importLines.push(`import { ${items.join(", ")} } from "${path}";`);
+  }
+
+  // OLD structure meta imports
+  for (const [path, items] of oldMetaImportsByPath.entries()) {
+    importLines.push(`import { ${items.join(", ")} } from "${path}";`);
+  }
+
+  // NEW structure combined imports (entity + descriptor)
+  for (const [path, items] of newImportsByPath.entries()) {
+    importLines.push(`import { ${items.join(", ")} } from "${path}";`);
+  }
+
+  return `${importLines.join("\n")}
 
 /**
  * ${names.pascalCase} Entity Type

@@ -1,3 +1,23 @@
+## [1.6.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.5.1...v1.6.0) (2025-12-17)
+
+### 🚀 Features
+
+* add Discord module with service and error serializer ([741c003](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/741c0033dfef13b82a693dc1730c16281b0d4d0b))
+* add meta file generation and update entity import paths to avoid circular dependencies ([de31185](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/de311850a3cb51cb5c12aa4da245e9383ade2f7c))
+* add token and devGuildId to Discord configuration ([c838ebe](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/c838ebe68eb04f4fe31460e0f451e8f8a64c7484))
+* enhance support for new entity structure and improve import resolution ([cd8a0c5](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/cd8a0c5b5f9513eb83acf52ffc9ed1a16c171f3e))
+* implement DiscordUser module with service and types for user management ([36d986d](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/36d986d93a6d9efbe31ee0b6fae8c0b445f928ed))
+* integrate Discord support with Necord and update configuration interfaces ([c0d44b3](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/c0d44b3b29c4e03d00fe8a807f23463e64bc12c6))
+
+### 🐛 Bug Fixes
+
+* correct import path for DiscordUserModule and refactor AuthDiscordService to utilize DiscordUserService ([56236d1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/56236d1842483e2f9cbdeae53546bacbb1850490))
+* optimize query parameter building to include only defined fields ([b5e95f2](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/b5e95f2da62a918bfe32ee1bec5b464ce53e3aa8))
+
+### 📦 Code Refactoring
+
+* remove unused CommunityDetectionResult interface from CommunityDetectorService ([b064762](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/b0647621f6e290824473fa79910b6f7d981cd60a))
+
 ## [1.5.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.5.0...v1.5.1) (2025-12-16)
 
 ### 💎 Styles

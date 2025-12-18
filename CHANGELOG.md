@@ -1,3 +1,15 @@
+## [1.7.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.6.0...v1.7.0) (2025-12-18)
+
+### 🚀 Features
+
+* enhance company creation and update methods with relationship validation and dynamic query generation ([b09e070](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/b09e070f00d679864bbf81bb747904e189525731))
+* enhance module generation with type normalization and validation decorators ([fcbdec2](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/fcbdec2e39db4124cfe1b6aa7495fce6df168de0))
+* integrate ClsService for context management in DiscordUserService ([8b8e892](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/8b8e892d6e4f6d81cda278ffb893cec76cf52f8d))
+
+### 🐛 Bug Fixes
+
+* update AuthDiscordService to use config for app URL in token exchange response ([bafc1b1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/bafc1b12851b8968c0e2b8f1b56a6a107bdb27c4))
+
 ## [1.6.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.5.1...v1.6.0) (2025-12-17)
 
 ### 🚀 Features

@@ -9,6 +9,14 @@ export class DiscordUserRepository extends AbstractRepository<DiscordUser, typeo
     super(neo4j, securityService);
   }
 
+  protected buildReturnStatement(): string {
+    return `
+      MATCH (discorduser:DiscordUser)-[:BELONGS_TO]->(discorduser_company:Company)
+      MATCH (discorduser)<-[:HAS_DISCORD]-(discorduser_user:User)
+      RETURN discorduser, discorduser_company, discorduser_user, discorduser_company as discorduser_user_company
+    `;
+  }
+
   async findByDiscordId(params: { discordId: string }): Promise<DiscordUser> {
     const query = this.neo4j.initQuery({ serialiser: this.descriptor.model });
 

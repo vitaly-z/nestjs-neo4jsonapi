@@ -1,9 +1,13 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { updateRelationshipQuery } from "../../../core";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { Company } from "../../company/entities/company.entity";
 import { CompanyModel } from "../../company/entities/company.model";
+import { featureMeta } from "../../feature/entities/feature.meta";
+import { moduleMeta } from "../../module";
+import { companyMeta } from "../entities/company.meta";
 
 @Injectable()
 export class CompanyRepository implements OnModuleInit {
@@ -111,6 +115,17 @@ export class CompanyRepository implements OnModuleInit {
   }): Promise<Company> {
     const query = this.neo4j.initQuery({ serialiser: CompanyModel });
 
+    await this.neo4j.validateExistingNodes({
+      nodes: [
+        ...(params.featureIds && params.featureIds.length > 0
+          ? params.featureIds.map((id) => ({ id: id, label: featureMeta.labelName }))
+          : []),
+        ...(params.moduleIds && params.moduleIds.length > 0
+          ? params.moduleIds.map((id) => ({ id: id, label: moduleMeta.labelName }))
+          : []),
+      ].filter(Boolean),
+    });
+
     query.queryParams = {
       companyId: params.companyId,
       name: params.name,
@@ -127,20 +142,39 @@ export class CompanyRepository implements OnModuleInit {
         company.availableTokens=$availableTokens,
         company.createdAt=datetime(),
         company.updatedAt=datetime()
-      FOREACH (featureId IN $featureIds |
-        MERGE (feature:Feature {id: featureId})
-        MERGE (company)-[:HAS_FEATURE]->(feature)
-      )
-      FOREACH (moduleId IN $moduleIds |
-        MERGE (module:Module {id: moduleId})
-        MERGE (company)-[:HAS_MODULE]->(module)
-      )
+    `;
+
+    const relationships = [
+      {
+        relationshipName: "HAS_FEATURE",
+        param: "featureIds",
+        label: featureMeta.labelName,
+        relationshipToNode: true,
+      },
+      {
+        relationshipName: "HAS_MODULE",
+        param: "moduleIds",
+        label: moduleMeta.labelName,
+        relationshipToNode: true,
+      },
+    ];
+
+    relationships.forEach(({ relationshipName, param, label, relationshipToNode }) => {
+      query.query += updateRelationshipQuery({
+        node: companyMeta.nodeName,
+        relationshipName: relationshipName,
+        relationshipToNode: relationshipToNode,
+        label: label,
+        param: param,
+        values: params[param],
+      });
+    });
+
+    query.query += `
       RETURN company
     `;
 
-    const response = await this.neo4j.writeOne(query);
-    // await this.createCompanyAgents({ companyId: params.companyId });
-    return response;
+    return this.neo4j.writeOne(query);
   }
 
   async update(params: {
@@ -152,31 +186,18 @@ export class CompanyRepository implements OnModuleInit {
     featureIds?: string[];
     moduleIds?: string[];
   }): Promise<void> {
-    const featureQuery =
-      params.featureIds && params.featureIds.length > 0
-        ? `
-      WITH company
-      OPTIONAL MATCH (company)-[r:HAS_FEATURE]->()
-      DELETE r
-      WITH company
-      UNWIND $featureIds AS featureId
-      MERGE (feature:Feature {id: featureId})
-      MERGE (company)-[:HAS_FEATURE]->(feature)
-      `
-        : ``;
+    const query = this.neo4j.initQuery();
 
-    const moduleQuery =
-      params.moduleIds && params.moduleIds.length > 0
-        ? `
-      WITH company
-      OPTIONAL MATCH (company)-[r:HAS_MODULE]->()
-      DELETE r
-      WITH company
-      UNWIND $moduleIds AS moduleId
-      MERGE (module:Module {id: moduleId})
-      MERGE (company)-[:HAS_MODULE]->(module)
-      `
-        : ``;
+    await this.neo4j.validateExistingNodes({
+      nodes: [
+        ...(params.featureIds && params.featureIds.length > 0
+          ? params.featureIds.map((id) => ({ id: id, label: featureMeta.labelName }))
+          : []),
+        ...(params.moduleIds && params.moduleIds.length > 0
+          ? params.moduleIds.map((id) => ({ id: id, label: moduleMeta.labelName }))
+          : []),
+      ].filter(Boolean),
+    });
 
     const updateParams: string[] = [];
     updateParams.push("company.name = $name");
@@ -185,8 +206,6 @@ export class CompanyRepository implements OnModuleInit {
     if (params.availableTokens !== undefined) updateParams.push("company.availableTokens = $availableTokens");
     updateParams.push("company.updatedAt = datetime()");
     const update = updateParams.join(", ");
-
-    const query = this.neo4j.initQuery();
 
     query.queryParams = {
       companyId: params.companyId,
@@ -201,9 +220,34 @@ export class CompanyRepository implements OnModuleInit {
     query.query = `
       MATCH (company:Company {id: $companyId})
       SET ${update}
-      ${featureQuery}
-      ${moduleQuery}
+      WITH company
     `;
+
+    const relationships = [
+      {
+        relationshipName: "HAS_FEATURE",
+        param: "featureIds",
+        label: featureMeta.labelName,
+        relationshipToNode: true,
+      },
+      {
+        relationshipName: "HAS_MODULE",
+        param: "moduleIds",
+        label: moduleMeta.labelName,
+        relationshipToNode: true,
+      },
+    ];
+
+    relationships.forEach(({ relationshipName, param, label, relationshipToNode }) => {
+      query.query += updateRelationshipQuery({
+        node: companyMeta.nodeName,
+        relationshipName: relationshipName,
+        relationshipToNode: relationshipToNode,
+        label: label,
+        param: param,
+        values: params[param],
+      });
+    });
 
     await this.neo4j.writeOne(query);
   }

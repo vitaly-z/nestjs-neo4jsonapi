@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, OnModuleInit } from "@nestjs/common";
 import { EntityDescriptor, RelationshipDef } from "../../../common/interfaces/entity.schema.interface";
 import { JsonApiCursorInterface } from "../../jsonapi/interfaces/jsonapi.cursor.interface";
+import { SecurityService } from "../../security/services/security.service";
 import { updateRelationshipQuery } from "../queries/update.relationship";
 import { Neo4jService } from "../services/neo4j.service";
-import { SecurityService } from "../../security/services/security.service";
 
 /**
  * Abstract base repository for Neo4j entities
@@ -249,6 +249,8 @@ export abstract class AbstractRepository<
       ${this.buildReturnStatement()}
     `;
 
+    console.log(query.query, query.queryParams);
+
     return this._validateForbidden({
       response: await this.neo4j.readOne(query),
       searchField: "id",
@@ -397,11 +399,11 @@ export abstract class AbstractRepository<
         if (fieldType === "datetime") {
           return `${fieldName}: datetime($${fieldName})`;
         } else if (fieldType === "date") {
-          return `${fieldName}: date($${fieldName})`;
+          return `${fieldName}: date(left($${fieldName}, 10))`;
         } else if (fieldType === "datetime[]") {
           return `${fieldName}: [x IN $${fieldName} | datetime(x)]`;
         } else if (fieldType === "date[]") {
-          return `${fieldName}: [x IN $${fieldName} | date(x)]`;
+          return `${fieldName}: [x IN $${fieldName} | date(left(x, 10))]`;
         }
         return `${fieldName}: $${fieldName}`;
       })
@@ -479,11 +481,11 @@ export abstract class AbstractRepository<
         if (fieldType === "datetime") {
           return `${nodeName}.${fieldName} = datetime($${fieldName})`;
         } else if (fieldType === "date") {
-          return `${nodeName}.${fieldName} = date($${fieldName})`;
+          return `${nodeName}.${fieldName} = date(left($${fieldName}, 10))`;
         } else if (fieldType === "datetime[]") {
           return `${nodeName}.${fieldName} = [x IN $${fieldName} | datetime(x)]`;
         } else if (fieldType === "date[]") {
-          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(x)]`;
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(left(x, 10))]`;
         }
         return `${nodeName}.${fieldName} = $${fieldName}`;
       })
@@ -571,11 +573,11 @@ export abstract class AbstractRepository<
         if (fieldType === "datetime") {
           return `${nodeName}.${fieldName} = datetime($${fieldName})`;
         } else if (fieldType === "date") {
-          return `${nodeName}.${fieldName} = date($${fieldName})`;
+          return `${nodeName}.${fieldName} = date(left($${fieldName}, 10))`;
         } else if (fieldType === "datetime[]") {
           return `${nodeName}.${fieldName} = [x IN $${fieldName} | datetime(x)]`;
         } else if (fieldType === "date[]") {
-          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(x)]`;
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(left(x, 10))]`;
         }
         return `${nodeName}.${fieldName} = $${fieldName}`;
       })

@@ -1,10 +1,11 @@
 import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
-import { isFoundationImport, FOUNDATION_PACKAGE, resolveNewDtoImportPath } from "../transformers/import-resolver";
+import { isFoundationImport, FOUNDATION_PACKAGE, resolveNewDtoImportPath, resolveDtoImportPath } from "../transformers/import-resolver";
+import { getValidationImports, CypherType } from "../utils/type-utils";
 
 /**
  * Get the import path for a relationship's DTO
  */
-function getDtoImportPath(rel: DescriptorRelationship): string {
+function getDtoImportPath(rel: DescriptorRelationship, fromDir: string, fromModule: string): string {
   if (rel.isNewStructure) {
     // NEW structure: use absolute path from src
     return resolveNewDtoImportPath({
@@ -12,10 +13,15 @@ function getDtoImportPath(rel: DescriptorRelationship): string {
       moduleName: rel.relatedEntity.kebabCase,
     });
   } else {
-    // OLD structure: foundation or relative path
+    // OLD structure: foundation or relative path with proper resolution
     return isFoundationImport(rel.relatedEntity.directory)
       ? FOUNDATION_PACKAGE
-      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/dtos/${rel.relatedEntity.kebabCase}.dto`;
+      : resolveDtoImportPath({
+          fromDir,
+          fromModule,
+          toDir: rel.relatedEntity.directory,
+          toModule: rel.relatedEntity.kebabCase,
+        });
   }
 }
 
@@ -27,7 +33,7 @@ function getDtoImportPath(rel: DescriptorRelationship): string {
  * @returns Generated TypeScript code
  */
 export function generatePutDTOFile(data: TemplateData): string {
-  const { names, targetDir, fields, relationships } = data;
+  const { names, targetDir, fields, relationships, dtoFields } = data;
 
   // Build DTO imports for relationships (excluding contextKey)
   const dtoImportPaths = new Map<string, Set<string>>();
@@ -36,7 +42,7 @@ export function generatePutDTOFile(data: TemplateData): string {
     // Skip contextKey relationships (like Author) - same as POST
     if (rel.contextKey) continue;
 
-    const importPath = getDtoImportPath(rel);
+    const importPath = getDtoImportPath(rel, targetDir, names.kebabCase);
 
     if (!dtoImportPaths.has(importPath)) {
       dtoImportPaths.set(importPath, new Set());
@@ -56,18 +62,17 @@ export function generatePutDTOFile(data: TemplateData): string {
           .join("\n")}\n`
       : "";
 
-  // Build attribute validation (same as POST)
-  const attributeFields = fields
+  // Build attribute validation using pre-computed decorators from dtoFields (same as POST)
+  const attributeFields = dtoFields
     .map((field) => {
-      const decorators = [];
-      decorators.push("@IsDefined()");
-      decorators.push("@IsNotEmpty()");
-      decorators.push(`@IsString()`); // Simplified - all fields are strings in current schema
-
-      const optional = !field.required ? "?" : "";
-      return `  ${decorators.join("\n  ")}\n  ${field.name}${optional}: ${field.tsType};`;
+      const optional = field.isOptional ? "?" : "";
+      return `  ${field.decorators.join("\n  ")}\n  ${field.name}${optional}: ${field.type};`;
     })
     .join("\n\n");
+
+  // Get dynamic validator imports based on field types
+  const fieldTypes = fields.map((f) => f.type as CypherType);
+  const validatorImports = getValidationImports(fieldTypes);
 
   // Build relationship validation (exclude contextKey - same as POST)
   const relationshipFields = relationships
@@ -98,7 +103,7 @@ export function generatePutDTOFile(data: TemplateData): string {
     .join("\n\n");
 
   return `import { Type } from "class-transformer";
-import { Equals, IsDefined, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";${dtoImportsCode}
+import { ${validatorImports.join(", ")} } from "class-validator";${dtoImportsCode}
 import { ${names.pascalCase}Descriptor } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}";
 
 export class ${names.pascalCase}PutAttributesDTO {

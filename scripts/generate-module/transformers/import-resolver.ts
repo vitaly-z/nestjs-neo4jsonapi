@@ -133,13 +133,14 @@ export function resolveEntityImportPath(params: {
 
 /**
  * Resolve import path for meta file
+ * Note: Controller files are in a controllers/ subdirectory, so we need extra ../ to get out first
  *
  * @param params - From and to module info
  * @returns Import path to meta file
  *
  * @example
  * resolveMetaImportPath({ fromDir: "features", fromModule: "comment", toDir: "foundations", toModule: "user" })
- * // Returns: "../../foundations/user/entities/user.meta"
+ * // Returns: "../../../foundations/user/entities/user.meta" (from comment/controllers/ to user/entities/)
  */
 export function resolveMetaImportPath(params: {
   fromDir: string;
@@ -147,19 +148,21 @@ export function resolveMetaImportPath(params: {
   toDir: string;
   toModule: string;
 }): string {
+  // Controller files are in module/controllers/, so add ../ to get out of controllers/ subdirectory
   const basePath = resolveImportPath(params);
-  return `${basePath}/entities/${params.toModule}.meta`;
+  return `../${basePath}/entities/${params.toModule}.meta`;
 }
 
 /**
  * Resolve import path for DTO file
+ * Note: DTO files are in a dtos/ subdirectory, so we need extra ../ to get out first
  *
  * @param params - From and to module info
  * @returns Import path to DTO file
  *
  * @example
  * resolveDtoImportPath({ fromDir: "features", fromModule: "comment", toDir: "features", toModule: "discussion" })
- * // Returns: "../discussion/dtos/discussion.dto"
+ * // Returns: "../../discussion/dtos/discussion.dto" (from comment/dtos/ to discussion/dtos/)
  */
 export function resolveDtoImportPath(params: {
   fromDir: string;
@@ -167,8 +170,9 @@ export function resolveDtoImportPath(params: {
   toDir: string;
   toModule: string;
 }): string {
+  // DTO files are in module/dtos/, so add ../ to get out of dtos/ subdirectory
   const basePath = resolveImportPath(params);
-  return `${basePath}/dtos/${params.toModule}.dto`;
+  return `../${basePath}/dtos/${params.toModule}.dto`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { TemplateData } from "../types/template-data.interface";
-import { isFoundationImport, FOUNDATION_PACKAGE } from "../transformers/import-resolver";
+import { isFoundationImport, FOUNDATION_PACKAGE, resolveMetaImportPath } from "../transformers/import-resolver";
 
 /**
  * Generate controller file content with CRUD and nested routes
@@ -20,7 +20,12 @@ export function generateControllerFile(data: TemplateData): string {
     const rel = data.relationships.find((r) => r.model === route.relatedMeta)!;
     const path = isFoundationImport(rel.relatedEntity.directory)
       ? FOUNDATION_PACKAGE
-      : `../../${rel.relatedEntity.directory}/${rel.relatedEntity.kebabCase}/entities/${rel.relatedEntity.kebabCase}.meta`;
+      : resolveMetaImportPath({
+          fromDir: targetDir,
+          fromModule: names.kebabCase,
+          toDir: rel.relatedEntity.directory,
+          toModule: rel.relatedEntity.kebabCase,
+        });
     if (!oldMetaImportPaths.has(path)) {
       oldMetaImportPaths.set(path, []);
     }

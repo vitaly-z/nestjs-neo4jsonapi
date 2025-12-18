@@ -2,9 +2,19 @@ import { Type } from "@nestjs/common";
 import { DataMeta, DataModelInterface } from "./datamodel.interface";
 
 /**
- * Neo4j/Cypher data types for field definitions
+ * Neo4j/Cypher base data types for field definitions (scalar)
  */
-export type CypherType = "string" | "number" | "boolean" | "datetime" | "json";
+export type CypherBaseType = "string" | "number" | "boolean" | "date" | "datetime" | "json";
+
+/**
+ * Neo4j/Cypher array data types for field definitions
+ */
+export type CypherArrayType = "string[]" | "number[]" | "boolean[]" | "date[]" | "datetime[]" | "json[]";
+
+/**
+ * All supported Neo4j/Cypher data types (scalar and array)
+ */
+export type CypherType = CypherBaseType | CypherArrayType;
 
 /**
  * Transformer function for field serialisation

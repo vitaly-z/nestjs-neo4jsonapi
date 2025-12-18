@@ -17,6 +17,7 @@ import { generatePostDTOFile } from "./templates/dto.post.template";
 import { generatePutDTOFile } from "./templates/dto.put.template";
 import { writeFiles, FileToWrite } from "./utils/file-writer";
 import { registerModule } from "./utils/module-registrar";
+import { normalizeCypherType, getTsType, getValidationDecorators, CypherType } from "./utils/type-utils";
 
 export interface GenerateModuleOptions {
   jsonPath: string;
@@ -71,13 +72,19 @@ export async function generateModule(options: GenerateModuleOptions): Promise<vo
     nodeName: names.camelCase,
   });
 
-  // Map fields to template fields
-  const fields: TemplateField[] = jsonSchema.fields.map((field) => ({
-    name: field.name,
-    type: field.type,
-    required: !field.nullable,
-    tsType: field.type, // Simplified: all string types
-  }));
+  // Map fields to template fields with type normalization
+  const fields: TemplateField[] = jsonSchema.fields.map((field) => {
+    const normalizedType = normalizeCypherType(field.type);
+    if (!normalizedType) {
+      throw new Error(`Invalid field type "${field.type}" for field "${field.name}". Valid types: string, number, boolean, date, datetime, json (and their array variants with [])`);
+    }
+    return {
+      name: field.name,
+      type: normalizedType,
+      required: !field.nullable,
+      tsType: getTsType(normalizedType),
+    };
+  });
 
   // Build template data
   const templateData: TemplateData = {
@@ -98,7 +105,7 @@ export async function generateModule(options: GenerateModuleOptions): Promise<vo
       name: field.name,
       type: field.tsType,
       isOptional: !field.required,
-      decorators: ["@IsDefined()", "@IsNotEmpty()", "@IsString()"],
+      decorators: getValidationDecorators(field.type as CypherType, field.required),
     })),
     postDtoRelationships: [],
     putDtoRelationships: [],

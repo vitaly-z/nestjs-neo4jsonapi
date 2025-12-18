@@ -1,4 +1,5 @@
 import { JsonModuleDefinition } from "../types/json-schema.interface";
+import { normalizeCypherType, getValidTypes } from "../utils/type-utils";
 
 export interface ValidationError {
   field: string;
@@ -69,6 +70,13 @@ export function validateJsonSchema(schema: any): ValidationError[] {
         errors.push({
           field: `fields[${index}].type`,
           message: "Field type is required",
+          severity: "error",
+        });
+      } else if (!normalizeCypherType(field.type)) {
+        const validTypes = getValidTypes();
+        errors.push({
+          field: `fields[${index}].type`,
+          message: `Invalid type "${field.type}". Valid types: ${validTypes.join(", ")}`,
           severity: "error",
         });
       }

@@ -393,8 +393,15 @@ export abstract class AbstractRepository<
     const fieldAssignments = fieldsWithValues
       .map((fieldName) => {
         const fieldDef = fields[fieldName as keyof typeof fields];
-        if (fieldDef?.type === "datetime") {
+        const fieldType = fieldDef?.type;
+        if (fieldType === "datetime") {
           return `${fieldName}: datetime($${fieldName})`;
+        } else if (fieldType === "date") {
+          return `${fieldName}: date($${fieldName})`;
+        } else if (fieldType === "datetime[]") {
+          return `${fieldName}: [x IN $${fieldName} | datetime(x)]`;
+        } else if (fieldType === "date[]") {
+          return `${fieldName}: [x IN $${fieldName} | date(x)]`;
         }
         return `${fieldName}: $${fieldName}`;
       })
@@ -468,8 +475,15 @@ export abstract class AbstractRepository<
     const setAssignments = fieldNames
       .map((fieldName) => {
         const fieldDef = fields[fieldName as keyof typeof fields];
-        if (fieldDef?.type === "datetime") {
+        const fieldType = fieldDef?.type;
+        if (fieldType === "datetime") {
           return `${nodeName}.${fieldName} = datetime($${fieldName})`;
+        } else if (fieldType === "date") {
+          return `${nodeName}.${fieldName} = date($${fieldName})`;
+        } else if (fieldType === "datetime[]") {
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | datetime(x)]`;
+        } else if (fieldType === "date[]") {
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(x)]`;
         }
         return `${nodeName}.${fieldName} = $${fieldName}`;
       })
@@ -553,8 +567,15 @@ export abstract class AbstractRepository<
     const setAssignments = fieldsToUpdate
       .map((fieldName) => {
         const fieldDef = fields[fieldName as keyof typeof fields];
-        if (fieldDef?.type === "datetime") {
+        const fieldType = fieldDef?.type;
+        if (fieldType === "datetime") {
           return `${nodeName}.${fieldName} = datetime($${fieldName})`;
+        } else if (fieldType === "date") {
+          return `${nodeName}.${fieldName} = date($${fieldName})`;
+        } else if (fieldType === "datetime[]") {
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | datetime(x)]`;
+        } else if (fieldType === "date[]") {
+          return `${nodeName}.${fieldName} = [x IN $${fieldName} | date(x)]`;
         }
         return `${nodeName}.${fieldName} = $${fieldName}`;
       })

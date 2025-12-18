@@ -1,3 +1,13 @@
+## [1.8.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.7.0...v1.8.0) (2025-12-18)
+
+### 🚀 Features
+
+* add buildReturnStatement method for enhanced query construction in DiscordUserRepository ([dfe2e4b](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/dfe2e4bc57be6d1b40afab74a5d00690f9a53798))
+
+### 🐛 Bug Fixes
+
+* adjust date formatting in query builders to ensure correct date handling ([d0251cd](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d0251cdbdb9b52f4f13a91840325402895bd872e))
+
 ## [1.7.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.6.0...v1.7.0) (2025-12-18)
 
 ### 🚀 Features

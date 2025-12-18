@@ -1,3 +1,9 @@
+## [1.8.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.8.0...v1.8.1) (2025-12-18)
+
+### 🐛 Bug Fixes
+
+* remove debug logging from buildReturnStatement method in AbstractRepository ([0b66be1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/0b66be1214b1990475021c8390e2d2a974a45483))
+
 ## [1.8.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.7.0...v1.8.0) (2025-12-18)
 
 ### 🚀 Features

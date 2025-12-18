@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { ClsService } from "nestjs-cls";
 import { RoleId } from "../../../common";
 import { CompanyRepository } from "../../company";
 import { UserRepository } from "../../user";
@@ -12,9 +13,13 @@ export class DiscordUserService {
     private readonly discordUserRepository: DiscordUserRepository,
     private readonly userRepository: UserRepository,
     private readonly companyRepository: CompanyRepository,
+    private readonly clsService: ClsService,
   ) {}
 
   async create(params: { userId: string; companyId: string; userDetails: discordUser }): Promise<void> {
+    this.clsService.set("companyId", params.companyId);
+    this.clsService.set("userId", params.userId);
+
     await this.companyRepository.create({
       companyId: params.companyId,
       name: `${params.userDetails.username}`,

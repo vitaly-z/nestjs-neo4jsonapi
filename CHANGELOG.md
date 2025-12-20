@@ -1,3 +1,9 @@
+## [1.9.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.8.1...v1.9.0) (2025-12-20)
+
+### 🚀 Features
+
+* add conversion functions for Neo4j types and integrate into entity mapping ([32e4aa6](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/32e4aa6fa91d04afa7bf007df7b2197142cd75ba))
+
 ## [1.8.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.8.0...v1.8.1) (2025-12-18)
 
 ### 🐛 Bug Fixes

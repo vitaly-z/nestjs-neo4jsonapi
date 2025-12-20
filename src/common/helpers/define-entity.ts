@@ -1,18 +1,91 @@
 import { Injectable, Type } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ModuleRef } from "@nestjs/core";
+import { BaseConfigInterface } from "../../config/interfaces";
+import { JsonApiSerialiserFactory } from "../../core/jsonapi/factories/jsonapi.serialiser.factory";
+import { DescriptorBasedSerialiser } from "../../core/jsonapi/serialisers/descriptor.based.serialiser";
 import { mapEntity } from "../abstracts/entity";
 import { DataModelInterface } from "../interfaces/datamodel.interface";
 import {
   ComputedFieldDef,
+  CypherType,
   EntityDescriptor,
   EntitySchemaInput,
   FieldDef,
   RelationshipDef,
 } from "../interfaces/entity.schema.interface";
-import { BaseConfigInterface } from "../../config/interfaces";
-import { JsonApiSerialiserFactory } from "../../core/jsonapi/factories/jsonapi.serialiser.factory";
-import { DescriptorBasedSerialiser } from "../../core/jsonapi/serialisers/descriptor.based.serialiser";
+
+/**
+ * Convert Neo4j Integer {low, high} to JavaScript number
+ */
+function convertNeo4jNumber(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return value;
+  if (value.low !== undefined) return value.low;
+  return value;
+}
+
+/**
+ * Convert Neo4j Date to JavaScript Date object
+ */
+function convertNeo4jDate(value: any): Date | null {
+  if (!value) return null;
+
+  // Handle Neo4j Date format: {year: {low, high}, month: {low, high}, day: {low, high}}
+  if (value.year?.low !== undefined) {
+    return new Date(value.year.low, value.month.low - 1, value.day.low);
+  }
+
+  // Already a Date or string, convert to Date
+  return new Date(value);
+}
+
+/**
+ * Convert Neo4j DateTime to JavaScript Date object
+ */
+function convertNeo4jDateTime(value: any): Date | null {
+  if (!value) return null;
+
+  // Handle Neo4j DateTime format
+  if (value.year?.low !== undefined) {
+    return new Date(
+      value.year.low,
+      value.month.low - 1,
+      value.day.low,
+      value.hour?.low ?? 0,
+      value.minute?.low ?? 0,
+      value.second?.low ?? 0,
+    );
+  }
+
+  // Already a Date or string, convert to Date
+  return new Date(value);
+}
+
+/**
+ * Convert a Neo4j field value based on its CypherType
+ */
+function convertFieldValue(value: any, type: CypherType): any {
+  if (value === null || value === undefined) return value;
+
+  switch (type) {
+    case "number":
+      return convertNeo4jNumber(value);
+    case "date":
+      return convertNeo4jDate(value);
+    case "datetime":
+      return convertNeo4jDateTime(value);
+    case "number[]":
+      return Array.isArray(value) ? value.map(convertNeo4jNumber) : value;
+    case "date[]":
+      return Array.isArray(value) ? value.map((v) => convertNeo4jDate(v)) : value;
+    case "datetime[]":
+      return Array.isArray(value) ? value.map((v) => convertNeo4jDateTime(v)) : value;
+    // string, boolean, json, string[], boolean[], json[] - no conversion needed
+    default:
+      return value;
+  }
+}
 
 /**
  * Create a unique serialiser class for an entity descriptor.
@@ -155,9 +228,10 @@ export function defineEntity<T>() {
         ...mapEntity({ record: params.data }),
       };
 
-      // Map fields from data
-      for (const fieldName of fieldNames) {
-        result[fieldName] = params.data[fieldName];
+      // Map fields from data with type conversion
+      for (const [fieldName, fieldDef] of fieldEntries) {
+        const rawValue = params.data[fieldName];
+        result[fieldName] = convertFieldValue(rawValue, fieldDef.type);
       }
 
       // Evaluate computed fields

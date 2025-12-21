@@ -1,6 +1,7 @@
-import { TemplateData, DescriptorRelationship, DTOField } from "../types/template-data.interface";
+import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
 import { isFoundationImport, FOUNDATION_PACKAGE, resolveNewDtoImportPath, resolveDtoImportPath } from "../transformers/import-resolver";
 import { getValidationImports, getValidationDecorators, CypherType } from "../utils/type-utils";
+import { toPascalCase } from "../transformers/name-transformer";
 
 /**
  * Get the import path for a relationship's DTO
@@ -61,71 +62,118 @@ export function generatePostDTOFile(data: TemplateData): string {
           .join("\n")}\n`
       : "";
 
-  // Collect relationship property fields (from cardinality: "one" relationships, excluding contextKey)
-  const relPropertyFields: DTOField[] = [];
-  const relPropertyTypes: CypherType[] = [];
-
-  for (const rel of relationships) {
-    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
-      for (const field of rel.fields) {
-        const fieldType = field.type as CypherType;
-        relPropertyTypes.push(fieldType);
-        relPropertyFields.push({
-          name: field.name,
-          type: field.tsType,
-          isOptional: !field.required,
-          decorators: getValidationDecorators(fieldType, field.required),
-        });
-      }
-    }
-  }
-
-  // Combine regular fields with relationship property fields
-  const allDtoFields = [...dtoFields, ...relPropertyFields];
-
-  // Build attribute validation using combined fields
-  const attributeFields = allDtoFields
+  // Build attribute validation using ONLY regular fields (not relationship property fields)
+  const attributeFields = dtoFields
     .map((field) => {
       const optional = field.isOptional ? "?" : "";
       return `  ${field.decorators.join("\n  ")}\n  ${field.name}${optional}: ${field.type};`;
     })
     .join("\n\n");
 
-  // Get dynamic validator imports based on all field types (including relationship properties)
+  // Get dynamic validator imports based on field types
+  // Include relationship property field types for generating meta DTOs
+  const relPropertyTypes: CypherType[] = [];
+  for (const rel of relationships) {
+    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
+      for (const field of rel.fields) {
+        relPropertyTypes.push(field.type as CypherType);
+      }
+    }
+  }
   const fieldTypes = [...fields.map((f) => f.type as CypherType), ...relPropertyTypes];
   const validatorImports = getValidationImports(fieldTypes);
+
+  // Generate meta DTOs for relationships with fields
+  const metaDtoClasses: string[] = [];
+  for (const rel of relationships) {
+    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
+      const dtoKey = rel.dtoKey || rel.key;
+      const metaDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}MetaDTO`;
+      const wrapperDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}RelationshipDTO`;
+
+      // Generate meta DTO with relationship property fields
+      const metaFields = rel.fields
+        .map((field) => {
+          const fieldType = field.type as CypherType;
+          const decorators = getValidationDecorators(fieldType, field.required);
+          const optional = !field.required ? "?" : "";
+          return `  ${decorators.join("\n  ")}\n  ${field.name}${optional}: ${field.tsType};`;
+        })
+        .join("\n\n");
+
+      metaDtoClasses.push(`
+export class ${metaDtoName} {
+${metaFields}
+}
+
+export class ${wrapperDtoName} {
+  @ValidateNested()
+  @IsDefined()
+  @Type(() => ${rel.relatedEntity.name}DataDTO)
+  data: ${rel.relatedEntity.name}DataDTO;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => ${metaDtoName})
+  meta?: ${metaDtoName};
+}`);
+    }
+  }
 
   // Build relationship validation (exclude contextKey)
   const relationshipFields = relationships
     .filter((rel) => !rel.contextKey) // Exclude Author and other contextKey relationships
     .map((rel) => {
       const decorators = [];
-      const dtoClass =
-        rel.cardinality === "many" ? `${rel.relatedEntity.name}DataListDTO` : `${rel.relatedEntity.name}DataDTO`;
-
-      if (rel.cardinality === "many") {
-        decorators.push("@ValidateNested({ each: true })");
-      } else {
-        decorators.push("@ValidateNested()");
-      }
-
-      if (rel.nullable) {
-        decorators.push("@IsOptional()");
-      } else {
-        decorators.push("@IsDefined()");
-      }
-
-      decorators.push(`@Type(() => ${dtoClass})`);
-
-      const optional = rel.nullable ? "?" : "";
       const dtoKey = rel.dtoKey || rel.key;
-      return `  ${decorators.join("\n  ")}\n  ${dtoKey}${optional}: ${dtoClass};`;
+
+      // Check if this relationship has fields - if so, use the wrapper DTO
+      const hasFields = rel.fields && rel.fields.length > 0 && rel.cardinality === "one";
+
+      if (hasFields) {
+        // Use wrapper DTO with meta support
+        const wrapperDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}RelationshipDTO`;
+        decorators.push("@ValidateNested()");
+
+        if (rel.nullable) {
+          decorators.push("@IsOptional()");
+        } else {
+          decorators.push("@IsDefined()");
+        }
+
+        decorators.push(`@Type(() => ${wrapperDtoName})`);
+
+        const optional = rel.nullable ? "?" : "";
+        return `  ${decorators.join("\n  ")}\n  ${dtoKey}${optional}: ${wrapperDtoName};`;
+      } else {
+        // Regular relationship without fields
+        const dtoClass =
+          rel.cardinality === "many" ? `${rel.relatedEntity.name}DataListDTO` : `${rel.relatedEntity.name}DataDTO`;
+
+        if (rel.cardinality === "many") {
+          decorators.push("@ValidateNested({ each: true })");
+        } else {
+          decorators.push("@ValidateNested()");
+        }
+
+        if (rel.nullable) {
+          decorators.push("@IsOptional()");
+        } else {
+          decorators.push("@IsDefined()");
+        }
+
+        decorators.push(`@Type(() => ${dtoClass})`);
+
+        const optional = rel.nullable ? "?" : "";
+        return `  ${decorators.join("\n  ")}\n  ${dtoKey}${optional}: ${dtoClass};`;
+      }
     })
     .join("\n\n");
 
   return `import { Type } from "class-transformer";
 import { ${validatorImports.join(", ")} } from "class-validator";${dtoImportsCode}
 import { ${names.camelCase}Meta } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}.meta";
+${metaDtoClasses.join("\n")}
 
 export class ${names.pascalCase}PostAttributesDTO {
 ${attributeFields}

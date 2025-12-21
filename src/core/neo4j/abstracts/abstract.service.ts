@@ -14,7 +14,10 @@ export interface JsonApiDTOData {
   id: string;
   type: string;
   attributes?: Record<string, any>;
-  relationships?: Record<string, { data: Array<{ id: string; type: string }> | { id: string; type: string } | null }>;
+  relationships?: Record<string, {
+    data: Array<{ id: string; type: string }> | { id: string; type: string } | null;
+    meta?: Record<string, any>;
+  }>;
 }
 
 /**
@@ -150,19 +153,6 @@ export abstract class AbstractService<
       }
     }
 
-    // Map relationship property fields from attributes (edge properties stored flat in DTO)
-    for (const [_key, relDef] of Object.entries(this.descriptor.relationships)) {
-      if (relDef.fields && relDef.fields.length > 0) {
-        for (const field of relDef.fields) {
-          if (data.attributes && field.name in data.attributes) {
-            params[field.name] = data.attributes[field.name];
-          } else if (field.default !== undefined) {
-            params[field.name] = field.default;
-          }
-        }
-      }
-    }
-
     // Map relationships
     for (const [relationshipKey, relationshipDef] of Object.entries(this.descriptor.relationships)) {
       if (relationshipDef.contextKey) {
@@ -171,7 +161,8 @@ export abstract class AbstractService<
       } else {
         // Value comes from DTO relationships
         const dtoKey = relationshipDef.dtoKey || relationshipKey;
-        const relationshipData = data.relationships?.[dtoKey]?.data;
+        const relationshipEntry = data.relationships?.[dtoKey];
+        const relationshipData = relationshipEntry?.data;
 
         if (relationshipData) {
           if (Array.isArray(relationshipData)) {
@@ -182,6 +173,17 @@ export abstract class AbstractService<
         } else {
           // No data provided - use empty array for 'many', undefined for 'one'
           params[relationshipKey] = relationshipDef.cardinality === "many" ? [] : undefined;
+        }
+
+        // Map relationship property fields from relationship meta (edge properties)
+        if (relationshipDef.fields && relationshipDef.fields.length > 0 && relationshipEntry?.meta) {
+          for (const field of relationshipDef.fields) {
+            if (field.name in relationshipEntry.meta) {
+              params[field.name] = relationshipEntry.meta[field.name];
+            } else if (field.default !== undefined) {
+              params[field.name] = field.default;
+            }
+          }
         }
       }
     }
@@ -222,21 +224,10 @@ export abstract class AbstractService<
   protected mapDTOToPatchParams(data: JsonApiDTOData): { id: string; [key: string]: any } {
     const params: { id: string; [key: string]: any } = { id: data.id };
 
-    // Collect relationship property field names for validation
-    const relPropertyFieldNames: string[] = [];
-    for (const [_key, relDef] of Object.entries(this.descriptor.relationships)) {
-      if (relDef.fields && relDef.fields.length > 0) {
-        for (const field of relDef.fields) {
-          relPropertyFieldNames.push(field.name);
-        }
-      }
-    }
-
-    // Only include attributes that are explicitly provided
+    // Only include attributes that are explicitly provided (regular fields only)
     if (data.attributes) {
       for (const [key, value] of Object.entries(data.attributes)) {
-        // Include regular fields and relationship property fields
-        if (this.descriptor.fieldNames.includes(key) || relPropertyFieldNames.includes(key)) {
+        if (this.descriptor.fieldNames.includes(key)) {
           params[key] = value;
         }
       }
@@ -259,6 +250,15 @@ export abstract class AbstractService<
             params[relationshipKey] = relationshipData.id;
           } else {
             params[relationshipKey] = relationshipDef.cardinality === "many" ? [] : undefined;
+          }
+
+          // Map relationship property fields from relationship meta (edge properties)
+          if (relationshipDef.fields && relationshipDef.fields.length > 0 && relationshipValue?.meta) {
+            for (const field of relationshipDef.fields) {
+              if (field.name in relationshipValue.meta) {
+                params[field.name] = relationshipValue.meta[field.name];
+              }
+            }
           }
         }
       }

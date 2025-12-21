@@ -236,7 +236,7 @@ export function defineEntity<T>() {
               }
               return null;
             },
-            meta: true,
+            // No meta: true - relationship properties only appear in relationship.meta, not entity meta
           };
         }
       }

@@ -114,6 +114,7 @@ import {
 import { ${names.pascalCase}PostDTO } from "src/${targetDir}/${names.kebabCase}/dtos/${names.kebabCase}.post.dto";
 import { ${names.pascalCase}PutDTO } from "src/${targetDir}/${names.kebabCase}/dtos/${names.kebabCase}.put.dto";
 import { ${names.pascalCase}Descriptor } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}";
+import { ${names.camelCase}Meta } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}.meta";
 import { ${names.pascalCase}Service } from "src/${targetDir}/${names.kebabCase}/services/${names.kebabCase}.service";
 
 @UseGuards(JwtAuthGuard)
@@ -125,7 +126,7 @@ export class ${names.pascalCase}Controller {
     private readonly auditService: AuditService,
   ) {}
 
-  @Get(${names.pascalCase}Descriptor.model.endpoint)
+  @Get(${names.camelCase}Meta.endpoint)
   async findAll(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -144,7 +145,7 @@ export class ${names.pascalCase}Controller {
     reply.send(response);
   }
 
-  @Get(\`\${${names.pascalCase}Descriptor.model.endpoint}/:${names.camelCase}Id\`)
+  @Get(\`\${${names.camelCase}Meta.endpoint}/:${names.camelCase}Id\`)
   async findById(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -157,12 +158,12 @@ export class ${names.pascalCase}Controller {
     reply.send(response);
 
     this.auditService.createAuditEntry({
-      entityType: ${names.pascalCase}Descriptor.model.labelName,
+      entityType: ${names.camelCase}Meta.labelName,
       entityId: ${names.camelCase}Id,
     });
   }
 
-  @Post(${names.pascalCase}Descriptor.model.endpoint)
+  @Post(${names.camelCase}Meta.endpoint)
   async create(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -174,10 +175,10 @@ export class ${names.pascalCase}Controller {
 
     reply.send(response);
 
-    await this.cacheService.invalidateByType(${names.pascalCase}Descriptor.model.endpoint);
+    await this.cacheService.invalidateByType(${names.camelCase}Meta.endpoint);
   }
 
-  @Put(\`\${${names.pascalCase}Descriptor.model.endpoint}/:${names.camelCase}Id\`)
+  @Put(\`\${${names.camelCase}Meta.endpoint}/:${names.camelCase}Id\`)
   async update(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -193,10 +194,10 @@ export class ${names.pascalCase}Controller {
 
     reply.send(response);
 
-    await this.cacheService.invalidateByElement(${names.pascalCase}Descriptor.model.endpoint, body.data.id);
+    await this.cacheService.invalidateByElement(${names.camelCase}Meta.endpoint, body.data.id);
   }
 
-  @Delete(\`\${${names.pascalCase}Descriptor.model.endpoint}/:${names.camelCase}Id\`)
+  @Delete(\`\${${names.camelCase}Meta.endpoint}/:${names.camelCase}Id\`)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(
     @Req() req: AuthenticatedRequest,
@@ -206,7 +207,7 @@ export class ${names.pascalCase}Controller {
     await this.${names.camelCase}Service.delete({ id: ${names.camelCase}Id });
     reply.send();
 
-    await this.cacheService.invalidateByElement(${names.pascalCase}Descriptor.model.endpoint, ${names.camelCase}Id);
+    await this.cacheService.invalidateByElement(${names.camelCase}Meta.endpoint, ${names.camelCase}Id);
   }
 ${nestedRouteMethods}
 }

@@ -104,7 +104,7 @@ export function generatePutDTOFile(data: TemplateData): string {
 
   return `import { Type } from "class-transformer";
 import { ${validatorImports.join(", ")} } from "class-validator";${dtoImportsCode}
-import { ${names.pascalCase}Descriptor } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}";
+import { ${names.camelCase}Meta } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}.meta";
 
 export class ${names.pascalCase}PutAttributesDTO {
 ${attributeFields}
@@ -115,7 +115,7 @@ ${relationshipFields || "  // No relationships (excluding contextKey relationshi
 }
 
 export class ${names.pascalCase}PutDataDTO {
-  @Equals(${names.pascalCase}Descriptor.model.endpoint)
+  @Equals(${names.camelCase}Meta.endpoint)
   type: string;
 
   @IsUUID()

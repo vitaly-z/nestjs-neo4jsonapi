@@ -11,10 +11,10 @@ export function generateBaseDTOFile(data: TemplateData): string {
 
   return `import { Type } from "class-transformer";
 import { Equals, IsNotEmpty, IsUUID, ValidateNested } from "class-validator";
-import { ${names.pascalCase}Descriptor } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}";
+import { ${names.camelCase}Meta } from "src/${targetDir}/${names.kebabCase}/entities/${names.kebabCase}.meta";
 
 export class ${names.pascalCase}DTO {
-  @Equals(${names.pascalCase}Descriptor.model.endpoint)
+  @Equals(${names.camelCase}Meta.endpoint)
   type: string;
 
   @IsUUID()

@@ -25,6 +25,8 @@ export interface JsonRelationshipDefinition {
   relationshipName: string;
   toNode: boolean;
   nullable: boolean;
+  /** Fields stored on the relationship (edge properties). Only supported when single: true */
+  fields?: JsonFieldDefinition[];
 }
 
 /**

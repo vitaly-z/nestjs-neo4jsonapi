@@ -1,6 +1,6 @@
-import { TemplateData, DescriptorRelationship } from "../types/template-data.interface";
+import { TemplateData, DescriptorRelationship, DTOField } from "../types/template-data.interface";
 import { isFoundationImport, FOUNDATION_PACKAGE, resolveNewDtoImportPath, resolveDtoImportPath } from "../transformers/import-resolver";
-import { getValidationImports, CypherType } from "../utils/type-utils";
+import { getValidationImports, getValidationDecorators, CypherType } from "../utils/type-utils";
 
 /**
  * Get the import path for a relationship's DTO
@@ -61,16 +61,38 @@ export function generatePostDTOFile(data: TemplateData): string {
           .join("\n")}\n`
       : "";
 
-  // Build attribute validation using pre-computed decorators from dtoFields
-  const attributeFields = dtoFields
+  // Collect relationship property fields (from cardinality: "one" relationships, excluding contextKey)
+  const relPropertyFields: DTOField[] = [];
+  const relPropertyTypes: CypherType[] = [];
+
+  for (const rel of relationships) {
+    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
+      for (const field of rel.fields) {
+        const fieldType = field.type as CypherType;
+        relPropertyTypes.push(fieldType);
+        relPropertyFields.push({
+          name: field.name,
+          type: field.tsType,
+          isOptional: !field.required,
+          decorators: getValidationDecorators(fieldType, field.required),
+        });
+      }
+    }
+  }
+
+  // Combine regular fields with relationship property fields
+  const allDtoFields = [...dtoFields, ...relPropertyFields];
+
+  // Build attribute validation using combined fields
+  const attributeFields = allDtoFields
     .map((field) => {
       const optional = field.isOptional ? "?" : "";
       return `  ${field.decorators.join("\n  ")}\n  ${field.name}${optional}: ${field.type};`;
     })
     .join("\n\n");
 
-  // Get dynamic validator imports based on field types
-  const fieldTypes = fields.map((f) => f.type as CypherType);
+  // Get dynamic validator imports based on all field types (including relationship properties)
+  const fieldTypes = [...fields.map((f) => f.type as CypherType), ...relPropertyTypes];
   const validatorImports = getValidationImports(fieldTypes);
 
   // Build relationship validation (exclude contextKey)

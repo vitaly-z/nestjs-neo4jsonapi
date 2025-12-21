@@ -222,6 +222,29 @@ export function defineEntity<T>() {
       }
     }
 
+    // Auto-generate computed fields for relationship properties (edge fields)
+    // These are stored on the relationship, not the node, and are retrieved as aliased columns
+    const autoComputed: { [key: string]: ComputedFieldDef } = {};
+    for (const [relName, relDef] of Object.entries(relationships)) {
+      if (relDef.fields && relDef.fields.length > 0) {
+        for (const field of relDef.fields) {
+          const recordKey = `${nodeName}_${relName}_relationship_${field.name}`;
+          autoComputed[field.name] = {
+            compute: (params) => {
+              if (params.record?.get) {
+                return convertFieldValue(params.record.get(recordKey), field.type);
+              }
+              return null;
+            },
+            meta: true,
+          };
+        }
+      }
+    }
+
+    // Merge auto-computed with user-provided computed (user takes precedence)
+    const mergedComputed = { ...autoComputed, ...computed };
+
     // Auto-generate mapper function from fields and computed definitions
     const mapper = (params: { data: any; record: any; entityFactory: any; name?: string }): T => {
       const result: any = {
@@ -234,8 +257,8 @@ export function defineEntity<T>() {
         result[fieldName] = convertFieldValue(rawValue, fieldDef.type);
       }
 
-      // Evaluate computed fields
-      for (const [fieldName, def] of Object.entries(computed) as [string, ComputedFieldDef][]) {
+      // Evaluate computed fields (includes auto-generated relationship property fields)
+      for (const [fieldName, def] of Object.entries(mergedComputed) as [string, ComputedFieldDef][]) {
         result[fieldName] = def.compute(params);
       }
 
@@ -263,7 +286,7 @@ export function defineEntity<T>() {
       requiredFields,
       fieldDefaults,
       fields: fields as { [K in keyof Partial<T>]?: FieldDef },
-      computed: computed as { [K in keyof Partial<T>]?: ComputedFieldDef },
+      computed: mergedComputed as { [K in keyof Partial<T>]?: ComputedFieldDef },
       injectServices,
 
       // Auto-generated database config

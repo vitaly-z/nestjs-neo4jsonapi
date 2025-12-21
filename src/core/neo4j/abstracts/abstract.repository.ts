@@ -125,6 +125,8 @@ export abstract class AbstractRepository<
 
   /**
    * Builds the RETURN statement including all relationships from descriptor
+   * For relationships with fields (edge properties), uses named relationship patterns
+   * to capture the properties and return them as aliased columns
    */
   protected buildReturnStatement(): string {
     const { nodeName, labelName } = this.descriptor.model;
@@ -142,17 +144,29 @@ export abstract class AbstractRepository<
     // Build relationship matches from descriptor
     for (const [name, rel] of Object.entries(relationships)) {
       const relatedNodeName = `${nodeName}_${name}`;
+      const relAlias = `${nodeName}_${name}_relationship`;
       const isOptional = rel.cardinality === "many";
       const matchType = isOptional ? "OPTIONAL MATCH" : "MATCH";
 
+      // Use named relationship pattern when fields exist to capture edge properties
+      const hasFields = rel.fields && rel.fields.length > 0;
+      const relPattern = hasFields ? `[${relAlias}:${rel.relationship}]` : `[:${rel.relationship}]`;
+
       if (rel.direction === "in") {
         // (related)-[:REL]->(this)
-        query += `${matchType} (${nodeName})<-[:${rel.relationship}]-(${relatedNodeName}:${rel.model.labelName})\n`;
+        query += `${matchType} (${nodeName})<-${relPattern}-(${relatedNodeName}:${rel.model.labelName})\n`;
       } else {
         // (this)-[:REL]->(related)
-        query += `${matchType} (${nodeName})-[:${rel.relationship}]->(${relatedNodeName}:${rel.model.labelName})\n`;
+        query += `${matchType} (${nodeName})-${relPattern}->(${relatedNodeName}:${rel.model.labelName})\n`;
       }
       returnParts.push(relatedNodeName);
+
+      // Add aliased columns for relationship properties (edge fields)
+      if (hasFields) {
+        for (const field of rel.fields!) {
+          returnParts.push(`${relAlias}.${field.name} AS ${nodeName}_${name}_relationship_${field.name}`);
+        }
+      }
     }
 
     query += `RETURN ${returnParts.join(", ")}`;
@@ -428,6 +442,20 @@ export abstract class AbstractRepository<
       // Add param to query params
       query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
 
+      // Build relationship properties resolver if relationship has fields
+      let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
+      if (rel.fields && rel.fields.length > 0 && paramValue) {
+        relationshipProperties = (_id: string) => {
+          const props: Record<string, any> = {};
+          for (const field of rel.fields!) {
+            if (mergedParams[field.name] !== undefined) {
+              props[field.name] = mergedParams[field.name];
+            }
+          }
+          return props;
+        };
+      }
+
       query.query += updateRelationshipQuery({
         node: nodeName,
         relationshipName: rel.relationship,
@@ -435,6 +463,8 @@ export abstract class AbstractRepository<
         label: rel.model.labelName,
         param: name,
         values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+        relationshipProperties,
+        queryParams: query.queryParams,
       });
     }
 
@@ -506,6 +536,20 @@ export abstract class AbstractRepository<
       // Add param to query params
       query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
 
+      // Build relationship properties resolver if relationship has fields
+      let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
+      if (rel.fields && rel.fields.length > 0 && paramValue) {
+        relationshipProperties = (_id: string) => {
+          const props: Record<string, any> = {};
+          for (const field of rel.fields!) {
+            if (params[field.name] !== undefined) {
+              props[field.name] = params[field.name];
+            }
+          }
+          return props;
+        };
+      }
+
       query.query += updateRelationshipQuery({
         node: nodeName,
         relationshipName: rel.relationship,
@@ -513,6 +557,8 @@ export abstract class AbstractRepository<
         label: rel.model.labelName,
         param: name,
         values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+        relationshipProperties,
+        queryParams: query.queryParams,
       });
     }
 
@@ -595,6 +641,21 @@ export abstract class AbstractRepository<
     // Update only the relationships that were passed
     for (const [name, rel] of relationshipsToUpdate) {
       const paramValue = params[name];
+
+      // Build relationship properties resolver if relationship has fields
+      let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
+      if (rel.fields && rel.fields.length > 0 && paramValue) {
+        relationshipProperties = (_id: string) => {
+          const props: Record<string, any> = {};
+          for (const field of rel.fields!) {
+            if (params[field.name] !== undefined) {
+              props[field.name] = params[field.name];
+            }
+          }
+          return props;
+        };
+      }
+
       query.query += updateRelationshipQuery({
         node: nodeName,
         relationshipName: rel.relationship,
@@ -602,6 +663,8 @@ export abstract class AbstractRepository<
         label: rel.model.labelName,
         param: name,
         values: paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [],
+        relationshipProperties,
+        queryParams: query.queryParams,
       });
     }
 

@@ -1,5 +1,5 @@
 import { JsonRelationshipDefinition } from "../types/json-schema.interface";
-import { DescriptorRelationship } from "../types/template-data.interface";
+import { DescriptorRelationship, TemplateField } from "../types/template-data.interface";
 import { toCamelCase, pluralize, transformNames } from "./name-transformer";
 import {
   isNewEntityStructure,
@@ -7,6 +7,7 @@ import {
   getDescriptorName,
   resolveNewEntityImportPath,
 } from "./import-resolver";
+import { normalizeCypherType, getTsType, CypherType } from "../utils/type-utils";
 
 /**
  * Map JSON relationship definition to descriptor relationship
@@ -72,6 +73,33 @@ export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRela
       })
     : undefined;
 
+  // Process relationship property fields (only supported for cardinality: "one")
+  let fields: TemplateField[] | undefined;
+  if (rel.fields && rel.fields.length > 0) {
+    if (!rel.single) {
+      throw new Error(
+        `Relationship "${rel.name}" has fields but is not single (cardinality: one). ` +
+          `Relationship properties are only supported for single relationships.`
+      );
+    }
+
+    fields = rel.fields.map((field) => {
+      const normalizedType = normalizeCypherType(field.type);
+      if (!normalizedType) {
+        throw new Error(
+          `Invalid field type "${field.type}" for relationship field "${field.name}" ` +
+            `on relationship "${rel.name}".`
+        );
+      }
+      return {
+        name: field.name,
+        type: normalizedType,
+        required: !field.nullable,
+        tsType: getTsType(normalizedType),
+      };
+    });
+  }
+
   return {
     key,
     model,
@@ -91,6 +119,7 @@ export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRela
     isNewStructure,
     descriptorName,
     importPath,
+    fields,
   };
 }
 

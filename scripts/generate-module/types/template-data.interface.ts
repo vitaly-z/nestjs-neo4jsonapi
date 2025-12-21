@@ -55,6 +55,8 @@ export interface DescriptorRelationship {
   isNewStructure: boolean; // True if related entity uses Descriptor pattern (no .meta.ts file)
   descriptorName?: string; // e.g., "CharacterDescriptor" (only for NEW structure)
   importPath?: string; // Import path for NEW structure entities
+  // Relationship property fields (stored on the edge)
+  fields?: TemplateField[]; // Only supported when cardinality: "one"
 }
 
 /**

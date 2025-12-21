@@ -150,6 +150,19 @@ export abstract class AbstractService<
       }
     }
 
+    // Map relationship property fields from attributes (edge properties stored flat in DTO)
+    for (const [_key, relDef] of Object.entries(this.descriptor.relationships)) {
+      if (relDef.fields && relDef.fields.length > 0) {
+        for (const field of relDef.fields) {
+          if (data.attributes && field.name in data.attributes) {
+            params[field.name] = data.attributes[field.name];
+          } else if (field.default !== undefined) {
+            params[field.name] = field.default;
+          }
+        }
+      }
+    }
+
     // Map relationships
     for (const [relationshipKey, relationshipDef] of Object.entries(this.descriptor.relationships)) {
       if (relationshipDef.contextKey) {
@@ -209,10 +222,21 @@ export abstract class AbstractService<
   protected mapDTOToPatchParams(data: JsonApiDTOData): { id: string; [key: string]: any } {
     const params: { id: string; [key: string]: any } = { id: data.id };
 
+    // Collect relationship property field names for validation
+    const relPropertyFieldNames: string[] = [];
+    for (const [_key, relDef] of Object.entries(this.descriptor.relationships)) {
+      if (relDef.fields && relDef.fields.length > 0) {
+        for (const field of relDef.fields) {
+          relPropertyFieldNames.push(field.name);
+        }
+      }
+    }
+
     // Only include attributes that are explicitly provided
     if (data.attributes) {
       for (const [key, value] of Object.entries(data.attributes)) {
-        if (this.descriptor.fieldNames.includes(key)) {
+        // Include regular fields and relationship property fields
+        if (this.descriptor.fieldNames.includes(key) || relPropertyFieldNames.includes(key)) {
           params[key] = value;
         }
       }

@@ -87,6 +87,23 @@ export function generateEntityFile(data: TemplateData): string {
     })
     .join("\n");
 
+  // Collect relationship property fields for computed fields
+  const relationshipPropertyFields: Array<{
+    relKey: string;
+    field: { name: string; type: string; tsType: string };
+  }> = [];
+
+  for (const rel of relationships) {
+    if (rel.fields && rel.fields.length > 0) {
+      for (const field of rel.fields) {
+        relationshipPropertyFields.push({
+          relKey: rel.key,
+          field: { name: field.name, type: field.type, tsType: field.tsType },
+        });
+      }
+    }
+  }
+
   // Build relationship definitions for descriptor
   const relationshipDefinitions = relationships
     .map((rel) => {
@@ -103,9 +120,39 @@ export function generateEntityFile(data: TemplateData): string {
         parts.push(`dtoKey: "${rel.dtoKey}"`);
       }
 
+      // Add relationship property fields if present
+      if (rel.fields && rel.fields.length > 0) {
+        const fieldsDef = rel.fields
+          .map((f) => `{ name: "${f.name}", type: "${f.type}", required: ${f.required} }`)
+          .join(", ");
+        parts.push(`fields: [${fieldsDef}]`);
+      }
+
       return `    ${rel.key}: {\n      ${parts.join(",\n      ")},\n    },`;
     })
     .join("\n");
+
+  // Build computed field definitions for relationship properties
+  const computedDefinitions =
+    relationshipPropertyFields.length > 0
+      ? relationshipPropertyFields
+          .map(({ relKey, field }) => {
+            const recordKey = `${nodeName}_${relKey}_relationship_${field.name}`;
+            return `    ${field.name}: {
+      compute: (params) => params.record?.get?.("${recordKey}") ?? null,
+      meta: true,
+    },`;
+          })
+          .join("\n")
+      : "";
+
+  // Build computed section for descriptor if we have relationship property fields
+  const computedSection = computedDefinitions
+    ? `
+  computed: {
+${computedDefinitions}
+  },`
+    : "";
 
   // Build all import lines
   const importLines: string[] = [];
@@ -123,6 +170,12 @@ export function generateEntityFile(data: TemplateData): string {
     importLines.push(`import { ${items.join(", ")} } from "${importPath}";`);
   }
 
+  // Build relationship property type definitions for entity type
+  const relationshipPropertyTypes =
+    relationshipPropertyFields.length > 0
+      ? relationshipPropertyFields.map(({ field }) => `  ${field.name}?: ${field.tsType};`).join("\n")
+      : "";
+
   return `${importLines.join("\n")}
 
 /**
@@ -135,7 +188,7 @@ ${fields
     return `  ${field.name}${optional}: ${field.tsType};`;
   })
   .join("\n")}
-
+${relationshipPropertyTypes ? `\n  // Relationship property fields (stored on edges)\n${relationshipPropertyTypes}\n` : ""}
 ${data.isCompanyScoped ? "  company: Company;\n" : ""}${relationships
   .map((rel) => {
     const optional = rel.nullable ? "?" : "";
@@ -163,7 +216,7 @@ ${fieldDefinitions}
 
   relationships: {
 ${relationshipDefinitions}
-  },
+  },${computedSection}
 });
 
 export type ${names.pascalCase}DescriptorType = typeof ${names.pascalCase}Descriptor;

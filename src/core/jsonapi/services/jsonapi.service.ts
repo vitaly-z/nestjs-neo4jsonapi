@@ -230,6 +230,18 @@ export class JsonApiService {
             };
           }
 
+          // Add relationship meta (for edge properties like position)
+          if (relationship.meta) {
+            resourceLinkage.meta = {};
+            for (const metaKey of Object.keys(relationship.meta)) {
+              if (typeof relationship.meta[metaKey] === "function") {
+                resourceLinkage.meta[metaKey] = await relationship.meta[metaKey](data);
+              } else {
+                resourceLinkage.meta[metaKey] = (data as any)[relationship.meta[metaKey]];
+              }
+            }
+          }
+
           if (!relationship.excluded && additionalIncludeds.length > 0) includedElements.push(...additionalIncludeds);
 
           serialisedData.relationships[relationship.name ?? key] = resourceLinkage;

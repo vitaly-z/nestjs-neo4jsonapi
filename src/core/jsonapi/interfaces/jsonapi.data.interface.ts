@@ -27,6 +27,9 @@ export interface JsonApiDataInterface {
       links?: {
         related?: transformFunction<any>;
       };
+      meta?: {
+        [key: string]: string | transformFunction<any>;
+      };
     };
   };
 }

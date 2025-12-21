@@ -106,6 +106,14 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
         if (relDef.dtoKey && relDef.dtoKey !== relName) {
           relationship.name = relDef.dtoKey;
         }
+        // Add relationship meta for edge properties (stored on the relationship)
+        if (relDef.fields && relDef.fields.length > 0) {
+          relationship.meta = {};
+          for (const field of relDef.fields) {
+            // Maps entity property (populated by computed field) to relationship meta
+            relationship.meta[field.name] = field.name;
+          }
+        }
         relationships[relName] = relationship;
       }
     }

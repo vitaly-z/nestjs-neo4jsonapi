@@ -60,6 +60,21 @@ export interface ComputedFieldDef<T = any> {
 }
 
 /**
+ * Field definition for relationship properties
+ * These are stored on the Neo4j relationship (edge), not on nodes
+ */
+export interface RelationshipFieldDef {
+  /** Field name */
+  name: string;
+  /** Neo4j/Cypher data type */
+  type: CypherType;
+  /** Whether the field is required (default: false) */
+  required?: boolean;
+  /** Default value */
+  default?: any;
+}
+
+/**
  * Relationship definition for entity schema
  * Defines how this entity relates to another entity
  */
@@ -76,6 +91,8 @@ export interface RelationshipDef {
   contextKey?: string;
   /** DTO key override for the relationships object (e.g., 'topics' instead of relationship key 'topic') */
   dtoKey?: string;
+  /** Fields stored on the relationship (edge properties). Only supported for cardinality: 'one' */
+  fields?: RelationshipFieldDef[];
 }
 
 /**

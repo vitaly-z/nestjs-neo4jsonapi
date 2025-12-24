@@ -138,7 +138,7 @@ export class S3Service {
         });
 
     const signedUrl = await getSignedUrl(this.s3Client, command, {
-      expiresIn: 3600,
+      expiresIn: 12 * 60 * 60,
     });
 
     return signedUrl;
@@ -157,7 +157,7 @@ export class S3Service {
           blobName: params.key,
           permissions: BlobSASPermissions.parse("racw"), // Read, Add, Create, Write permissions
           startsOn: new Date(new Date().valueOf() - 15 * 60 * 1000), // Start 15 minutes ago to account for clock skew
-          expiresOn: new Date(new Date().valueOf() + 3600 * 1000), // 1 hour from now
+          expiresOn: new Date(new Date().valueOf() + 12 * 60 * 60 * 1000), // 12 hours from now
           protocol: SASProtocol.Https,
           contentType: params.contentType, // This helps Azure validate the content type
         },
@@ -311,7 +311,7 @@ export class S3Service {
         });
 
         const signedUrl = await getSignedUrl(this.s3Client, command, {
-          expiresIn: params.ttl ?? 3600,
+          expiresIn: params.ttl ?? 12 * 60 * 60,
         });
 
         return signedUrl;
@@ -338,7 +338,7 @@ export class S3Service {
               blobName: params.key,
               permissions: BlobSASPermissions.parse("r"), // Read permission
               startsOn: new Date(new Date().valueOf() - 15 * 60 * 1000), // Start 15 minutes ago to account for clock skew
-              expiresOn: new Date(new Date().valueOf() + (params.ttl ?? 3600) * 1000),
+              expiresOn: new Date(new Date().valueOf() + (params.ttl ?? 12 * 60 * 60) * 1000),
               protocol: SASProtocol.Https,
             },
             credential,

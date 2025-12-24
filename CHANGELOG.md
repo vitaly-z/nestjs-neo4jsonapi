@@ -1,3 +1,9 @@
+## [1.12.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.11.0...v1.12.0) (2025-12-24)
+
+### 🚀 Features
+
+* extend expiration time for signed URLs to 12 hours ([acb0a12](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/acb0a12822364e9d4ad77ceadc4c4ef1519996a7))
+
 ## [1.11.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.10.0...v1.11.0) (2025-12-24)
 
 ### 🚀 Features

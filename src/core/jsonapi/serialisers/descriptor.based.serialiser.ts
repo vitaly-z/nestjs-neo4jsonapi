@@ -108,10 +108,18 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
         }
         // Add relationship meta for edge properties (stored on the relationship)
         if (relDef.fields && relDef.fields.length > 0) {
-          relationship.meta = {};
-          for (const field of relDef.fields) {
-            // Maps entity property (populated by computed field) to relationship meta
-            relationship.meta[field.name] = field.name;
+          if (relDef.cardinality === "one") {
+            // SINGLE relationship: use relationship-level meta (existing behavior)
+            relationship.meta = {};
+            for (const field of relDef.fields) {
+              // Maps entity property (populated by computed field) to relationship meta
+              relationship.meta[field.name] = field.name;
+            }
+          } else {
+            // MANY relationship: use per-item meta
+            relationship.perItemMeta = true;
+            relationship.edgePropsKey = `${relName}EdgeProps`;
+            relationship.edgeFields = relDef.fields;
           }
         }
         relationships[relName] = relationship;

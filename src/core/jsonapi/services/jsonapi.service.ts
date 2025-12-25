@@ -218,6 +218,7 @@ export class JsonApiService {
             await relationship.data?.create(),
             paginator,
             relationship,
+            data, // Pass parent entity for per-item meta access
           );
 
           resourceLinkage = relationship.forceSingle === true ? { data: minimalData[0] } : { data: minimalData };
@@ -257,6 +258,7 @@ export class JsonApiService {
               await relationship.data?.create(),
               paginator,
               relationship,
+              item, // Pass parent item for per-item meta access
             );
 
             if (!relationship.excluded && additionalIncludeds.length > 0) includedElements.push(...additionalIncludeds);
@@ -295,6 +297,7 @@ export class JsonApiService {
     builder: R,
     paginator?: JsonApiPaginator,
     relationship?: any,
+    parentEntity?: any,
   ): Promise<{
     minimalData: any | any[];
     relationshipLink: any;
@@ -329,9 +332,7 @@ export class JsonApiService {
         const serialisedData = serialisedResults.map((result) => result.serialisedData);
         const includedElements = serialisedResults.map((result) => result.includedElements).flat();
 
-        response.minimalData = serialisedData.map((result) => {
-          return { type: result.type, id: result.id };
-        });
+        response.minimalData = this.buildMinimalDataWithPerItemMeta(serialisedData, relationship, parentEntity);
 
         this._addToIncluded(response.additionalIncludeds, includedElements.concat(serialisedData));
       } else {
@@ -344,9 +345,7 @@ export class JsonApiService {
 
         const includedElements = serialisedResults.map((result) => result.includedElements).flat();
 
-        response.minimalData = serialisedData.map((result) => {
-          return { type: result.type, id: result.id };
-        });
+        response.minimalData = this.buildMinimalDataWithPerItemMeta(serialisedData, relationship, parentEntity);
 
         this._addToIncluded(response.additionalIncludeds, includedElements.concat(serialisedData));
       }
@@ -368,5 +367,34 @@ export class JsonApiService {
     }
 
     return response;
+  }
+
+  /**
+   * Build minimal data array with per-item meta for MANY relationships with edge properties.
+   * If the relationship has perItemMeta flag, adds meta from the EdgePropsMap to each item.
+   */
+  private buildMinimalDataWithPerItemMeta(
+    serialisedData: any[],
+    relationship?: any,
+    parentEntity?: any,
+  ): any[] {
+    if (relationship?.perItemMeta && relationship?.edgePropsKey && parentEntity) {
+      const edgePropsMap = parentEntity[relationship.edgePropsKey];
+      return serialisedData.map((result) => {
+        const minData: any = { type: result.type, id: result.id };
+        if (edgePropsMap && edgePropsMap[result.id] && relationship.edgeFields) {
+          minData.meta = {};
+          for (const field of relationship.edgeFields) {
+            if (edgePropsMap[result.id][field.name] !== undefined) {
+              minData.meta[field.name] = edgePropsMap[result.id][field.name];
+            }
+          }
+        }
+        return minData;
+      });
+    }
+
+    // Default behavior: return type and id only
+    return serialisedData.map((result) => ({ type: result.type, id: result.id }));
   }
 }

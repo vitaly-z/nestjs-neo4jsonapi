@@ -73,16 +73,9 @@ export function mapRelationship(rel: JsonRelationshipDefinition): DescriptorRela
       })
     : undefined;
 
-  // Process relationship property fields (only supported for cardinality: "one")
+  // Process relationship property fields (supported for both "one" and "many" cardinality)
   let fields: TemplateField[] | undefined;
   if (rel.fields && rel.fields.length > 0) {
-    if (!rel.single) {
-      throw new Error(
-        `Relationship "${rel.name}" has fields but is not single (cardinality: one). ` +
-          `Relationship properties are only supported for single relationships.`
-      );
-    }
-
     fields = rel.fields.map((field) => {
       const normalizedType = normalizeCypherType(field.type);
       if (!normalizedType) {

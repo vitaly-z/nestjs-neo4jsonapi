@@ -228,6 +228,13 @@ export class EntityFactory {
       }
     }
 
+    // Process edge properties collections for MANY relationships with fields
+    this.processEdgePropsCollections({
+      entity,
+      record: params.record,
+      parentName: params.name,
+    });
+
     // Process dynamic patterns
     this.processDynamicTokens({
       model: params.model,
@@ -437,5 +444,43 @@ export class EntityFactory {
 
     // Handle direct data
     return data;
+  }
+
+  /**
+   * Process edge properties collections for MANY relationships with fields.
+   * Looks for *_edgePropsCollection keys in the record and converts them
+   * to EdgeProps maps on the entity.
+   */
+  private processEdgePropsCollections(params: { entity: any; record: any; parentName: string }): void {
+    if (!params.record?.keys) return;
+
+    // Look for edge props collection keys (e.g., "photograph_photographs_edgePropsCollection")
+    const collectionSuffix = "_edgePropsCollection";
+    const prefix = `${params.parentName}_`;
+
+    for (const key of params.record.keys) {
+      if (key.startsWith(prefix) && key.endsWith(collectionSuffix)) {
+        // Extract relationship name from key
+        // e.g., "contactsheet_photographs_edgePropsCollection" -> "photographs"
+        const relNameWithSuffix = key.slice(prefix.length);
+        const relName = relNameWithSuffix.slice(0, -collectionSuffix.length);
+
+        const collection = params.record.get(key);
+        if (!collection || !Array.isArray(collection)) continue;
+
+        // Build edge props map from collection
+        const edgePropsMap: Record<string, Record<string, any>> = {};
+        for (const item of collection) {
+          if (item?.nodeId && item?.edgeProps) {
+            edgePropsMap[item.nodeId] = item.edgeProps;
+          }
+        }
+
+        // Store on entity
+        if (Object.keys(edgePropsMap).length > 0) {
+          params.entity[`${relName}EdgeProps`] = edgePropsMap;
+        }
+      }
+    }
   }
 }

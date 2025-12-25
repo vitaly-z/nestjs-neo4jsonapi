@@ -125,8 +125,9 @@ export abstract class AbstractRepository<
 
   /**
    * Builds the RETURN statement including all relationships from descriptor
-   * For relationships with fields (edge properties), uses named relationship patterns
-   * to capture the properties and return them as aliased columns
+   * For relationships with fields (edge properties):
+   * - SINGLE relationships: uses aliased columns for edge properties
+   * - MANY relationships: uses COLLECT to gather edge properties per related item
    */
   protected buildReturnStatement(): string {
     const { nodeName, labelName } = this.descriptor.model;
@@ -134,6 +135,7 @@ export abstract class AbstractRepository<
 
     let query = "";
     const returnParts = [nodeName];
+    const collectParts: string[] = []; // For MANY relationships with edge fields
 
     // Match company relationship only for company-scoped entities
     if (isCompanyScoped) {
@@ -162,15 +164,32 @@ export abstract class AbstractRepository<
       }
       returnParts.push(relatedNodeName);
 
-      // Add aliased columns for relationship properties (edge fields)
+      // Add edge properties handling
       if (hasFields) {
-        for (const field of rel.fields!) {
-          returnParts.push(`${relAlias}.${field.name} AS ${nodeName}_${name}_relationship_${field.name}`);
+        if (rel.cardinality === "one") {
+          // SINGLE relationship: aliased columns for edge properties (existing behavior)
+          for (const field of rel.fields!) {
+            returnParts.push(`${relAlias}.${field.name} AS ${nodeName}_${name}_relationship_${field.name}`);
+          }
+        } else {
+          // MANY relationship: use COLLECT to gather edge properties per related item
+          const edgePropsFields = rel.fields!.map((f) => `${f.name}: ${relAlias}.${f.name}`).join(", ");
+          collectParts.push(
+            `COLLECT(CASE WHEN ${relatedNodeName} IS NOT NULL THEN { nodeId: ${relatedNodeName}.id, edgeProps: {${edgePropsFields}} } END) AS ${nodeName}_${name}_edgePropsCollection`,
+          );
         }
       }
     }
 
-    query += `RETURN ${returnParts.join(", ")}`;
+    // Build the final query
+    if (collectParts.length > 0) {
+      // Need WITH clause to collect before RETURN
+      query += `WITH ${returnParts.join(", ")}, ${collectParts.join(", ")}\n`;
+      query += `RETURN ${returnParts.join(", ")}, ${collectParts.map((p) => p.split(" AS ")[1]).join(", ")}`;
+    } else {
+      query += `RETURN ${returnParts.join(", ")}`;
+    }
+
     return query;
   }
 
@@ -446,15 +465,23 @@ export abstract class AbstractRepository<
       // Build relationship properties resolver if relationship has fields
       let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
       if (rel.fields && rel.fields.length > 0 && paramValue) {
-        relationshipProperties = (_id: string) => {
-          const props: Record<string, any> = {};
-          for (const field of rel.fields!) {
-            if (mergedParams[field.name] !== undefined) {
-              props[field.name] = mergedParams[field.name];
+        const edgePropsMap = mergedParams[`${name}EdgeProps`];
+
+        if (edgePropsMap) {
+          // MANY relationship: use per-item edge properties map
+          relationshipProperties = (id: string) => edgePropsMap[id] || {};
+        } else {
+          // SINGLE relationship: all edges get same props (existing behavior)
+          relationshipProperties = (_id: string) => {
+            const props: Record<string, any> = {};
+            for (const field of rel.fields!) {
+              if (mergedParams[field.name] !== undefined) {
+                props[field.name] = mergedParams[field.name];
+              }
             }
-          }
-          return props;
-        };
+            return props;
+          };
+        }
       }
 
       query.query += updateRelationshipQuery({
@@ -540,15 +567,23 @@ export abstract class AbstractRepository<
       // Build relationship properties resolver if relationship has fields
       let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
       if (rel.fields && rel.fields.length > 0 && paramValue) {
-        relationshipProperties = (_id: string) => {
-          const props: Record<string, any> = {};
-          for (const field of rel.fields!) {
-            if (params[field.name] !== undefined) {
-              props[field.name] = params[field.name];
+        const edgePropsMap = params[`${name}EdgeProps`];
+
+        if (edgePropsMap) {
+          // MANY relationship: use per-item edge properties map
+          relationshipProperties = (id: string) => edgePropsMap[id] || {};
+        } else {
+          // SINGLE relationship: all edges get same props (existing behavior)
+          relationshipProperties = (_id: string) => {
+            const props: Record<string, any> = {};
+            for (const field of rel.fields!) {
+              if (params[field.name] !== undefined) {
+                props[field.name] = params[field.name];
+              }
             }
-          }
-          return props;
-        };
+            return props;
+          };
+        }
       }
 
       query.query += updateRelationshipQuery({
@@ -646,15 +681,23 @@ export abstract class AbstractRepository<
       // Build relationship properties resolver if relationship has fields
       let relationshipProperties: ((id: string) => Record<string, any>) | undefined;
       if (rel.fields && rel.fields.length > 0 && paramValue) {
-        relationshipProperties = (_id: string) => {
-          const props: Record<string, any> = {};
-          for (const field of rel.fields!) {
-            if (params[field.name] !== undefined) {
-              props[field.name] = params[field.name];
+        const edgePropsMap = params[`${name}EdgeProps`];
+
+        if (edgePropsMap) {
+          // MANY relationship: use per-item edge properties map
+          relationshipProperties = (id: string) => edgePropsMap[id] || {};
+        } else {
+          // SINGLE relationship: all edges get same props (existing behavior)
+          relationshipProperties = (_id: string) => {
+            const props: Record<string, any> = {};
+            for (const field of rel.fields!) {
+              if (params[field.name] !== undefined) {
+                props[field.name] = params[field.name];
+              }
             }
-          }
-          return props;
-        };
+            return props;
+          };
+        }
       }
 
       query.query += updateRelationshipQuery({
@@ -667,6 +710,21 @@ export abstract class AbstractRepository<
         relationshipProperties,
         queryParams: query.queryParams,
       });
+    }
+
+    // Handle edge-only updates (update edge properties without changing linked items)
+    for (const [name, rel] of Object.entries(relationships)) {
+      const edgePropsUpdate = params[`${name}EdgePropsUpdate`];
+      if (edgePropsUpdate && rel.fields && rel.fields.length > 0) {
+        query.queryParams[`${name}EdgePropsMap`] = edgePropsUpdate;
+        const edgePropsFields = rel.fields.map((f) => `rel.${f.name} = $${name}EdgePropsMap[relatedId].${f.name}`);
+        query.query += `
+          WITH ${nodeName}
+          UNWIND keys($${name}EdgePropsMap) AS relatedId
+          MATCH (${nodeName})${rel.direction === "out" ? "-" : "<-"}[rel:${rel.relationship}]${rel.direction === "out" ? "->" : "-"}(related:${rel.model.labelName} {id: relatedId})
+          SET ${edgePropsFields.join(", ")}, rel.updatedAt = datetime()
+        `;
+      }
     }
 
     await this.neo4j.writeOne(query);

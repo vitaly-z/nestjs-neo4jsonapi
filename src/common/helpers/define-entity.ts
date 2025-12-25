@@ -224,9 +224,10 @@ export function defineEntity<T>() {
 
     // Auto-generate computed fields for relationship properties (edge fields)
     // These are stored on the relationship, not the node, and are retrieved as aliased columns
+    // Only for SINGLE (cardinality: "one") relationships - MANY relationships use edgePropsCollection
     const autoComputed: { [key: string]: ComputedFieldDef } = {};
     for (const [relName, relDef] of Object.entries(relationships)) {
-      if (relDef.fields && relDef.fields.length > 0) {
+      if (relDef.fields && relDef.fields.length > 0 && relDef.cardinality === "one") {
         for (const field of relDef.fields) {
           const recordKey = `${nodeName}_${relName}_relationship_${field.name}`;
           autoComputed[field.name] = {

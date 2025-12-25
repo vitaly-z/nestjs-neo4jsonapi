@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
 import { EntityDescriptor, RelationshipDef } from "../../../common/interfaces/entity.schema.interface";
@@ -6,6 +6,16 @@ import { JsonApiDataInterface } from "../../jsonapi/interfaces/jsonapi.data.inte
 import { JsonApiPaginator } from "../../jsonapi/serialisers/jsonapi.paginator";
 import { JsonApiService } from "../../jsonapi/services/jsonapi.service";
 import { AbstractRepository } from "./abstract.repository";
+
+/**
+ * JSON:API relationship item with optional per-item meta for edge properties
+ */
+export interface JsonApiDTORelationshipItem {
+  id: string;
+  type: string;
+  /** Per-item meta for edge properties on MANY relationships */
+  meta?: Record<string, any>;
+}
 
 /**
  * JSON:API DTO data structure for create/update operations
@@ -17,7 +27,8 @@ export interface JsonApiDTOData {
   relationships?: Record<
     string,
     {
-      data: Array<{ id: string; type: string }> | { id: string; type: string } | null;
+      data: JsonApiDTORelationshipItem[] | JsonApiDTORelationshipItem | null;
+      /** Relationship-level meta (e.g., edgeOnly flag for edge-only updates) */
       meta?: Record<string, any>;
     }
   >;
@@ -169,24 +180,50 @@ export abstract class AbstractService<
 
         if (relationshipData) {
           if (Array.isArray(relationshipData)) {
+            // MANY relationship
             params[relationshipKey] = relationshipData.map((item) => item.id);
+
+            // Build edge properties map for MANY relationships with fields
+            if (relationshipDef.fields && relationshipDef.fields.length > 0) {
+              const edgePropsMap: Record<string, Record<string, any>> = {};
+              for (const item of relationshipData) {
+                edgePropsMap[item.id] = {};
+                for (const field of relationshipDef.fields) {
+                  if (item.meta && field.name in item.meta) {
+                    edgePropsMap[item.id][field.name] = item.meta[field.name];
+                  } else if (field.default !== undefined) {
+                    edgePropsMap[item.id][field.name] = field.default;
+                  } else if (field.required) {
+                    throw new BadRequestException(
+                      `Missing required edge property '${field.name}' for relationship item '${item.id}'`,
+                    );
+                  }
+                }
+              }
+              params[`${relationshipKey}EdgeProps`] = edgePropsMap;
+            }
           } else {
+            // SINGLE relationship
             params[relationshipKey] = relationshipData.id;
+
+            // Map relationship property fields from item-level meta (new) or relationship-level meta (legacy)
+            if (relationshipDef.fields && relationshipDef.fields.length > 0) {
+              const itemMeta = relationshipData.meta;
+              const relMeta = relationshipEntry?.meta;
+              const sourceMeta = itemMeta || relMeta; // Prefer item-level, fallback to rel-level for backwards compat
+
+              for (const field of relationshipDef.fields) {
+                if (sourceMeta && field.name in sourceMeta) {
+                  params[field.name] = sourceMeta[field.name];
+                } else if (field.default !== undefined) {
+                  params[field.name] = field.default;
+                }
+              }
+            }
           }
         } else {
           // No data provided - use empty array for 'many', undefined for 'one'
           params[relationshipKey] = relationshipDef.cardinality === "many" ? [] : undefined;
-        }
-
-        // Map relationship property fields from relationship meta (edge properties)
-        if (relationshipDef.fields && relationshipDef.fields.length > 0 && relationshipEntry?.meta) {
-          for (const field of relationshipDef.fields) {
-            if (field.name in relationshipEntry.meta) {
-              params[field.name] = relationshipEntry.meta[field.name];
-            } else if (field.default !== undefined) {
-              params[field.name] = field.default;
-            }
-          }
         }
       }
     }
@@ -223,6 +260,7 @@ export abstract class AbstractService<
 
   /**
    * Map JSON:API DTO data to patch params (only includes fields present in DTO)
+   * Supports edge-only updates via meta.edgeOnly flag for MANY relationships
    */
   protected mapDTOToPatchParams(data: JsonApiDTOData): { id: string; [key: string]: any } {
     const params: { id: string; [key: string]: any } = { id: data.id };
@@ -247,21 +285,60 @@ export abstract class AbstractService<
 
         if (relationshipKey && relationshipDef && relationshipValue?.data !== undefined) {
           const relationshipData = relationshipValue.data;
-          if (Array.isArray(relationshipData)) {
-            params[relationshipKey] = relationshipData.map((item) => item.id);
-          } else if (relationshipData) {
-            params[relationshipKey] = relationshipData.id;
-          } else {
-            params[relationshipKey] = relationshipDef.cardinality === "many" ? [] : undefined;
-          }
+          const isEdgeOnly = relationshipValue?.meta?.edgeOnly === true;
 
-          // Map relationship property fields from relationship meta (edge properties)
-          if (relationshipDef.fields && relationshipDef.fields.length > 0 && relationshipValue?.meta) {
-            for (const field of relationshipDef.fields) {
-              if (field.name in relationshipValue.meta) {
-                params[field.name] = relationshipValue.meta[field.name];
+          if (Array.isArray(relationshipData)) {
+            // MANY relationship
+            if (isEdgeOnly && relationshipDef.fields && relationshipDef.fields.length > 0) {
+              // Edge-only update: only update edge properties, don't modify linked items
+              const edgePropsMap: Record<string, Record<string, any>> = {};
+              for (const item of relationshipData) {
+                if (item.meta) {
+                  edgePropsMap[item.id] = {};
+                  for (const field of relationshipDef.fields) {
+                    if (field.name in item.meta) {
+                      edgePropsMap[item.id][field.name] = item.meta[field.name];
+                    }
+                  }
+                }
+              }
+              params[`${relationshipKey}EdgePropsUpdate`] = edgePropsMap;
+            } else {
+              // Normal update: replace linked items and set edge properties
+              params[relationshipKey] = relationshipData.map((item) => item.id);
+
+              // Build edge properties map for MANY relationships with fields
+              if (relationshipDef.fields && relationshipDef.fields.length > 0) {
+                const edgePropsMap: Record<string, Record<string, any>> = {};
+                for (const item of relationshipData) {
+                  edgePropsMap[item.id] = {};
+                  for (const field of relationshipDef.fields) {
+                    if (item.meta && field.name in item.meta) {
+                      edgePropsMap[item.id][field.name] = item.meta[field.name];
+                    }
+                  }
+                }
+                params[`${relationshipKey}EdgeProps`] = edgePropsMap;
               }
             }
+          } else if (relationshipData) {
+            // SINGLE relationship
+            params[relationshipKey] = relationshipData.id;
+
+            // Map relationship property fields from item-level meta (new) or relationship-level meta (legacy)
+            if (relationshipDef.fields && relationshipDef.fields.length > 0) {
+              const itemMeta = relationshipData.meta;
+              const relMeta = relationshipValue?.meta;
+              const sourceMeta = itemMeta || relMeta;
+
+              for (const field of relationshipDef.fields) {
+                if (sourceMeta && field.name in sourceMeta) {
+                  params[field.name] = sourceMeta[field.name];
+                }
+              }
+            }
+          } else {
+            params[relationshipKey] = relationshipDef.cardinality === "many" ? [] : undefined;
           }
         }
       }

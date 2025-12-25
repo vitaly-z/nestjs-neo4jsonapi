@@ -72,25 +72,37 @@ export function generatePutDTOFile(data: TemplateData): string {
     .join("\n\n");
 
   // Get dynamic validator imports based on field types
-  // Include relationship property field types for generating meta DTOs
+  // Include relationship property field types for generating meta DTOs (both ONE and MANY)
   const relPropertyTypes: CypherType[] = [];
+  let hasItemDTOs = false; // Track if we need IsString for ItemDTO type field
   for (const rel of relationships) {
-    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
+    if (rel.fields && rel.fields.length > 0 && !rel.contextKey) {
       for (const field of rel.fields) {
         relPropertyTypes.push(field.type as CypherType);
+      }
+      if (rel.cardinality === "many") {
+        hasItemDTOs = true;
       }
     }
   }
   const fieldTypes = [...fields.map((f) => f.type as CypherType), ...relPropertyTypes];
   const validatorImports = getValidationImports(fieldTypes);
+  // Add IsString and IsArray if we have ItemDTOs (for MANY relationships with fields)
+  if (hasItemDTOs) {
+    if (!validatorImports.includes("IsString")) {
+      validatorImports.push("IsString");
+    }
+    if (!validatorImports.includes("IsArray")) {
+      validatorImports.push("IsArray");
+    }
+  }
 
   // Generate meta DTOs for relationships with fields
   const metaDtoClasses: string[] = [];
   for (const rel of relationships) {
-    if (rel.fields && rel.fields.length > 0 && !rel.contextKey && rel.cardinality === "one") {
+    if (rel.fields && rel.fields.length > 0 && !rel.contextKey) {
       const dtoKey = rel.dtoKey || rel.key;
       const metaDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}MetaDTO`;
-      const wrapperDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}RelationshipDTO`;
 
       // Generate meta DTO with relationship property fields
       const metaFields = rel.fields
@@ -102,7 +114,11 @@ export function generatePutDTOFile(data: TemplateData): string {
         })
         .join("\n\n");
 
-      metaDtoClasses.push(`
+      if (rel.cardinality === "one") {
+        // SINGLE relationship: wrapper DTO with data and meta
+        const wrapperDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}RelationshipDTO`;
+
+        metaDtoClasses.push(`
 export class ${metaDtoName} {
 ${metaFields}
 }
@@ -118,6 +134,28 @@ export class ${wrapperDtoName} {
   @Type(() => ${metaDtoName})
   meta?: ${metaDtoName};
 }`);
+      } else {
+        // MANY relationship: item DTO with per-item meta
+        const itemDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}ItemDTO`;
+
+        metaDtoClasses.push(`
+export class ${metaDtoName} {
+${metaFields}
+}
+
+export class ${itemDtoName} {
+  @IsUUID()
+  id: string;
+
+  @IsString()
+  type: string;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => ${metaDtoName})
+  meta?: ${metaDtoName};
+}`);
+      }
     }
   }
 
@@ -127,12 +165,10 @@ export class ${wrapperDtoName} {
     .map((rel) => {
       const decorators = [];
       const dtoKey = rel.dtoKey || rel.key;
+      const hasFields = rel.fields && rel.fields.length > 0;
 
-      // Check if this relationship has fields - if so, use the wrapper DTO
-      const hasFields = rel.fields && rel.fields.length > 0 && rel.cardinality === "one";
-
-      if (hasFields) {
-        // Use wrapper DTO with meta support
+      if (hasFields && rel.cardinality === "one") {
+        // SINGLE relationship with fields: use wrapper DTO with meta support
         const wrapperDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}RelationshipDTO`;
         decorators.push("@ValidateNested()");
 
@@ -146,6 +182,22 @@ export class ${wrapperDtoName} {
 
         const optional = !rel.required ? "?" : "";
         return `  ${decorators.join("\n  ")}\n  ${dtoKey}${optional}: ${wrapperDtoName};`;
+      } else if (hasFields && rel.cardinality === "many") {
+        // MANY relationship with fields: use ItemDTO array with per-item meta
+        const itemDtoName = `${names.pascalCase}${toPascalCase(dtoKey)}ItemDTO`;
+        decorators.push("@ValidateNested({ each: true })");
+        decorators.push("@IsArray()");
+
+        if (!rel.required) {
+          decorators.push("@IsOptional()");
+        } else {
+          decorators.push("@IsDefined()");
+        }
+
+        decorators.push(`@Type(() => ${itemDtoName})`);
+
+        const optional = !rel.required ? "?" : "";
+        return `  ${decorators.join("\n  ")}\n  ${dtoKey}${optional}: ${itemDtoName}[];`;
       } else {
         // Regular relationship without fields
         const dtoClass =

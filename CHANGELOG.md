@@ -1,3 +1,9 @@
+## [1.15.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.14.1...v1.15.0) (2025-12-27)
+
+### 🚀 Features
+
+* add message and actionUrl fields to Notification entity and update related mappings ([41737f6](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/41737f66fd8c820b3582cbf461c4cf734b8c6a30))
+
 ## [1.14.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.14.0...v1.14.1) (2025-12-27)
 
 ### 🐛 Bug Fixes

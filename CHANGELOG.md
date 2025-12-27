@@ -1,3 +1,14 @@
+## [1.14.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.13.1...v1.14.0) (2025-12-27)
+
+### 🚀 Features
+
+* enhance error response structure for improved frontend consumption ([d63aaab](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d63aaab4998d813fbf5f020310a2cf4cc03ee535))
+* integrate ClsService into repositories for enhanced security context handling ([79aba8c](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/79aba8cf9de7f7cefcbc552a17a654df8fb61b95))
+
+### 🐛 Bug Fixes
+
+* correct error detail extraction for consistent frontend response ([dee2ca8](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/dee2ca8f489589cc5fd2b84ed247700c6a449949))
+
 ## [1.13.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.13.0...v1.13.1) (2025-12-26)
 
 ### 📦 Code Refactoring

@@ -22,6 +22,8 @@ export class NotificationSerialiser extends AbstractJsonApiSerialiser implements
     this.attributes = {
       notificationType: "notificationType",
       isRead: "isRead",
+      message: "message",
+      actionUrl: "actionUrl",
     };
 
     this.relationships = {

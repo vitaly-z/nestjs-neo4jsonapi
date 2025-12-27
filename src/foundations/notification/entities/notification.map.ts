@@ -6,7 +6,9 @@ export const mapNotification = (params: { data: any; record: any; entityFactory:
   return {
     ...mapEntity({ record: params.data }),
     notificationType: params.data.notificationType,
-    isRead: params.data.isRead,
+    isRead: params.data.isRead ?? false,
+    message: params.data.message,
+    actionUrl: params.data.actionUrl,
     actor: undefined,
   };
 };

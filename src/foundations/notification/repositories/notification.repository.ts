@@ -35,15 +35,14 @@ export class NotificationRepository implements OnModuleInit {
       MATCH (${notificationMeta.nodeName})-[:TRIGGERED_FOR]->(user:User {id: $userId})-[:BELONGS_TO]->(company)
       WHERE EXISTS { MATCH (${notificationMeta.nodeName})-[:REFERS_TO]->() }
       ${params.isArchived ? `AND ${notificationMeta.nodeName}.isArchived = true` : `AND ${notificationMeta.nodeName}.isArchived IS null`}
-      
+
       WITH ${notificationMeta.nodeName}
       ORDER BY ${notificationMeta.nodeName}.createdAt DESC
       {CURSOR}
-      
-      
-      MATCH (${notificationMeta.nodeName})-[:TRIGGERED_BY]->(notification_user:User)
 
-      RETURN ${notificationMeta.nodeName}, 
+      OPTIONAL MATCH (${notificationMeta.nodeName})-[:TRIGGERED_BY]->(${notificationMeta.nodeName}_user:User)
+
+      RETURN ${notificationMeta.nodeName},
         ${notificationMeta.nodeName}_user
     `;
 
@@ -61,9 +60,9 @@ export class NotificationRepository implements OnModuleInit {
 
     query.query += `
       MATCH (notification:Notification {id: $notificationId})-[:BELONGS_TO]->(company)
-        MATCH (${notificationMeta.nodeName})-[:TRIGGERED_BY]->(notification_user:User)
+      OPTIONAL MATCH (${notificationMeta.nodeName})-[:TRIGGERED_BY]->(${notificationMeta.nodeName}_user:User)
 
-      RETURN ${notificationMeta.nodeName}, 
+      RETURN ${notificationMeta.nodeName},
         ${notificationMeta.nodeName}_user
     `;
 

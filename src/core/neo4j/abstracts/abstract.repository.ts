@@ -132,7 +132,9 @@ export abstract class AbstractRepository<
    * Builds the RETURN statement including all relationships from descriptor
    * For relationships with fields (edge properties):
    * - SINGLE relationships: uses aliased columns for edge properties
-   * - MANY relationships: uses COLLECT to gather edge properties per related item
+   * - MANY relationships: aggregates edge props FIRST, then UNWINDs nodes for inclusion
+   *
+   * This ensures readOne() gets complete edge props collections even with multiple related entities.
    */
   protected buildReturnStatement(): string {
     const { nodeName, labelName } = this.descriptor.model;
@@ -141,6 +143,7 @@ export abstract class AbstractRepository<
     let query = "";
     const returnParts = [nodeName];
     const collectParts: string[] = []; // For MANY relationships with edge fields
+    const manyRelationshipsWithFields: Array<{ name: string; relatedNodeName: string }> = [];
 
     // Match company relationship only for company-scoped entities
     if (isCompanyScoped) {
@@ -167,30 +170,48 @@ export abstract class AbstractRepository<
         // (this)-[:REL]->(related)
         query += `${matchType} (${nodeName})-${relPattern}->(${relatedNodeName}:${rel.model.labelName})\n`;
       }
-      returnParts.push(relatedNodeName);
 
       // Add edge properties handling
       if (hasFields) {
         if (rel.cardinality === "one") {
           // SINGLE relationship: aliased columns for edge properties (existing behavior)
+          returnParts.push(relatedNodeName);
           for (const field of rel.fields!) {
             returnParts.push(`${relAlias}.${field.name} AS ${nodeName}_${name}_relationship_${field.name}`);
           }
         } else {
-          // MANY relationship: use COLLECT to gather edge properties per related item
+          // MANY relationship with fields: aggregate nodes and edge props together
+          // Don't add to returnParts yet - will UNWIND after aggregation
+          manyRelationshipsWithFields.push({ name, relatedNodeName });
+          collectParts.push(`COLLECT(DISTINCT ${relatedNodeName}) AS ${relatedNodeName}s`);
           const edgePropsFields = rel.fields!.map((f) => `${f.name}: ${relAlias}.${f.name}`).join(", ");
           collectParts.push(
             `COLLECT(CASE WHEN ${relatedNodeName} IS NOT NULL THEN { nodeId: ${relatedNodeName}.id, edgeProps: {${edgePropsFields}} } END) AS ${nodeName}_${name}_edgePropsCollection`,
           );
         }
+      } else {
+        // No fields - just include the related node directly
+        returnParts.push(relatedNodeName);
       }
     }
 
     // Build the final query
     if (collectParts.length > 0) {
-      // Need WITH clause to collect before RETURN
+      // Aggregate MANY relationships with edge props FIRST (reduces to 1 row)
       query += `WITH ${returnParts.join(", ")}, ${collectParts.join(", ")}\n`;
-      query += `RETURN ${returnParts.join(", ")}, ${collectParts.map((p) => p.split(" AS ")[1]).join(", ")}`;
+
+      // UNWIND the collected nodes for EntityFactory inclusion
+      // All rows after UNWIND share the same edgePropsCollection
+      for (const { relatedNodeName } of manyRelationshipsWithFields) {
+        query += `UNWIND CASE WHEN size(${relatedNodeName}s) > 0 THEN ${relatedNodeName}s ELSE [null] END AS ${relatedNodeName}\n`;
+        returnParts.push(relatedNodeName);
+      }
+
+      // Build RETURN with all parts plus the edgePropsCollections
+      const edgePropsCollectionNames = collectParts
+        .filter((p) => p.includes("_edgePropsCollection"))
+        .map((p) => p.split(" AS ")[1]);
+      query += `RETURN ${returnParts.join(", ")}, ${edgePropsCollectionNames.join(", ")}`;
     } else {
       query += `RETURN ${returnParts.join(", ")}`;
     }

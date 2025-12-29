@@ -33,6 +33,7 @@ export class DiscordUserService {
       companyId: params.companyId,
       avatar: params.userDetails.avatar,
       roleIds: [RoleId.CompanyAdministrator],
+      isActive: true,
     });
 
     await this.discordUserRepository.create({

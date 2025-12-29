@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { ClsService } from "nestjs-cls";
 import { AbstractRepository, Neo4jService, SecurityService } from "../../../core";
+import { roleMeta } from "../../role";
+import { userMeta } from "../../user";
 import { DiscordUser, DiscordUserDescriptor } from "../entities/discord-user";
 
 @Injectable()
@@ -14,7 +16,9 @@ export class DiscordUserRepository extends AbstractRepository<DiscordUser, typeo
     return `
       MATCH (discorduser:DiscordUser)-[:BELONGS_TO]->(discorduser_company:Company)
       MATCH (discorduser)<-[:HAS_DISCORD]-(discorduser_user:User)
-      RETURN discorduser, discorduser_company, discorduser_user, discorduser_company as discorduser_user_company
+      OPTIONAL MATCH (discorduser_${userMeta.nodeName})-[:MEMBER_OF]->(discorduser_${userMeta.nodeName}_${roleMeta.nodeName}:${roleMeta.labelName}) 
+
+      RETURN discorduser, discorduser_company, discorduser_user, discorduser_company as discorduser_user_company, discorduser_${userMeta.nodeName}_${roleMeta.nodeName}
     `;
   }
 

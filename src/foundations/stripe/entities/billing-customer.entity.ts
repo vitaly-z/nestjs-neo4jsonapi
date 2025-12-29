@@ -1,5 +1,5 @@
-import { Entity } from "@carlonicora/nestjs-neo4jsonapi";
-import { Company } from "@carlonicora/nestjs-neo4jsonapi";
+import { Entity } from "../../../common/abstracts/entity";
+import { Company } from "../../company/entities/company.entity";
 
 export type BillingCustomer = Entity & {
   stripeCustomerId: string;

@@ -1,4 +1,4 @@
-import { DataModelInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
 import { subscriptionMeta } from "../entities/subscription.meta";
 import { UsageRecord } from "../entities/usage-record.entity";
 import { mapUsageRecord } from "../entities/usage-record.map";

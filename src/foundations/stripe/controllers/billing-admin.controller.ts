@@ -13,7 +13,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
-import { Roles, AdminJwtAuthGuard, RoleId } from "@carlonicora/nestjs-neo4jsonapi";
+import { Roles } from "../../../common/decorators";
+import { AdminJwtAuthGuard } from "../../../common/guards";
+import { RoleId } from "../../../common/constants/system.roles";
 import { CreatePriceDTO, UpdatePriceDTO } from "../dtos/create-price.dto";
 import { CreateProductDTO, UpdateProductDTO } from "../dtos/create-product.dto";
 import { BillingAdminService } from "../services/billing-admin.service";

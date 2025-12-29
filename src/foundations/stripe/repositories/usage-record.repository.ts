@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../core/neo4j";
 import { subscriptionMeta } from "../entities/subscription.meta";
 import { UsageRecord } from "../entities/usage-record.entity";
 import { usageRecordMeta } from "../entities/usage-record.meta";

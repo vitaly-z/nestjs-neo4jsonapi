@@ -1,4 +1,4 @@
-import { Entity } from "@carlonicora/nestjs-neo4jsonapi";
+import { Entity } from "../../../common/abstracts/entity";
 import { StripeProduct } from "../entities/stripe-product.entity";
 
 export type StripePriceType = "one_time" | "recurring";

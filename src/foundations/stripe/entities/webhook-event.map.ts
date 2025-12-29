@@ -1,5 +1,5 @@
-import { mapEntity } from "@carlonicora/nestjs-neo4jsonapi";
-import { EntityFactory } from "@carlonicora/nestjs-neo4jsonapi";
+import { mapEntity } from "../../../common/abstracts/entity";
+import { EntityFactory } from "../../../core/neo4j/factories/entity.factory";
 import { WebhookEvent } from "../entities/webhook-event.entity";
 
 export const mapWebhookEvent = (params: { data: any; record: any; entityFactory: EntityFactory }): WebhookEvent => {

@@ -1,4 +1,4 @@
-import { Entity } from "@carlonicora/nestjs-neo4jsonapi";
+import { Entity } from "../../../common/abstracts/entity";
 import { BillingCustomer } from "../entities/billing-customer.entity";
 import { Subscription } from "../entities/subscription.entity";
 

@@ -1,7 +1,7 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import Stripe from "stripe";
-import { AppLoggingService } from "@carlonicora/nestjs-neo4jsonapi";
+import { AppLoggingService } from "../../../core/logging";
 import { WebhookEventRepository } from "../repositories/webhook-event.repository";
 import { SubscriptionService } from "../services/subscription.service";
 import { BillingCustomerRepository } from "../repositories/billing-customer.repository";

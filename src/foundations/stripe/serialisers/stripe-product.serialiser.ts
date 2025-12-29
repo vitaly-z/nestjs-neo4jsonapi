@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { BaseConfigInterface as ConfigInterface } from "@carlonicora/nestjs-neo4jsonapi";
-import { AbstractJsonApiSerialiser } from "@carlonicora/nestjs-neo4jsonapi";
-import { JsonApiSerialiserFactory } from "@carlonicora/nestjs-neo4jsonapi";
-import { JsonApiDataInterface } from "@carlonicora/nestjs-neo4jsonapi";
-import { JsonApiServiceInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { BaseConfigInterface as ConfigInterface } from "../../../config/interfaces/base.config.interface";
+import { AbstractJsonApiSerialiser } from "../../../core/jsonapi";
+import { JsonApiSerialiserFactory } from "../../../core/jsonapi";
+import { JsonApiDataInterface } from "../../../core/jsonapi";
+import { JsonApiServiceInterface } from "../../../core/jsonapi";
 import { StripeProduct } from "../entities/stripe-product.entity";
 import { StripeProductModel } from "../entities/stripe-product.model";
 

@@ -1,4 +1,4 @@
-import { DataModelInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
 import { StripePrice } from "../entities/stripe-price.entity";
 import { mapStripePrice } from "../entities/stripe-price.map";
 import { stripePriceMeta } from "../entities/stripe-price.meta";

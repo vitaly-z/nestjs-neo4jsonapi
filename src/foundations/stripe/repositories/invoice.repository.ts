@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../core/neo4j";
 import { billingCustomerMeta } from "../entities/billing-customer.meta";
 import { Invoice, InvoiceStatus } from "../entities/invoice.entity";
 import { invoiceMeta } from "../entities/invoice.meta";

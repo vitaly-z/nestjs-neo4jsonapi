@@ -1,4 +1,4 @@
-import { DataModelInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
 import { WebhookEvent } from "../entities/webhook-event.entity";
 import { mapWebhookEvent } from "../entities/webhook-event.map";
 import { webhookEventMeta } from "../entities/webhook-event.meta";

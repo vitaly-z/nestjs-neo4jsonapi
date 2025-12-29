@@ -1,6 +1,8 @@
 import { Module, OnModuleInit } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
-import { createWorkerProvider, modelRegistry } from "@carlonicora/nestjs-neo4jsonapi";
+import { QueueId } from "../../config/enums/queue.id";
+import { createWorkerProvider } from "../../common/decorators/conditional-service.decorator";
+import { modelRegistry } from "../../common/registries/registry";
 import { BillingAdminController } from "./controllers/billing-admin.controller";
 import { BillingController } from "./controllers/billing.controller";
 import { WebhookController } from "./controllers/webhook.controller";
@@ -44,9 +46,8 @@ import { StripeWebhookService } from "./services/stripe.webhook.service";
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: `${process.env.QUEUE}_billing_webhook`,
-    }),
+    BullModule.registerQueue({ name: QueueId.BILLING_WEBHOOK }),
+    BullModule.registerQueue({ name: QueueId.EMAIL }),
   ],
   controllers: [BillingController, BillingAdminController, WebhookController],
   providers: [

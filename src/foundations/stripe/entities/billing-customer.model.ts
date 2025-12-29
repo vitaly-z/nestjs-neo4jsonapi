@@ -1,9 +1,9 @@
-import { DataModelInterface } from "@carlonicora/nestjs-neo4jsonapi";
+import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
+import { companyMeta } from "../../company";
 import { BillingCustomer } from "../entities/billing-customer.entity";
 import { mapBillingCustomer } from "../entities/billing-customer.map";
 import { billingCustomerMeta } from "../entities/billing-customer.meta";
 import { BillingCustomerSerialiser } from "../serialisers/billing-customer.serialiser";
-import { companyMeta } from "@carlonicora/nestjs-neo4jsonapi";
 
 export const BillingCustomerModel: DataModelInterface<BillingCustomer> = {
   ...billingCustomerMeta,

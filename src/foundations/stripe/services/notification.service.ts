@@ -1,7 +1,8 @@
-import { AppLoggingService } from "@carlonicora/nestjs-neo4jsonapi";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { AppLoggingService } from "../../../core/logging";
+import { QueueId } from "../../../config/enums/queue.id";
 import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
 import { InvoiceRepository } from "../repositories/invoice.repository";
 
@@ -44,7 +45,7 @@ export interface PaymentFailureNotificationParams {
 @Injectable()
 export class NotificationService {
   constructor(
-    @InjectQueue(`${process.env.QUEUE}_email`) private readonly emailQueue: Queue,
+    @InjectQueue(QueueId.EMAIL) private readonly emailQueue: Queue,
     private readonly billingCustomerRepository: BillingCustomerRepository,
     private readonly invoiceRepository: InvoiceRepository,
     private readonly logger: AppLoggingService,

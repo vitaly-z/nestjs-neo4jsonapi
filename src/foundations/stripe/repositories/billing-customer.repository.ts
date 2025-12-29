@@ -1,10 +1,10 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../core/neo4j";
+import { companyMeta } from "../../company";
 import { BillingCustomer } from "../entities/billing-customer.entity";
 import { billingCustomerMeta } from "../entities/billing-customer.meta";
 import { BillingCustomerModel } from "../entities/billing-customer.model";
-import { companyMeta } from "@carlonicora/nestjs-neo4jsonapi";
 
 /**
  * BillingCustomerRepository

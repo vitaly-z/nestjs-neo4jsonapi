@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../core/neo4j";
 import { StripeProduct } from "../entities/stripe-product.entity";
 import { stripeProductMeta } from "../entities/stripe-product.meta";
 import { StripeProductModel } from "../entities/stripe-product.model";

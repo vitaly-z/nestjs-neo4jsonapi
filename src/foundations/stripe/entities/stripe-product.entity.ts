@@ -1,4 +1,4 @@
-import { Entity } from "@carlonicora/nestjs-neo4jsonapi";
+import { Entity } from "../../../common/abstracts/entity";
 
 export type StripeProduct = Entity & {
   stripeProductId: string;

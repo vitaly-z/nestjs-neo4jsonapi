@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import Stripe from "stripe";
-import { JsonApiDataInterface } from "@carlonicora/nestjs-neo4jsonapi";
-import { JsonApiPaginator } from "@carlonicora/nestjs-neo4jsonapi";
-import { JsonApiService } from "@carlonicora/nestjs-neo4jsonapi";
-import { StripeSubscriptionService } from "@carlonicora/nestjs-neo4jsonapi";
+import { JsonApiDataInterface } from "../../../core/jsonapi";
+import { JsonApiPaginator } from "../../../core/jsonapi";
+import { JsonApiService } from "../../../core/jsonapi";
+import { StripeSubscriptionService } from "./stripe.subscription.service";
 import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
 import { StripePriceRepository } from "../repositories/stripe-price.repository";
 import { SubscriptionRepository } from "../repositories/subscription.repository";

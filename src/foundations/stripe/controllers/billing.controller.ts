@@ -13,8 +13,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
-import { JwtAuthGuard } from "@carlonicora/nestjs-neo4jsonapi";
-import { AuthenticatedRequest } from "@carlonicora/nestjs-neo4jsonapi";
+import { JwtAuthGuard } from "../../../common/guards";
+import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { CreateCustomerDTO } from "../dtos/create-customer.dto";
 import { CreateSetupIntentDTO } from "../dtos/create-setup-intent.dto";
 import { CancelSubscriptionDTO, CreateSubscriptionDTO, UpdateSubscriptionDTO } from "../dtos/create-subscription.dto";

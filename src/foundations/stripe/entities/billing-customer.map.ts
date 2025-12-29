@@ -1,5 +1,5 @@
-import { mapEntity } from "@carlonicora/nestjs-neo4jsonapi";
-import { EntityFactory } from "@carlonicora/nestjs-neo4jsonapi";
+import { mapEntity } from "../../../common/abstracts/entity";
+import { EntityFactory } from "../../../core/neo4j/factories/entity.factory";
 import { BillingCustomer } from "../entities/billing-customer.entity";
 
 export const mapBillingCustomer = (params: {

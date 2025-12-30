@@ -7,7 +7,7 @@ import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiServiceInterface } from "../../../core/jsonapi";
 import { StripePrice } from "../entities/stripe-price.entity";
 import { StripePriceModel } from "../entities/stripe-price.model";
-import { StripeProductModel } from "../entities/stripe-product.model";
+import { StripeProductModel } from "../../stripe-product/entities/stripe-product.model";
 
 @Injectable()
 export class StripePriceSerialiser extends AbstractJsonApiSerialiser implements JsonApiServiceInterface {
@@ -22,6 +22,7 @@ export class StripePriceSerialiser extends AbstractJsonApiSerialiser implements 
   create(): JsonApiDataInterface {
     this.attributes = {
       stripePriceId: "stripePriceId",
+      productId: (data: StripePrice) => data.product?.id,
       active: "active",
       currency: "currency",
       unitAmount: (data: StripePrice) => (data.unitAmount ? Number(data.unitAmount) : undefined),

@@ -1,5 +1,5 @@
 import { Entity } from "../../../common/abstracts/entity";
-import { StripeProduct } from "../entities/stripe-product.entity";
+import { StripeProduct } from "../../stripe-product/entities/stripe-product.entity";
 
 export type StripePriceType = "one_time" | "recurring";
 export type StripePriceRecurringInterval = "day" | "week" | "month" | "year";

@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "./stripe.service";
-import { HandleStripeErrors } from "../errors/stripe.errors";
+import { StripeService } from "../../stripe/services/stripe.service";
+import { HandleStripeErrors } from "../../stripe/errors/stripe.errors";
 
 /**
- * Stripe Product Service
+ * Stripe Product API Service
  *
  * Manages Stripe products and prices. Products represent goods or services offered,
  * while prices define how those products are charged (one-time or recurring).
@@ -12,12 +12,12 @@ import { HandleStripeErrors } from "../errors/stripe.errors";
  *
  * @example
  * ```typescript
- * const product = await stripeProductService.createProduct({
+ * const product = await stripeProductApiService.createProduct({
  *   name: 'Premium Plan',
  *   description: 'Full access to all features',
  * });
  *
- * const price = await stripeProductService.createPrice({
+ * const price = await stripeProductApiService.createPrice({
  *   productId: product.id,
  *   unitAmount: 2999,
  *   currency: 'usd',
@@ -26,7 +26,7 @@ import { HandleStripeErrors } from "../errors/stripe.errors";
  * ```
  */
 @Injectable()
-export class StripeProductService {
+export class StripeProductApiService {
   constructor(private readonly stripeService: StripeService) {}
 
   /**

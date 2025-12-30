@@ -133,6 +133,7 @@ export class StripeProductRepository implements OnModuleInit {
    * @returns Created StripeProduct
    */
   async create(params: {
+    id?: string;
     stripeProductId: string;
     name: string;
     description?: string;
@@ -141,7 +142,7 @@ export class StripeProductRepository implements OnModuleInit {
   }): Promise<StripeProduct> {
     const query = this.neo4j.initQuery({ serialiser: StripeProductModel });
 
-    const id = randomUUID();
+    const id = params.id || randomUUID();
 
     query.queryParams = {
       id,

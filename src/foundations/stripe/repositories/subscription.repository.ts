@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
 import { billingCustomerMeta } from "../entities/billing-customer.meta";
 import { stripePriceMeta } from "../entities/stripe-price.meta";
-import { stripeProductMeta } from "../entities/stripe-product.meta";
+import { stripeProductMeta } from "../../stripe-product/entities/stripe-product.meta";
 import { Subscription, SubscriptionStatus } from "../entities/subscription.entity";
 import { subscriptionMeta } from "../entities/subscription.meta";
 import { SubscriptionModel } from "../entities/subscription.model";

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
+import { stripeProductMeta } from "../../stripe-product";
 import {
   StripePrice,
   StripePriceRecurringInterval,
@@ -9,7 +10,6 @@ import {
 } from "../entities/stripe-price.entity";
 import { stripePriceMeta } from "../entities/stripe-price.meta";
 import { StripePriceModel } from "../entities/stripe-price.model";
-import { stripeProductMeta } from "../entities/stripe-product.meta";
 
 /**
  * StripePriceRepository

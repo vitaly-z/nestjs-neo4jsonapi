@@ -1,8 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { StripeProductService } from "./stripe.product.service";
-import { StripeService } from "./stripe.service";
-import { StripeError } from "../errors/stripe.errors";
-import { createMockStripeClient, MockStripeClient } from "../__tests__/mocks/stripe.mock";
+import { StripeProductApiService } from "../stripe-product-api.service";
+import { StripeService } from "../../../stripe/services/stripe.service";
+import { StripeError } from "../../../stripe/errors/stripe.errors";
+import { createMockStripeClient, MockStripeClient } from "../../../stripe/__tests__/mocks/stripe.mock";
 import {
   MOCK_PRODUCT,
   MOCK_PRICE_RECURRING,
@@ -11,10 +11,10 @@ import {
   STRIPE_INVALID_REQUEST_ERROR,
   STRIPE_API_ERROR,
   STRIPE_RATE_LIMIT_ERROR,
-} from "../__tests__/fixtures/stripe.fixtures";
+} from "../../../stripe/__tests__/fixtures/stripe.fixtures";
 
-describe("StripeProductService", () => {
-  let service: StripeProductService;
+describe("StripeProductApiService", () => {
+  let service: StripeProductApiService;
   let stripeService: jest.Mocked<StripeService>;
   let mockStripe: MockStripeClient;
 
@@ -28,7 +28,7 @@ describe("StripeProductService", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        StripeProductService,
+        StripeProductApiService,
         {
           provide: StripeService,
           useValue: mockStripeService,
@@ -36,7 +36,7 @@ describe("StripeProductService", () => {
       ],
     }).compile();
 
-    service = module.get<StripeProductService>(StripeProductService);
+    service = module.get<StripeProductApiService>(StripeProductApiService);
     stripeService = module.get(StripeService);
   });
 

@@ -1,6 +1,6 @@
 import { mapEntity } from "../../../common/abstracts/entity";
 import { EntityFactory } from "../../../core/neo4j/factories/entity.factory";
-import { StripeProduct } from "../entities/stripe-product.entity";
+import { StripeProduct } from "./stripe-product.entity";
 
 export const mapStripeProduct = (params: { data: any; record: any; entityFactory: EntityFactory }): StripeProduct => {
   return {

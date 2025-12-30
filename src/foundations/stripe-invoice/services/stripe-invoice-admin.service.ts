@@ -55,7 +55,11 @@ export class StripeInvoiceAdminService {
    * });
    * ```
    */
-  async listInvoices(params: { companyId: string; query: any; status?: StripeInvoiceStatus }): Promise<JsonApiDataInterface> {
+  async listInvoices(params: {
+    companyId: string;
+    query: any;
+    status?: StripeInvoiceStatus;
+  }): Promise<JsonApiDataInterface> {
     const paginator = new JsonApiPaginator(params.query);
 
     const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });

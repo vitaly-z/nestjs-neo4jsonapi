@@ -9,6 +9,7 @@ import { StripeService } from "../../stripe/services/stripe.service";
  * Manages Stripe products and prices. Products represent goods or services offered,
  * while prices define how those products are charged (one-time or recurring).
  * Supports usage-based pricing with Stripe Billing Meters (v20+).
+ * Supports archival (deactivation) and reactivation of products and prices.
  *
  * @example
  * ```typescript
@@ -321,6 +322,48 @@ export class StripeProductApiService {
     if (params.active !== undefined) updateData.active = params.active;
     if (params.metadata) updateData.metadata = params.metadata;
     return stripe.prices.update(params.priceId, updateData);
+  }
+
+  /**
+   * Archive a price by setting it to inactive
+   *
+   * @param priceId - The price ID to archive
+   * @returns Promise resolving to the archived price
+   * @throws {StripeError} If archiving fails
+   *
+   * @example
+   * ```typescript
+   * const price = await service.archivePrice('price_abc123');
+   * ```
+   *
+   * @remarks
+   * Archived prices cannot be used for new subscriptions but existing subscriptions continue.
+   */
+  @HandleStripeErrors()
+  async archivePrice(priceId: string): Promise<Stripe.Price> {
+    const stripe = this.stripeService.getClient();
+    return stripe.prices.update(priceId, { active: false });
+  }
+
+  /**
+   * Reactivate a price by setting it to active
+   *
+   * @param priceId - The price ID to reactivate
+   * @returns Promise resolving to the reactivated price
+   * @throws {StripeError} If reactivation fails
+   *
+   * @example
+   * ```typescript
+   * const price = await service.reactivatePrice('price_abc123');
+   * ```
+   *
+   * @remarks
+   * Reactivated prices can be used for new subscriptions and existing subscriptions continue.
+   */
+  @HandleStripeErrors()
+  async reactivatePrice(priceId: string): Promise<Stripe.Price> {
+    const stripe = this.stripeService.getClient();
+    return stripe.prices.update(priceId, { active: true });
   }
 
   /**

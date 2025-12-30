@@ -19,15 +19,8 @@ import { StripePriceAdminService } from "./services/stripe-price-admin.service";
 @Module({
   imports: [StripeProductModule],
   controllers: [StripePriceController],
-  providers: [
-    StripePriceAdminService,
-    StripePriceRepository,
-    StripePriceSerialiser,
-  ],
-  exports: [
-    StripePriceAdminService,
-    StripePriceRepository,
-  ],
+  providers: [StripePriceAdminService, StripePriceRepository, StripePriceSerialiser],
+  exports: [StripePriceAdminService, StripePriceRepository],
 })
 export class StripePriceModule implements OnModuleInit {
   onModuleInit() {

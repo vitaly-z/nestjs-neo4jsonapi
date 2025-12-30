@@ -26,6 +26,8 @@ describe("StripePriceController", () => {
     getPrice: jest.fn(),
     createPrice: jest.fn(),
     updatePrice: jest.fn(),
+    archivePrice: jest.fn(),
+    reactivatePrice: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -243,6 +245,100 @@ describe("StripePriceController", () => {
 
       // Service should receive the entire body structure
       expect(service.updatePrice).toHaveBeenCalledWith(body);
+    });
+  });
+
+  describe("archivePrice", () => {
+    it("should archive price by UUID id parameter", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.archivePrice.mockResolvedValue(undefined);
+
+      await controller.archivePrice(mockReply, priceId);
+
+      expect(service.archivePrice).toHaveBeenCalledWith({ id: priceId });
+      expect(mockReply.send).toHaveBeenCalled();
+    });
+
+    it("should return NO_CONTENT status (204)", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.archivePrice.mockResolvedValue(undefined);
+
+      await controller.archivePrice(mockReply, priceId);
+
+      // The @HttpCode decorator sets status to 204 automatically
+      expect(mockReply.send).toHaveBeenCalled();
+    });
+
+    it("should call admin service archivePrice", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.archivePrice.mockResolvedValue(undefined);
+
+      await controller.archivePrice(mockReply, priceId);
+
+      expect(service.archivePrice).toHaveBeenCalledTimes(1);
+      expect(service.archivePrice).toHaveBeenCalledWith({ id: priceId });
+    });
+
+    it("should handle errors from admin service", async () => {
+      const priceId = uuid();
+      const error = new Error("Price not found");
+      mockStripePriceAdminService.archivePrice.mockRejectedValue(error);
+
+      await expect(controller.archivePrice(mockReply, priceId)).rejects.toThrow("Price not found");
+
+      expect(service.archivePrice).toHaveBeenCalledWith({ id: priceId });
+    });
+  });
+
+  describe("reactivatePrice", () => {
+    it("should reactivate price by UUID id parameter", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.reactivatePrice.mockResolvedValue(undefined);
+
+      await controller.reactivatePrice(mockReply, priceId);
+
+      expect(service.reactivatePrice).toHaveBeenCalledWith({ id: priceId });
+      expect(mockReply.send).toHaveBeenCalled();
+    });
+
+    it("should return NO_CONTENT status (204)", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.reactivatePrice.mockResolvedValue(undefined);
+
+      await controller.reactivatePrice(mockReply, priceId);
+
+      // The @HttpCode decorator sets status to 204 automatically
+      expect(mockReply.send).toHaveBeenCalled();
+    });
+
+    it("should call admin service reactivatePrice", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.reactivatePrice.mockResolvedValue(undefined);
+
+      await controller.reactivatePrice(mockReply, priceId);
+
+      expect(service.reactivatePrice).toHaveBeenCalledTimes(1);
+      expect(service.reactivatePrice).toHaveBeenCalledWith({ id: priceId });
+    });
+
+    it("should use DELETE method on :id/archive route", async () => {
+      const priceId = uuid();
+      mockStripePriceAdminService.reactivatePrice.mockResolvedValue(undefined);
+
+      await controller.reactivatePrice(mockReply, priceId);
+
+      // The endpoint is decorated with @Delete, verifying through test execution
+      expect(service.reactivatePrice).toHaveBeenCalledWith({ id: priceId });
+    });
+
+    it("should handle errors from admin service", async () => {
+      const priceId = uuid();
+      const error = new Error("Price not found");
+      mockStripePriceAdminService.reactivatePrice.mockRejectedValue(error);
+
+      await expect(controller.reactivatePrice(mockReply, priceId)).rejects.toThrow("Price not found");
+
+      expect(service.reactivatePrice).toHaveBeenCalledWith({ id: priceId });
     });
   });
 

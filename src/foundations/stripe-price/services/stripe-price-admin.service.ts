@@ -193,6 +193,57 @@ export class StripePriceAdminService {
     return this.jsonApiService.buildSingle(StripePriceModel, price);
   }
 
+  /**
+   * Archive a price
+   *
+   * Sets the price as inactive in both Stripe and the local database.
+   * Archived prices cannot be used for new subscriptions.
+   *
+   * @param params - Parameters
+   * @param params.id - Price ID
+   * @returns Promise that resolves when archival is complete
+   * @throws {HttpException} NOT_FOUND if price not found
+   */
+  async archivePrice(params: { id: string }): Promise<void> {
+    const existingPrice = await this.stripePriceRepository.findById({ id: params.id });
+
+    if (!existingPrice) {
+      throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.stripeProductApiService.archivePrice(existingPrice.stripePriceId);
+
+    await this.stripePriceRepository.update({
+      id: params.id,
+      active: false,
+    });
+  }
+
+  /**
+   * Reactivate a price
+   *
+   * Sets the price as active in both Stripe and the local database.
+   * Active prices can be used for new subscriptions.
+   *
+   * @param params - Parameters
+   * @param params.id - Price ID
+   * @returns Promise that resolves when reactivation is complete
+   * @throws {HttpException} NOT_FOUND if price not found
+   */
+  async reactivatePrice(params: { id: string }): Promise<void> {
+    const existingPrice = await this.stripePriceRepository.findById({ id: params.id });
+
+    if (!existingPrice) {
+      throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.stripeProductApiService.reactivatePrice(existingPrice.stripePriceId);
+
+    await this.stripePriceRepository.update({
+      id: params.id,
+      active: true,
+    });
+  }
 
   /**
    * Sync price data from Stripe to local database

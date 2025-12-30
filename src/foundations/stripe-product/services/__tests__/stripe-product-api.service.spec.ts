@@ -763,6 +763,64 @@ describe("StripeProductApiService", () => {
     });
   });
 
+  describe("archivePrice", () => {
+    it("should archive price successfully", async () => {
+      const archivedPrice = { ...MOCK_PRICE_RECURRING, active: false };
+      mockStripe.prices.update.mockResolvedValue(archivedPrice);
+
+      const result = await service.archivePrice(TEST_IDS.priceId);
+
+      expect(mockStripe.prices.update).toHaveBeenCalledWith(TEST_IDS.priceId, {
+        active: false,
+      });
+      expect(result).toEqual(archivedPrice);
+    });
+
+    it("should handle Stripe API errors", async () => {
+      mockStripe.prices.update.mockRejectedValue(STRIPE_API_ERROR);
+
+      await expect(service.archivePrice(TEST_IDS.priceId)).rejects.toThrow(StripeError);
+    });
+
+    it("should handle archiving already archived price", async () => {
+      const archivedPrice = { ...MOCK_PRICE_RECURRING, active: false };
+      mockStripe.prices.update.mockResolvedValue(archivedPrice);
+
+      const result = await service.archivePrice(TEST_IDS.priceId);
+
+      expect(result.active).toBe(false);
+    });
+  });
+
+  describe("reactivatePrice", () => {
+    it("should reactivate price successfully", async () => {
+      const reactivatedPrice = { ...MOCK_PRICE_RECURRING, active: true };
+      mockStripe.prices.update.mockResolvedValue(reactivatedPrice);
+
+      const result = await service.reactivatePrice(TEST_IDS.priceId);
+
+      expect(mockStripe.prices.update).toHaveBeenCalledWith(TEST_IDS.priceId, {
+        active: true,
+      });
+      expect(result).toEqual(reactivatedPrice);
+    });
+
+    it("should handle Stripe API errors", async () => {
+      mockStripe.prices.update.mockRejectedValue(STRIPE_API_ERROR);
+
+      await expect(service.reactivatePrice(TEST_IDS.priceId)).rejects.toThrow(StripeError);
+    });
+
+    it("should handle reactivating already active price", async () => {
+      const activePrice = { ...MOCK_PRICE_RECURRING, active: true };
+      mockStripe.prices.update.mockResolvedValue(activePrice);
+
+      const result = await service.reactivatePrice(TEST_IDS.priceId);
+
+      expect(result.active).toBe(true);
+    });
+  });
+
   describe("listPrices", () => {
     it("should list all prices without filter", async () => {
       const pricesList = {

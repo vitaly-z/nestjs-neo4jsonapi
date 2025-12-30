@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
 import { FastifyReply } from "fastify";
 import { RoleId } from "../../../common/constants/system.roles";
 import { Roles } from "../../../common/decorators";
@@ -101,5 +101,43 @@ export class StripePriceController {
 
     const response = await this.stripePriceAdminService.updatePrice(body);
     reply.send(response);
+  }
+
+  /**
+   * Archive price
+   *
+   * POST /billing/prices/:id/archive
+   *
+   * Sets the price as inactive in both Stripe and the local database.
+   * Archived prices cannot be used for new subscriptions.
+   *
+   * Requires: Admin authentication
+   */
+  @Post(`${stripePriceMeta.endpoint}/:id/archive`)
+  @UseGuards(AdminJwtAuthGuard)
+  @Roles(RoleId.Administrator)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async archivePrice(@Res() reply: FastifyReply, @Param("id") id: string) {
+    await this.stripePriceAdminService.archivePrice({ id });
+    reply.send();
+  }
+
+  /**
+   * Reactivate price
+   *
+   * DELETE /billing/prices/:id/archive
+   *
+   * Sets the price as active in both Stripe and the local database.
+   * Active prices can be used for new subscriptions.
+   *
+   * Requires: Admin authentication
+   */
+  @Delete(`${stripePriceMeta.endpoint}/:id/archive`)
+  @UseGuards(AdminJwtAuthGuard)
+  @Roles(RoleId.Administrator)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reactivatePrice(@Res() reply: FastifyReply, @Param("id") id: string) {
+    await this.stripePriceAdminService.reactivatePrice({ id });
+    reply.send();
   }
 }

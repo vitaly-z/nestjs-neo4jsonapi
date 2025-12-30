@@ -18,14 +18,12 @@ import { Roles } from "../../../common/decorators";
 import { AdminJwtAuthGuard, JwtAuthGuard } from "../../../common/guards";
 import { RoleId } from "../../../common/constants/system.roles";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
-import { CreatePriceDTO, UpdatePriceDTO } from "../dtos/create-price.dto";
 import { CreateCustomerDTO } from "../dtos/create-customer.dto";
 import { CreateSetupIntentDTO } from "../dtos/create-setup-intent.dto";
 import { CancelSubscriptionDTO, CreateSubscriptionDTO, UpdateSubscriptionDTO } from "../dtos/create-subscription.dto";
 import { ReportUsageDTO } from "../dtos/report-usage.dto";
 import { InvoiceStatus } from "../entities/invoice.entity";
 import { SubscriptionStatus } from "../entities/subscription.entity";
-import { BillingAdminService } from "../services/billing-admin.service";
 import { BillingService } from "../services/billing.service";
 import { InvoiceService } from "../services/invoice.service";
 import { SubscriptionService } from "../services/subscription.service";
@@ -35,69 +33,10 @@ import { UsageService } from "../services/usage.service";
 export class BillingController {
   constructor(
     private readonly billingService: BillingService,
-    private readonly billingAdminService: BillingAdminService,
     private readonly subscriptionService: SubscriptionService,
     private readonly invoiceService: InvoiceService,
     private readonly usageService: UsageService,
   ) {}
-
-  // Admin: Price endpoints
-
-  @Get("prices")
-  @UseGuards(AdminJwtAuthGuard)
-  @Roles(RoleId.Administrator)
-  async listPrices(
-    @Res() reply: FastifyReply,
-    @Query() query: any,
-    @Query("productId") productId?: string,
-    @Query("active") active?: string,
-  ) {
-    const response = await this.billingAdminService.listPrices({
-      query,
-      productId,
-      active: active !== undefined ? active === "true" : undefined,
-    });
-
-    reply.send(response);
-  }
-
-  @Get("prices/:priceId")
-  @UseGuards(AdminJwtAuthGuard)
-  @Roles(RoleId.Administrator)
-  async getPrice(@Res() reply: FastifyReply, @Param("priceId") priceId: string) {
-    const response = await this.billingAdminService.getPrice({ id: priceId });
-    reply.send(response);
-  }
-
-  @Post("prices")
-  @UseGuards(AdminJwtAuthGuard)
-  @Roles(RoleId.Administrator)
-  async createPrice(@Res() reply: FastifyReply, @Body() body: CreatePriceDTO) {
-    const response = await this.billingAdminService.createPrice({
-      productId: body.productId,
-      unitAmount: body.unitAmount,
-      currency: body.currency,
-      nickname: body.nickname,
-      lookupKey: body.lookupKey,
-      recurring: body.recurring,
-      metadata: body.metadata,
-    });
-
-    reply.status(HttpStatus.CREATED).send(response);
-  }
-
-  @Put("prices/:priceId")
-  @UseGuards(AdminJwtAuthGuard)
-  @Roles(RoleId.Administrator)
-  async updatePrice(@Res() reply: FastifyReply, @Param("priceId") priceId: string, @Body() body: UpdatePriceDTO) {
-    const response = await this.billingAdminService.updatePrice({
-      id: priceId,
-      nickname: body.nickname,
-      metadata: body.metadata,
-    });
-
-    reply.send(response);
-  }
 
   // Customer endpoints
 

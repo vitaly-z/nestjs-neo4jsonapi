@@ -4,32 +4,13 @@ jest.mock("../../../../foundations/chunker/chunker.module", () => ({
 }));
 jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
-// Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  // Create a mock Neo4jService class
-  class Neo4jService {
-    writeOne = jest.fn();
-    readOne = jest.fn();
-    readMany = jest.fn();
-    initQuery = jest.fn();
-  }
-
-  // Create a mock AbstractJsonApiSerialiser class
-  class AbstractJsonApiSerialiser {}
-
-  return {
-    Neo4jService,
-    AbstractJsonApiSerialiser,
-  };
-});
-
 import { Test, TestingModule } from "@nestjs/testing";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../../core/neo4j";
 import { SubscriptionRepository } from "../subscription.repository";
 import { subscriptionMeta } from "../../entities/subscription.meta";
 import { billingCustomerMeta } from "../../entities/billing-customer.meta";
-import { stripePriceMeta } from "../../entities/stripe-price.meta";
-import { stripeProductMeta } from "../../entities/stripe-product.meta";
+import { stripePriceMeta } from "../../../stripe-price/entities/stripe-price.meta";
+import { stripeProductMeta } from "../../../stripe-product/entities/stripe-product.meta";
 import { Subscription, SubscriptionStatus } from "../../entities/subscription.entity";
 
 describe("SubscriptionRepository", () => {
@@ -80,8 +61,21 @@ describe("SubscriptionRepository", () => {
   });
 
   beforeEach(async () => {
+    const mockNeo4jService = {
+      writeOne: jest.fn(),
+      readOne: jest.fn(),
+      readMany: jest.fn(),
+      initQuery: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SubscriptionRepository, Neo4jService],
+      providers: [
+        SubscriptionRepository,
+        {
+          provide: Neo4jService,
+          useValue: mockNeo4jService,
+        },
+      ],
     }).compile();
 
     repository = module.get<SubscriptionRepository>(SubscriptionRepository);

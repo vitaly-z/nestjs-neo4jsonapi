@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiPaginator } from "../../../core/jsonapi";
 import { JsonApiService } from "../../../core/jsonapi";
+import { StripePricePostDataDTO, StripePricePutDataDTO } from "../dtos/stripe-price.dto";
 import { StripePriceModel } from "../entities/stripe-price.model";
 import { StripePriceRepository } from "../repositories/stripe-price.repository";
 import { StripeProductAdminService } from "../../stripe-product/services/stripe-product-admin.service";
@@ -9,7 +10,7 @@ import { StripeProductApiService } from "../../stripe-product/services/stripe-pr
 import { StripeProductRepository } from "../../stripe-product/repositories/stripe-product.repository";
 
 /**
- * BillingAdminService
+ * StripePriceAdminService
  *
  * Administrative service for managing Stripe prices in the billing system.
  * Provides CRUD operations for prices, with two-way sync between Stripe and local database.
@@ -23,11 +24,9 @@ import { StripeProductRepository } from "../../stripe-product/repositories/strip
  *
  * This service is typically used by admin/backend operations to set up billing pricing
  * before customers subscribe.
- *
- * Note: Product management has been moved to StripeProductAdminService.
  */
 @Injectable()
-export class BillingAdminService {
+export class StripePriceAdminService {
   constructor(
     private readonly stripePriceRepository: StripePriceRepository,
     private readonly stripeProductRepository: StripeProductRepository,
@@ -47,7 +46,7 @@ export class BillingAdminService {
    *
    * @example
    * ```typescript
-   * const prices = await billingAdminService.listPrices({
+   * const prices = await stripePriceAdminService.listPrices({
    *   query: { page: { number: 1, size: 10 } },
    *   productId: 'prod_123',
    *   active: true
@@ -89,49 +88,42 @@ export class BillingAdminService {
    * Creates both a Stripe price and a local database record. Supports both one-time
    * and recurring prices, including usage-based billing with meters.
    *
-   * @param params - Price parameters
-   * @param params.productId - Product ID to attach price to
-   * @param params.unitAmount - Price amount in smallest currency unit (e.g., cents)
-   * @param params.currency - Currency code (e.g., 'usd', 'eur')
-   * @param params.nickname - Optional display name
-   * @param params.lookupKey - Optional lookup key for referencing price
-   * @param params.recurring - Optional recurring billing configuration
-   * @param params.recurring.interval - Billing interval (day, week, month, year)
-   * @param params.recurring.intervalCount - Number of intervals between billings
-   * @param params.recurring.meter - Optional meter ID for usage-based billing
-   * @param params.metadata - Optional metadata key-value pairs
+   * @param params - JSONAPI formatted price creation data
+   * @param params.data - JSONAPI data object
+   * @param params.data.attributes - Price attributes
+   * @param params.data.attributes.productId - Product ID to attach price to
+   * @param params.data.attributes.unitAmount - Price amount in smallest currency unit (e.g., cents)
+   * @param params.data.attributes.currency - Currency code (e.g., 'usd', 'eur')
+   * @param params.data.attributes.nickname - Optional display name
+   * @param params.data.attributes.lookupKey - Optional lookup key for referencing price
+   * @param params.data.attributes.recurring - Optional recurring billing configuration
+   * @param params.data.attributes.metadata - Optional metadata key-value pairs
    * @returns JSON:API formatted price data
    * @throws {HttpException} NOT_FOUND if product not found
    *
    * @example
    * ```typescript
    * // Create a monthly subscription price
-   * const price = await billingAdminService.createPrice({
-   *   productId: 'prod_123',
-   *   unitAmount: 2999, // $29.99
-   *   currency: 'usd',
-   *   nickname: 'Monthly Premium',
-   *   recurring: {
-   *     interval: 'month',
-   *     intervalCount: 1
+   * const price = await stripePriceAdminService.createPrice({
+   *   data: {
+   *     type: 'stripe-prices',
+   *     id: uuid(),
+   *     attributes: {
+   *       productId: 'prod_123',
+   *       unitAmount: 2999, // $29.99
+   *       currency: 'usd',
+   *       nickname: 'Monthly Premium',
+   *       recurring: {
+   *         interval: 'month',
+   *         intervalCount: 1
+   *       }
+   *     }
    *   }
    * });
    * ```
    */
-  async createPrice(params: {
-    productId: string;
-    unitAmount: number;
-    currency: string;
-    nickname?: string;
-    lookupKey?: string;
-    recurring?: {
-      interval: "day" | "week" | "month" | "year";
-      intervalCount?: number;
-      meter?: string;
-    };
-    metadata?: Record<string, string>;
-  }): Promise<JsonApiDataInterface> {
-    const product = await this.stripeProductRepository.findById({ id: params.productId });
+  async createPrice(params: { data: StripePricePostDataDTO }): Promise<JsonApiDataInterface> {
+    const product = await this.stripeProductRepository.findById({ id: params.data.attributes.productId });
 
     if (!product) {
       throw new HttpException("Product not found", HttpStatus.NOT_FOUND);
@@ -139,27 +131,27 @@ export class BillingAdminService {
 
     const stripePrice = await this.stripeProductApiService.createPrice({
       productId: product.stripeProductId,
-      unitAmount: params.unitAmount,
-      currency: params.currency,
-      nickname: params.nickname,
-      lookupKey: params.lookupKey,
-      recurring: params.recurring,
-      metadata: params.metadata,
+      unitAmount: params.data.attributes.unitAmount,
+      currency: params.data.attributes.currency,
+      nickname: params.data.attributes.nickname,
+      lookupKey: params.data.attributes.lookupKey,
+      recurring: params.data.attributes.recurring,
+      metadata: params.data.attributes.metadata,
     });
 
     const price = await this.stripePriceRepository.create({
-      productId: params.productId,
+      productId: params.data.attributes.productId,
       stripePriceId: stripePrice.id,
       active: stripePrice.active,
-      currency: params.currency,
-      unitAmount: params.unitAmount,
-      priceType: params.recurring ? "recurring" : "one_time",
-      recurringInterval: params.recurring?.interval,
-      recurringIntervalCount: params.recurring?.intervalCount,
-      recurringUsageType: params.recurring?.meter ? "metered" : "licensed",
-      nickname: params.nickname,
-      lookupKey: params.lookupKey,
-      metadata: params.metadata ? JSON.stringify(params.metadata) : undefined,
+      currency: params.data.attributes.currency,
+      unitAmount: params.data.attributes.unitAmount,
+      priceType: params.data.attributes.recurring ? "recurring" : "one_time",
+      recurringInterval: params.data.attributes.recurring?.interval,
+      recurringIntervalCount: params.data.attributes.recurring?.intervalCount,
+      recurringUsageType: params.data.attributes.recurring?.meter ? "metered" : "licensed",
+      nickname: params.data.attributes.nickname,
+      lookupKey: params.data.attributes.lookupKey,
+      metadata: params.data.attributes.metadata ? JSON.stringify(params.data.attributes.metadata) : undefined,
     });
 
     return this.jsonApiService.buildSingle(StripePriceModel, price);
@@ -170,19 +162,17 @@ export class BillingAdminService {
    *
    * Note: Most price fields are immutable in Stripe. Only nickname and metadata can be updated.
    *
-   * @param params - Update parameters
-   * @param params.id - Price ID
-   * @param params.nickname - Optional new nickname
-   * @param params.metadata - Optional new metadata
+   * @param params - JSONAPI formatted price update data
+   * @param params.data - JSONAPI data object
+   * @param params.data.id - Price ID (UUID)
+   * @param params.data.attributes - Price attributes to update
+   * @param params.data.attributes.nickname - Optional new nickname
+   * @param params.data.attributes.metadata - Optional new metadata
    * @returns JSON:API formatted updated price data
    * @throws {HttpException} NOT_FOUND if price not found
    */
-  async updatePrice(params: {
-    id: string;
-    nickname?: string;
-    metadata?: Record<string, string>;
-  }): Promise<JsonApiDataInterface> {
-    const existingPrice = await this.stripePriceRepository.findById({ id: params.id });
+  async updatePrice(params: { data: StripePricePutDataDTO }): Promise<JsonApiDataInterface> {
+    const existingPrice = await this.stripePriceRepository.findById({ id: params.data.id });
 
     if (!existingPrice) {
       throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
@@ -190,14 +180,14 @@ export class BillingAdminService {
 
     await this.stripeProductApiService.updatePrice({
       priceId: existingPrice.stripePriceId,
-      nickname: params.nickname,
-      metadata: params.metadata,
+      nickname: params.data.attributes?.nickname,
+      metadata: params.data.attributes?.metadata,
     });
 
     const price = await this.stripePriceRepository.update({
-      id: params.id,
-      nickname: params.nickname,
-      metadata: params.metadata ? JSON.stringify(params.metadata) : undefined,
+      id: params.data.id,
+      nickname: params.data.attributes?.nickname,
+      metadata: params.data.attributes?.metadata ? JSON.stringify(params.data.attributes.metadata) : undefined,
     });
 
     return this.jsonApiService.buildSingle(StripePriceModel, price);

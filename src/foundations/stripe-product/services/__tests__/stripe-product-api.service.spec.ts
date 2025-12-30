@@ -304,6 +304,35 @@ describe("StripeProductApiService", () => {
     });
   });
 
+  describe("reactivateProduct", () => {
+    it("should reactivate product successfully", async () => {
+      const reactivatedProduct = { ...MOCK_PRODUCT, active: true };
+      mockStripe.products.update.mockResolvedValue(reactivatedProduct);
+
+      const result = await service.reactivateProduct(TEST_IDS.productId);
+
+      expect(mockStripe.products.update).toHaveBeenCalledWith(TEST_IDS.productId, {
+        active: true,
+      });
+      expect(result).toEqual(reactivatedProduct);
+    });
+
+    it("should handle Stripe API errors", async () => {
+      mockStripe.products.update.mockRejectedValue(STRIPE_API_ERROR);
+
+      await expect(service.reactivateProduct(TEST_IDS.productId)).rejects.toThrow(StripeError);
+    });
+
+    it("should handle reactivating already active product", async () => {
+      const activeProduct = { ...MOCK_PRODUCT, active: true };
+      mockStripe.products.update.mockResolvedValue(activeProduct);
+
+      const result = await service.reactivateProduct(TEST_IDS.productId);
+
+      expect(result.active).toBe(true);
+    });
+  });
+
   describe("listProducts", () => {
     it("should list all products without filter", async () => {
       const productsList = {

@@ -1,6 +1,6 @@
 import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
 import { billingCustomerMeta } from "../entities/billing-customer.meta";
-import { stripePriceMeta } from "../entities/stripe-price.meta";
+import { stripePriceMeta } from "../../stripe-price/entities/stripe-price.meta";
 import { Subscription } from "../entities/subscription.entity";
 import { mapSubscription } from "../entities/subscription.map";
 import { subscriptionMeta } from "../entities/subscription.meta";

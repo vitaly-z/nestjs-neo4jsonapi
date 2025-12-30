@@ -5,7 +5,7 @@ import { AbstractJsonApiSerialiser } from "../../../core/jsonapi";
 import { JsonApiSerialiserFactory } from "../../../core/jsonapi";
 import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiServiceInterface } from "../../../core/jsonapi";
-import { StripePriceModel } from "../entities/stripe-price.model";
+import { StripePriceModel } from "../../stripe-price/entities/stripe-price.model";
 import { Subscription } from "../entities/subscription.entity";
 import { SubscriptionModel } from "../entities/subscription.model";
 

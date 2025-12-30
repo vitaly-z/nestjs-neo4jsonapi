@@ -4,27 +4,8 @@ jest.mock("../../../../foundations/chunker/chunker.module", () => ({
 }));
 jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
-// Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  // Create a mock Neo4jService class
-  class Neo4jService {
-    writeOne = jest.fn();
-    readOne = jest.fn();
-    readMany = jest.fn();
-    initQuery = jest.fn();
-  }
-
-  // Create a mock AbstractJsonApiSerialiser class
-  class AbstractJsonApiSerialiser {}
-
-  return {
-    Neo4jService,
-    AbstractJsonApiSerialiser,
-  };
-});
-
 import { Test, TestingModule } from "@nestjs/testing";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../../core/neo4j";
 import { WebhookEventRepository } from "../webhook-event.repository";
 import { webhookEventMeta } from "../../entities/webhook-event.meta";
 import { WebhookEvent, WebhookEventStatus } from "../../entities/webhook-event.entity";
@@ -94,8 +75,21 @@ describe("WebhookEventRepository", () => {
   });
 
   beforeEach(async () => {
+    const mockNeo4jService = {
+      writeOne: jest.fn(),
+      readOne: jest.fn(),
+      readMany: jest.fn(),
+      initQuery: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [WebhookEventRepository, Neo4jService],
+      providers: [
+        WebhookEventRepository,
+        {
+          provide: Neo4jService,
+          useValue: mockNeo4jService,
+        },
+      ],
     }).compile();
 
     repository = module.get<WebhookEventRepository>(WebhookEventRepository);

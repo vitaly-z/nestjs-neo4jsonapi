@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "../../stripe/services/stripe.service";
 import { HandleStripeErrors } from "../../stripe/errors/stripe.errors";
+import { StripeService } from "../../stripe/services/stripe.service";
 
 /**
  * Stripe Product API Service
@@ -137,6 +137,27 @@ export class StripeProductApiService {
   async archiveProduct(productId: string): Promise<Stripe.Product> {
     const stripe = this.stripeService.getClient();
     return stripe.products.update(productId, { active: false });
+  }
+
+  /**
+   * Reactivate a product by setting it to active
+   *
+   * @param productId - The product ID to reactivate
+   * @returns Promise resolving to the reactivated product
+   * @throws {StripeError} If reactivation fails
+   *
+   * @example
+   * ```typescript
+   * const product = await service.reactivateProduct('prod_abc123');
+   * ```
+   *
+   * @remarks
+   * Reactivated products can be used for new purchases and existing subscriptions continue.
+   */
+  @HandleStripeErrors()
+  async reactivateProduct(productId: string): Promise<Stripe.Product> {
+    const stripe = this.stripeService.getClient();
+    return stripe.products.update(productId, { active: true });
   }
 
   /**

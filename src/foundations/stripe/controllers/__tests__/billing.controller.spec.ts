@@ -4,13 +4,22 @@ jest.mock("../../../../foundations/chunker/chunker.module", () => ({
 }));
 jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
+// Mock the guards to avoid dependency resolution issues
+jest.mock("../../../../common/guards", () => ({
+  JwtAuthGuard: class MockJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+  AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+}));
+
 // Mock the barrel export to provide only what we need
 jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
   const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
-    JwtAuthGuard: class MockJwtAuthGuard {},
     // Override companyMeta that billing-customer.model needs
     companyMeta: {
       type: "companies",

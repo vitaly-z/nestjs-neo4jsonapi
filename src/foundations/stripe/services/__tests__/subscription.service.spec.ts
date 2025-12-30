@@ -36,11 +36,12 @@ import Stripe from "stripe";
 import { SubscriptionService } from "../subscription.service";
 import { SubscriptionRepository } from "../../repositories/subscription.repository";
 import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
-import { StripePriceRepository } from "../../repositories/stripe-price.repository";
-import { StripeSubscriptionService, JsonApiService } from "@carlonicora/nestjs-neo4jsonapi";
+import { StripePriceRepository } from "../../../stripe-price/repositories/stripe-price.repository";
+import { JsonApiService } from "../../../../core/jsonapi";
+import { StripeSubscriptionService } from "../stripe.subscription.service";
 import { Subscription, SubscriptionStatus } from "../../entities/subscription.entity";
 import { BillingCustomer } from "../../entities/billing-customer.entity";
-import { StripePrice } from "../../entities/stripe-price.entity";
+import { StripePrice } from "../../../stripe-price/entities/stripe-price.entity";
 import {
   MOCK_SUBSCRIPTION,
   MOCK_PRICE_RECURRING,

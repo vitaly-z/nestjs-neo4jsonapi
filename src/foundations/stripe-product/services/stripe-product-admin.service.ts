@@ -1,11 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { JsonApiDataInterface } from "../../../core/jsonapi";
-import { JsonApiPaginator } from "../../../core/jsonapi";
-import { JsonApiService } from "../../../core/jsonapi";
-import { StripeProductApiService } from "./stripe-product-api.service";
+import { JsonApiDataInterface, JsonApiPaginator, JsonApiService } from "../../../core/jsonapi";
+import { StripeProductPostDataDTO, StripeProductPutDataDTO } from "../dtos/stripe-product.dto";
 import { StripeProductModel } from "../entities/stripe-product.model";
 import { StripeProductRepository } from "../repositories/stripe-product.repository";
-import { StripeProductPostDataDTO, StripeProductPutDataDTO } from "../dtos/stripe-product.dto";
+import { StripeProductApiService } from "./stripe-product-api.service";
 
 /**
  * StripeProductAdminService
@@ -183,6 +181,32 @@ export class StripeProductAdminService {
     await this.stripeProductRepository.update({
       id: params.id,
       active: false,
+    });
+  }
+
+  /**
+   * Reactivate a product
+   *
+   * Sets the product as active in both Stripe and the local database.
+   * Active products can be used for new subscriptions.
+   *
+   * @param params - Parameters
+   * @param params.id - Product ID
+   * @returns Promise that resolves when reactivation is complete
+   * @throws {HttpException} NOT_FOUND if product not found
+   */
+  async reactivateProduct(params: { id: string }): Promise<void> {
+    const existingProduct = await this.stripeProductRepository.findById({ id: params.id });
+
+    if (!existingProduct) {
+      throw new HttpException("Product not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.stripeProductApiService.reactivateProduct(existingProduct.stripeProductId);
+
+    await this.stripeProductRepository.update({
+      id: params.id,
+      active: true,
     });
   }
 

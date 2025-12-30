@@ -6,19 +6,10 @@ jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the barrel export to provide only what we need
 jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  // Create a mock Neo4jService class
-  class Neo4jService {
-    writeOne = jest.fn();
-    readOne = jest.fn();
-    initQuery = jest.fn();
-  }
-
-  // Create a mock AbstractJsonApiSerialiser class
-  class AbstractJsonApiSerialiser {}
+  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
-    Neo4jService,
-    AbstractJsonApiSerialiser,
+    ...actual,
     companyMeta: {
       type: "companies",
       endpoint: "companies",
@@ -29,7 +20,7 @@ jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
 });
 
 import { Test, TestingModule } from "@nestjs/testing";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../../core/neo4j";
 import { BillingCustomerRepository } from "../billing-customer.repository";
 import { billingCustomerMeta } from "../../entities/billing-customer.meta";
 import { BillingCustomer } from "../../entities/billing-customer.entity";
@@ -69,8 +60,20 @@ describe("BillingCustomerRepository", () => {
   });
 
   beforeEach(async () => {
+    const mockNeo4jService = {
+      writeOne: jest.fn(),
+      readOne: jest.fn(),
+      initQuery: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BillingCustomerRepository, Neo4jService],
+      providers: [
+        BillingCustomerRepository,
+        {
+          provide: Neo4jService,
+          useValue: mockNeo4jService,
+        },
+      ],
     }).compile();
 
     repository = module.get<BillingCustomerRepository>(BillingCustomerRepository);

@@ -1,6 +1,6 @@
 import { Entity } from "../../../common/abstracts/entity";
 import { BillingCustomer } from "../entities/billing-customer.entity";
-import { StripePrice } from "../entities/stripe-price.entity";
+import { StripePrice } from "../../stripe-price/entities/stripe-price.entity";
 
 export type SubscriptionStatus =
   | "active"

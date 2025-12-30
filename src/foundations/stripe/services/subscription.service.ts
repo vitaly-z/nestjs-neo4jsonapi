@@ -5,7 +5,7 @@ import { JsonApiPaginator } from "../../../core/jsonapi";
 import { JsonApiService } from "../../../core/jsonapi";
 import { StripeSubscriptionService } from "./stripe.subscription.service";
 import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
-import { StripePriceRepository } from "../repositories/stripe-price.repository";
+import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
 import { SubscriptionRepository } from "../repositories/subscription.repository";
 import { SubscriptionModel } from "../entities/subscription.model";
 import { SubscriptionStatus } from "../entities/subscription.entity";

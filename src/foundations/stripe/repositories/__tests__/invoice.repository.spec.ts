@@ -4,33 +4,8 @@ jest.mock("../../../../foundations/chunker/chunker.module", () => ({
 }));
 jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
-// Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  // Create a mock Neo4jService class
-  class Neo4jService {
-    writeOne = jest.fn();
-    readOne = jest.fn();
-    readMany = jest.fn();
-    initQuery = jest.fn();
-  }
-
-  // Create a mock AbstractJsonApiSerialiser class
-  class AbstractJsonApiSerialiser {}
-
-  return {
-    Neo4jService,
-    AbstractJsonApiSerialiser,
-    companyMeta: {
-      type: "companies",
-      endpoint: "companies",
-      nodeName: "company",
-      labelName: "Company",
-    },
-  };
-});
-
 import { Test, TestingModule } from "@nestjs/testing";
-import { Neo4jService } from "@carlonicora/nestjs-neo4jsonapi";
+import { Neo4jService } from "../../../../core/neo4j";
 import { InvoiceRepository } from "../invoice.repository";
 import { invoiceMeta } from "../../entities/invoice.meta";
 import { billingCustomerMeta } from "../../entities/billing-customer.meta";
@@ -89,8 +64,21 @@ describe("InvoiceRepository", () => {
   });
 
   beforeEach(async () => {
+    const mockNeo4jService = {
+      writeOne: jest.fn(),
+      readOne: jest.fn(),
+      readMany: jest.fn(),
+      initQuery: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [InvoiceRepository, Neo4jService],
+      providers: [
+        InvoiceRepository,
+        {
+          provide: Neo4jService,
+          useValue: mockNeo4jService,
+        },
+      ],
     }).compile();
 
     repository = module.get<InvoiceRepository>(InvoiceRepository);

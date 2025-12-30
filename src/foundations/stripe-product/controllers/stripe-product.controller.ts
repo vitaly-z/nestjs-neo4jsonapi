@@ -1,4 +1,17 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+  Query,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { FastifyReply } from "fastify";
 import { RoleId } from "../../../common/constants/system.roles";
 import { Roles } from "../../../common/decorators";
@@ -7,6 +20,30 @@ import { StripeProductPostDTO, StripeProductPutDTO } from "../dtos/stripe-produc
 import { stripeProductMeta } from "../entities/stripe-product.meta";
 import { StripeProductAdminService } from "../services/stripe-product-admin.service";
 
+/**
+ * StripeProductController
+ *
+ * Administrative REST API controller for managing Stripe products.
+ * All endpoints require administrator authentication.
+ *
+ * Provides CRUD operations for products:
+ * - List products with optional active filter
+ * - Get individual product by ID
+ * - Create new products (creates both Stripe product and local DB record)
+ * - Update existing products (updates both Stripe and local DB)
+ * - Archive products (sets active=false in both systems)
+ *
+ * All responses follow JSON:API specification format.
+ *
+ * @example
+ * ```
+ * GET /billing/products?active=true
+ * GET /billing/products/:id
+ * POST /billing/products
+ * PUT /billing/products/:id
+ * POST /billing/products/:id/archive
+ * ```
+ */
 @Controller()
 export class StripeProductController {
   constructor(private readonly stripeProductAdminService: StripeProductAdminService) {}
@@ -65,6 +102,15 @@ export class StripeProductController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async archiveProduct(@Res() reply: FastifyReply, @Param("id") id: string) {
     await this.stripeProductAdminService.archiveProduct({ id });
+    reply.send();
+  }
+
+  @Delete(`${stripeProductMeta.endpoint}/:id/archive`)
+  @UseGuards(AdminJwtAuthGuard)
+  @Roles(RoleId.Administrator)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async reactivateProduct(@Res() reply: FastifyReply, @Param("id") id: string) {
+    await this.stripeProductAdminService.reactivateProduct({ id });
     reply.send();
   }
 }

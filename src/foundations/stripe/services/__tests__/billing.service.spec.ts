@@ -25,12 +25,10 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 import Stripe from "stripe";
 import { BillingService } from "../billing.service";
 import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
-import {
-  JsonApiService,
-  StripeCustomerService,
-  StripePaymentService,
-  StripePortalService,
-} from "@carlonicora/nestjs-neo4jsonapi";
+import { JsonApiService } from "../../../../core/jsonapi";
+import { StripeCustomerService } from "../stripe.customer.service";
+import { StripePaymentService } from "../stripe.payment.service";
+import { StripePortalService } from "../stripe.portal.service";
 import { BillingCustomer } from "../../entities/billing-customer.entity";
 import {
   MOCK_CUSTOMER,

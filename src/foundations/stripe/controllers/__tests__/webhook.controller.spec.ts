@@ -24,12 +24,14 @@ jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
 });
 
 import { Test, TestingModule } from "@nestjs/testing";
+import { getQueueToken } from "@nestjs/bullmq";
 import { HttpStatus } from "@nestjs/common";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { Queue } from "bullmq";
 import Stripe from "stripe";
 import { WebhookController } from "../webhook.controller";
-import { StripeWebhookService, AppLoggingService } from "@carlonicora/nestjs-neo4jsonapi";
+import { AppLoggingService } from "../../../../core/logging";
+import { StripeWebhookService } from "../../services/stripe.webhook.service";
 import { WebhookEventRepository } from "../../repositories/webhook-event.repository";
 import { WebhookJobData } from "../../processors/webhook.processor";
 import type { WebhookEvent } from "../../entities/webhook-event.entity";
@@ -171,7 +173,7 @@ describe("WebhookController", () => {
           useValue: mockLogger,
         },
         {
-          provide: `BullQueue_${process.env.QUEUE}_billing_webhook`,
+          provide: getQueueToken("billing-webhook"),
           useValue: mockQueue,
         },
       ],
@@ -181,7 +183,7 @@ describe("WebhookController", () => {
     stripeWebhookService = module.get(StripeWebhookService);
     webhookEventRepository = module.get(WebhookEventRepository);
     logger = module.get(AppLoggingService);
-    webhookQueue = module.get(`BullQueue_${process.env.QUEUE}_billing_webhook`);
+    webhookQueue = module.get(getQueueToken("billing-webhook"));
 
     mockReply = createMockReply();
   });

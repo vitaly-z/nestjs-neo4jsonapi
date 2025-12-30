@@ -7,6 +7,11 @@ jest.mock("../../../../foundations/chunker/chunker.module", () => ({
 }));
 jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
+// Mock the StripeModule to prevent reflection metadata errors
+jest.mock("../../stripe.module", () => ({
+  StripeModule: class MockStripeModule {},
+}));
+
 // Mock the barrel export to provide the imports that the processor needs
 jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
   const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
@@ -43,7 +48,7 @@ import { BillingCustomerRepository } from "../../repositories/billing-customer.r
 import { SubscriptionRepository } from "../../repositories/subscription.repository";
 import { InvoiceRepository } from "../../repositories/invoice.repository";
 import { NotificationService } from "../../services/notification.service";
-import { AppLoggingService } from "@carlonicora/nestjs-neo4jsonapi";
+import { AppLoggingService } from "../../../../core/logging";
 
 describe("WebhookProcessor", () => {
   let processor: WebhookProcessor;

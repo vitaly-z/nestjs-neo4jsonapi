@@ -39,7 +39,7 @@ import { Queue } from "bullmq";
 import { NotificationService, PaymentFailureNotificationParams } from "../notification.service";
 import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
 import { InvoiceRepository } from "../../repositories/invoice.repository";
-import { AppLoggingService } from "@carlonicora/nestjs-neo4jsonapi";
+import { AppLoggingService } from "../../../../core/logging";
 import { BillingCustomer } from "../../entities/billing-customer.entity";
 import { Invoice } from "../../entities/invoice.entity";
 
@@ -103,8 +103,6 @@ describe("NotificationService", () => {
   };
 
   beforeEach(async () => {
-    const QUEUE_NAME = `${process.env.QUEUE}_email`;
-
     const mockEmailQueue = {
       add: jest.fn(),
     };
@@ -129,7 +127,7 @@ describe("NotificationService", () => {
       providers: [
         NotificationService,
         {
-          provide: getQueueToken(QUEUE_NAME),
+          provide: getQueueToken("email"),
           useValue: mockEmailQueue,
         },
         {
@@ -148,7 +146,7 @@ describe("NotificationService", () => {
     }).compile();
 
     service = module.get<NotificationService>(NotificationService);
-    emailQueue = module.get(getQueueToken(QUEUE_NAME));
+    emailQueue = module.get(getQueueToken("email"));
     billingCustomerRepository = module.get(BillingCustomerRepository);
     invoiceRepository = module.get(InvoiceRepository);
     logger = module.get(AppLoggingService);

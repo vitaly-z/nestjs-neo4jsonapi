@@ -7,24 +7,20 @@ import { BillingController } from "./controllers/billing.controller";
 import { WebhookController } from "./controllers/webhook.controller";
 import { BillingCustomerModel } from "./entities/billing-customer.model";
 import { InvoiceModel } from "./entities/invoice.model";
-import { StripePriceModel } from "./entities/stripe-price.model";
 import { SubscriptionModel } from "./entities/subscription.model";
 import { UsageRecordModel } from "./entities/usage-record.model";
 import { WebhookEventModel } from "./entities/webhook-event.model";
 import { WebhookProcessor } from "./processors/webhook.processor";
 import { BillingCustomerRepository } from "./repositories/billing-customer.repository";
 import { InvoiceRepository } from "./repositories/invoice.repository";
-import { StripePriceRepository } from "./repositories/stripe-price.repository";
 import { SubscriptionRepository } from "./repositories/subscription.repository";
 import { UsageRecordRepository } from "./repositories/usage-record.repository";
 import { WebhookEventRepository } from "./repositories/webhook-event.repository";
 import { BillingCustomerSerialiser } from "./serialisers/billing-customer.serialiser";
 import { InvoiceSerialiser } from "./serialisers/invoice.serialiser";
-import { StripePriceSerialiser } from "./serialisers/stripe-price.serialiser";
 import { SubscriptionSerialiser } from "./serialisers/subscription.serialiser";
 import { UsageRecordSerialiser } from "./serialisers/usage-record.serialiser";
 import { WebhookEventSerialiser } from "./serialisers/webhook-event.serialiser";
-import { BillingAdminService } from "./services/billing-admin.service";
 import { BillingService } from "./services/billing.service";
 import { InvoiceService } from "./services/invoice.service";
 import { SubscriptionService } from "./services/subscription.service";
@@ -39,10 +35,12 @@ import { StripeSubscriptionService } from "./services/stripe.subscription.servic
 import { StripeUsageService } from "./services/stripe.usage.service";
 import { StripeWebhookService } from "./services/stripe.webhook.service";
 import { StripeProductModule } from "../stripe-product/stripe-product.module";
+import { StripePriceModule } from "../stripe-price/stripe-price.module";
 
 @Module({
   imports: [
     forwardRef(() => StripeProductModule),
+    StripePriceModule,
     BullModule.registerQueue({ name: QueueId.BILLING_WEBHOOK }),
     BullModule.registerQueue({ name: QueueId.EMAIL }),
   ],
@@ -59,21 +57,18 @@ import { StripeProductModule } from "../stripe-product/stripe-product.module";
     StripeWebhookService,
     // Business Logic Services
     BillingService,
-    BillingAdminService,
     SubscriptionService,
     InvoiceService,
     UsageService,
     NotificationService,
     // Repositories
     BillingCustomerRepository,
-    StripePriceRepository,
     SubscriptionRepository,
     InvoiceRepository,
     UsageRecordRepository,
     WebhookEventRepository,
     // Serializers
     BillingCustomerSerialiser,
-    StripePriceSerialiser,
     SubscriptionSerialiser,
     InvoiceSerialiser,
     UsageRecordSerialiser,
@@ -93,14 +88,12 @@ import { StripeProductModule } from "../stripe-product/stripe-product.module";
     StripeWebhookService,
     // Business Logic Services
     BillingService,
-    BillingAdminService,
     SubscriptionService,
     InvoiceService,
     UsageService,
     NotificationService,
     // Repositories
     BillingCustomerRepository,
-    StripePriceRepository,
     SubscriptionRepository,
     InvoiceRepository,
     UsageRecordRepository,
@@ -110,7 +103,6 @@ import { StripeProductModule } from "../stripe-product/stripe-product.module";
 export class StripeModule implements OnModuleInit {
   onModuleInit() {
     modelRegistry.register(BillingCustomerModel);
-    modelRegistry.register(StripePriceModel);
     modelRegistry.register(SubscriptionModel);
     modelRegistry.register(InvoiceModel);
     modelRegistry.register(UsageRecordModel);

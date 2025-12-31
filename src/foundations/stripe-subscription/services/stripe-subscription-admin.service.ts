@@ -4,7 +4,7 @@ import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiPaginator } from "../../../core/jsonapi";
 import { JsonApiService } from "../../../core/jsonapi";
 import { StripeSubscriptionApiService } from "./stripe-subscription-api.service";
-import { BillingCustomerRepository } from "../../stripe/repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
 import { StripeSubscriptionRepository } from "../repositories/stripe-subscription.repository";
 import { StripeSubscriptionModel } from "../entities/stripe-subscription.model";
@@ -32,7 +32,7 @@ import { StripeSubscriptionStatus } from "../entities/stripe-subscription.entity
 export class StripeSubscriptionAdminService {
   constructor(
     private readonly subscriptionRepository: StripeSubscriptionRepository,
-    private readonly billingCustomerRepository: BillingCustomerRepository,
+    private readonly stripeCustomerRepository: StripeCustomerRepository,
     private readonly stripePriceRepository: StripePriceRepository,
     private readonly stripeSubscriptionApiService: StripeSubscriptionApiService,
     private readonly jsonApiService: JsonApiService,
@@ -64,14 +64,13 @@ export class StripeSubscriptionAdminService {
   }): Promise<JsonApiDataInterface> {
     const paginator = new JsonApiPaginator(params.query);
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
-      // No billing customer yet = no subscriptions. Return empty list.
-      return this.jsonApiService.buildList(StripeSubscriptionModel, [], paginator);
+      throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
     }
 
-    const subscriptions = await this.subscriptionRepository.findByBillingCustomerId({
-      billingCustomerId: customer.id,
+    const subscriptions = await this.subscriptionRepository.findByStripeCustomerId({
+      stripeCustomerId: customer.id,
       status: params.status,
     });
 
@@ -95,8 +94,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -132,9 +131,9 @@ export class StripeSubscriptionAdminService {
     trialPeriodDays?: number;
     quantity?: number;
   }): Promise<JsonApiDataInterface> {
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
-      throw new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND);
+      throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
     }
 
     const price = await this.stripePriceRepository.findById({ id: params.priceId });
@@ -155,7 +154,7 @@ export class StripeSubscriptionAdminService {
 
     const subscriptionItem = stripeSubscription.items.data[0];
     const subscription = await this.subscriptionRepository.create({
-      billingCustomerId: customer.id,
+      stripeCustomerId: customer.id,
       priceId: params.priceId,
       stripeSubscriptionId: stripeSubscription.id,
       stripeSubscriptionItemId: subscriptionItem?.id,
@@ -203,8 +202,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -241,8 +240,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -277,8 +276,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -324,8 +323,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -386,8 +385,8 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Subscription not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || subscription.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || subscription.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN);
     }
 

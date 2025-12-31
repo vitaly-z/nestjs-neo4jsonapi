@@ -7,18 +7,14 @@ import {
   HttpStatus,
   Param,
   Post,
-  Put,
   Query,
   Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
-import { Roles } from "../../../common/decorators";
-import { AdminJwtAuthGuard, JwtAuthGuard } from "../../../common/guards";
-import { RoleId } from "../../../common/constants/system.roles";
+import { JwtAuthGuard } from "../../../common/guards";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
-import { CreateCustomerDTO } from "../dtos/create-customer.dto";
 import { CreateSetupIntentDTO } from "../dtos/create-setup-intent.dto";
 import { ReportUsageDTO } from "../dtos/report-usage.dto";
 import { BillingService } from "../services/billing.service";
@@ -31,30 +27,7 @@ export class BillingController {
     private readonly usageService: UsageService,
   ) {}
 
-  // Customer endpoints
-
-  @Get("customers")
-  @UseGuards(JwtAuthGuard)
-  async getCustomer(@Req() req: AuthenticatedRequest, @Res() reply: FastifyReply) {
-    const response = await this.billingService.getCustomer({
-      companyId: req.user.companyId,
-    });
-
-    reply.send(response);
-  }
-
-  @Post("customers")
-  @UseGuards(JwtAuthGuard)
-  async createCustomer(@Req() req: AuthenticatedRequest, @Res() reply: FastifyReply, @Body() body: CreateCustomerDTO) {
-    const response = await this.billingService.createCustomer({
-      companyId: req.user.companyId,
-      name: body.name,
-      email: body.email,
-      currency: body.currency,
-    });
-
-    reply.status(HttpStatus.CREATED).send(response);
-  }
+  // Setup Intent endpoints
 
   @Post("setup-intent")
   @UseGuards(JwtAuthGuard)

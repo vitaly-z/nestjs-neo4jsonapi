@@ -44,7 +44,7 @@ import Stripe from "stripe";
 import { WebhookProcessor, WebhookJobData } from "../webhook.processor";
 import { WebhookEventRepository } from "../../repositories/webhook-event.repository";
 import { StripeSubscriptionAdminService } from "../../../stripe-subscription/services/stripe-subscription-admin.service";
-import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceRepository } from "../../../stripe-invoice/repositories/stripe-invoice.repository";
 import { NotificationService } from "../../services/notification.service";
@@ -54,7 +54,7 @@ describe("WebhookProcessor", () => {
   let processor: WebhookProcessor;
   let webhookEventRepository: jest.Mocked<WebhookEventRepository>;
   let subscriptionService: jest.Mocked<StripeSubscriptionAdminService>;
-  let billingCustomerRepository: jest.Mocked<BillingCustomerRepository>;
+  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
   let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
   let stripeInvoiceRepository: jest.Mocked<StripeInvoiceRepository>;
   let notificationService: jest.Mocked<NotificationService>;
@@ -91,7 +91,7 @@ describe("WebhookProcessor", () => {
       syncSubscriptionFromStripe: jest.fn(),
     };
 
-    const mockBillingCustomerRepository = {
+    const mockStripeCustomerRepository = {
       updateByStripeCustomerId: jest.fn(),
     };
 
@@ -128,8 +128,8 @@ describe("WebhookProcessor", () => {
           useValue: mockStripeSubscriptionAdminService,
         },
         {
-          provide: BillingCustomerRepository,
-          useValue: mockBillingCustomerRepository,
+          provide: StripeCustomerRepository,
+          useValue: mockStripeCustomerRepository,
         },
         {
           provide: StripeSubscriptionRepository,
@@ -153,7 +153,7 @@ describe("WebhookProcessor", () => {
     processor = module.get<WebhookProcessor>(WebhookProcessor);
     webhookEventRepository = module.get(WebhookEventRepository);
     subscriptionService = module.get(StripeSubscriptionAdminService);
-    billingCustomerRepository = module.get(BillingCustomerRepository);
+    stripeCustomerRepository = module.get(StripeCustomerRepository);
     subscriptionRepository = module.get(StripeSubscriptionRepository);
     stripeInvoiceRepository = module.get(StripeInvoiceRepository);
     notificationService = module.get(NotificationService);
@@ -495,11 +495,11 @@ describe("WebhookProcessor", () => {
         const job = createMockJob("customer.updated", payload);
 
         webhookEventRepository.updateStatus.mockResolvedValue({} as any);
-        billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
+        stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
 
         await processor.process(job);
 
-        expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.customerId,
           email: "updated@example.com",
           name: "Updated Name",
@@ -1083,11 +1083,11 @@ describe("WebhookProcessor", () => {
         const job = createMockJob("customer.updated", payload);
 
         webhookEventRepository.updateStatus.mockResolvedValue({} as any);
-        billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
+        stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
 
         await processor.process(job);
 
-        expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.customerId,
           email: "newemail@example.com",
           name: "New Name",
@@ -1103,11 +1103,11 @@ describe("WebhookProcessor", () => {
         const job = createMockJob("customer.updated", payload);
 
         webhookEventRepository.updateStatus.mockResolvedValue({} as any);
-        billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
+        stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
 
         await processor.process(job);
 
-        expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.customerId,
           email: undefined,
           name: "Test Name",
@@ -1123,11 +1123,11 @@ describe("WebhookProcessor", () => {
         const job = createMockJob("customer.updated", payload);
 
         webhookEventRepository.updateStatus.mockResolvedValue({} as any);
-        billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
+        stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue({} as any);
 
         await processor.process(job);
 
-        expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.customerId,
           email: "test@example.com",
           name: undefined,
@@ -1143,7 +1143,7 @@ describe("WebhookProcessor", () => {
 
         await processor.process(job);
 
-        expect(billingCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
+        expect(stripeCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
       });
     });
   });

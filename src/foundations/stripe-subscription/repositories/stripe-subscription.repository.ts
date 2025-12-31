@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
-import { billingCustomerMeta } from "../../stripe/entities/billing-customer.meta";
+import { stripeCustomerMeta } from "../../stripe-customer/entities/stripe-customer.meta";
 import { stripePriceMeta } from "../../stripe-price/entities/stripe-price.meta";
 import { stripeProductMeta } from "../../stripe-product/entities/stripe-product.meta";
 import { StripeSubscription, StripeSubscriptionStatus } from "../entities/stripe-subscription.entity";
@@ -26,7 +26,7 @@ import { StripeSubscriptionModel } from "../entities/stripe-subscription.model";
  * @example
  * ```typescript
  * const subscription = await subscriptionRepository.create({
- *   billingCustomerId: 'cust_123',
+ *   stripeCustomerId: 'cust_123',
  *   priceId: 'price_456',
  *   stripeSubscriptionId: 'sub_stripe789',
  *   status: 'active',
@@ -57,15 +57,15 @@ export class StripeSubscriptionRepository implements OnModuleInit {
   }
 
   /**
-   * Find subscriptions by billing customer ID
+   * Find subscriptions by stripe customer ID
    *
    * @param params - Query parameters
-   * @param params.billingCustomerId - Billing customer identifier
+   * @param params.stripeCustomerId - Stripe customer identifier (internal ID)
    * @param params.status - Optional filter by subscription status
    * @returns Array of subscriptions ordered by creation date descending
    */
-  async findByBillingCustomerId(params: {
-    billingCustomerId: string;
+  async findByStripeCustomerId(params: {
+    stripeCustomerId: string;
     status?: StripeSubscriptionStatus;
   }): Promise<StripeSubscription[]> {
     const query = this.neo4j.initQuery({ serialiser: StripeSubscriptionModel });
@@ -78,10 +78,10 @@ export class StripeSubscriptionRepository implements OnModuleInit {
 
     const where = whereParams.length > 0 ? `AND ${whereParams.join(" AND ")}` : "";
 
-    query.queryParams.billingCustomerId = params.billingCustomerId;
+    query.queryParams.stripeCustomerId = params.stripeCustomerId;
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})
       MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       WHERE 1=1 ${where}
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
@@ -106,7 +106,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})
       MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
     `;
@@ -129,7 +129,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})
       MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
     `;
@@ -140,11 +140,11 @@ export class StripeSubscriptionRepository implements OnModuleInit {
   /**
    * Create a new subscription
    *
-   * Creates a Subscription node with BELONGS_TO relationship to BillingCustomer
+   * Creates a Subscription node with BELONGS_TO relationship to StripeCustomer
    * and USES_PRICE relationship to StripePrice.
    *
    * @param params - Creation parameters
-   * @param params.billingCustomerId - Billing customer ID to link to
+   * @param params.stripeCustomerId - Stripe customer ID to link to
    * @param params.priceId - Price ID to link to
    * @param params.stripeSubscriptionId - Stripe subscription ID
    * @param params.stripeSubscriptionItemId - Optional Stripe subscription item ID
@@ -158,7 +158,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
    * @returns Created Subscription
    */
   async create(params: {
-    billingCustomerId: string;
+    stripeCustomerId: string;
     priceId: string;
     stripeSubscriptionId: string;
     stripeSubscriptionItemId?: string;
@@ -176,7 +176,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
 
     query.queryParams = {
       id,
-      billingCustomerId: params.billingCustomerId,
+      stripeCustomerId: params.stripeCustomerId,
       priceId: params.priceId,
       stripeSubscriptionId: params.stripeSubscriptionId,
       stripeSubscriptionItemId: params.stripeSubscriptionItemId ?? null,
@@ -190,7 +190,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})
       MATCH (${stripePriceMeta.nodeName}:${stripePriceMeta.labelName} {id: $priceId})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       CREATE (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {
         id: $id,
@@ -206,7 +206,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
         createdAt: datetime(),
         updatedAt: datetime()
       })
-      CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName})
+      CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName})
       CREATE (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName})
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
     `;
@@ -297,7 +297,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})
       MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       SET ${setParams.join(", ")}
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
@@ -364,10 +364,10 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})
       MATCH (${stripeSubscriptionMeta.nodeName})-[oldRel:USES_PRICE]->(:${stripePriceMeta.labelName})
       DELETE oldRel
-      WITH ${stripeSubscriptionMeta.nodeName}, ${billingCustomerMeta.nodeName}
+      WITH ${stripeSubscriptionMeta.nodeName}, ${stripeCustomerMeta.nodeName}
       MATCH (newPrice:${stripePriceMeta.labelName} {id: $newPriceId})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       CREATE (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(newPrice)
       SET ${stripeSubscriptionMeta.nodeName}.updatedAt = datetime()
@@ -421,7 +421,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
       WHERE ${stripeSubscriptionMeta.nodeName}.status IN ['active', 'trialing', 'past_due']
       SET ${stripeSubscriptionMeta.nodeName}.status = $canceledStatus,
           ${stripeSubscriptionMeta.nodeName}.canceledAt = datetime($canceledAt),

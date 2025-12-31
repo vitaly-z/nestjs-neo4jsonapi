@@ -25,24 +25,24 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 import { UsageService } from "../usage.service";
 import { UsageRecordRepository } from "../../repositories/usage-record.repository";
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
-import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { JsonApiService } from "../../../../core/jsonapi";
 import { StripeUsageService } from "../stripe.usage.service";
 import { UsageRecord } from "../../entities/usage-record.entity";
 import { StripeSubscription } from "../../../stripe-subscription/entities/stripe-subscription.entity";
-import { BillingCustomer } from "../../entities/billing-customer.entity";
+import { StripeCustomer } from "../../../stripe-customer/entities/stripe-customer.entity";
 import { TEST_IDS } from "../../__tests__/fixtures/stripe.fixtures";
 
 describe("UsageService", () => {
   let service: UsageService;
   let usageRecordRepository: jest.Mocked<UsageRecordRepository>;
   let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
-  let billingCustomerRepository: jest.Mocked<BillingCustomerRepository>;
+  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
   let stripeUsageService: jest.Mocked<StripeUsageService>;
   let jsonApiService: jest.Mocked<JsonApiService>;
 
   // Test data constants
-  const MOCK_BILLING_CUSTOMER: BillingCustomer = {
+  const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
     id: "billing_customer_123",
     stripeCustomerId: TEST_IDS.customerId,
     email: "test@example.com",
@@ -65,7 +65,7 @@ describe("UsageService", () => {
     currentPeriodEnd: new Date("2025-02-01T00:00:00Z"),
     cancelAtPeriodEnd: false,
     quantity: 1,
-    billingCustomer: MOCK_BILLING_CUSTOMER,
+    stripeCustomer: MOCK_STRIPE_CUSTOMER,
     price: {} as any,
     createdAt: new Date("2025-01-01T00:00:00Z"),
     updatedAt: new Date("2025-01-01T00:00:00Z"),
@@ -124,7 +124,7 @@ describe("UsageService", () => {
       findById: jest.fn(),
     };
 
-    const mockBillingCustomerRepository = {
+    const mockStripeCustomerRepository = {
       findByCompanyId: jest.fn(),
     };
 
@@ -151,8 +151,8 @@ describe("UsageService", () => {
           useValue: mockStripeSubscriptionRepository,
         },
         {
-          provide: BillingCustomerRepository,
-          useValue: mockBillingCustomerRepository,
+          provide: StripeCustomerRepository,
+          useValue: mockStripeCustomerRepository,
         },
         {
           provide: StripeUsageService,
@@ -168,7 +168,7 @@ describe("UsageService", () => {
     service = module.get<UsageService>(UsageService);
     usageRecordRepository = module.get(UsageRecordRepository);
     subscriptionRepository = module.get(StripeSubscriptionRepository);
-    billingCustomerRepository = module.get(BillingCustomerRepository);
+    stripeCustomerRepository = module.get(StripeCustomerRepository);
     stripeUsageService = module.get(StripeUsageService);
     jsonApiService = module.get(JsonApiService);
   });
@@ -189,7 +189,7 @@ describe("UsageService", () => {
     it("should report usage successfully with default timestamp", async () => {
       const beforeTest = new Date();
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -197,14 +197,14 @@ describe("UsageService", () => {
       const result = await service.reportUsage(validReportParams);
 
       expect(subscriptionRepository.findById).toHaveBeenCalledWith({ id: validReportParams.subscriptionId });
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validReportParams.companyId,
       });
 
       // Verify timestamp was created and converted correctly (divide by 1000 and floor)
       const stripeCall = stripeUsageService.reportMeterEvent.mock.calls[0][0];
       expect(stripeCall.eventName).toBe(validReportParams.meterEventName);
-      expect(stripeCall.customerId).toBe(MOCK_BILLING_CUSTOMER.stripeCustomerId);
+      expect(stripeCall.customerId).toBe(MOCK_STRIPE_CUSTOMER.stripeCustomerId);
       expect(stripeCall.value).toBe(validReportParams.quantity);
       expect(stripeCall.timestamp).toBeGreaterThanOrEqual(Math.floor(beforeTest.getTime() / 1000));
       expect(stripeCall.timestamp).toBeLessThanOrEqual(Math.floor(new Date().getTime() / 1000));
@@ -225,7 +225,7 @@ describe("UsageService", () => {
       const expectedUnixTimestamp = Math.floor(customTimestamp.getTime() / 1000);
 
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -237,7 +237,7 @@ describe("UsageService", () => {
 
       expect(stripeUsageService.reportMeterEvent).toHaveBeenCalledWith({
         eventName: validReportParams.meterEventName,
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         value: validReportParams.quantity,
         timestamp: expectedUnixTimestamp,
       });
@@ -257,7 +257,7 @@ describe("UsageService", () => {
       const expectedUnixTimestamp = Math.floor(customTimestamp.getTime() / 1000);
 
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -269,7 +269,7 @@ describe("UsageService", () => {
 
       expect(stripeUsageService.reportMeterEvent).toHaveBeenCalledWith({
         eventName: validReportParams.meterEventName,
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         value: validReportParams.quantity,
         timestamp: expectedUnixTimestamp,
       });
@@ -283,17 +283,17 @@ describe("UsageService", () => {
       );
 
       expect(subscriptionRepository.findById).toHaveBeenCalledWith({ id: validReportParams.subscriptionId });
-      expect(billingCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
       expect(stripeUsageService.reportMeterEvent).not.toHaveBeenCalled();
     });
 
     it("should throw FORBIDDEN when subscription does not belong to company", async () => {
-      const differentBillingCustomer = {
-        ...MOCK_BILLING_CUSTOMER,
+      const differentStripeCustomer = {
+        ...MOCK_STRIPE_CUSTOMER,
         id: "different_customer_id",
       };
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentBillingCustomer);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentStripeCustomer);
 
       await expect(service.reportUsage(validReportParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -304,7 +304,7 @@ describe("UsageService", () => {
 
     it("should throw FORBIDDEN when customer does not exist", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.reportUsage(validReportParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -316,7 +316,7 @@ describe("UsageService", () => {
     it("should store stripeEventId from Stripe response", async () => {
       const customStripeEventId = "evt_custom_456";
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue({
         ...MOCK_STRIPE_METER_EVENT,
         identifier: customStripeEventId,
@@ -335,7 +335,7 @@ describe("UsageService", () => {
 
     it("should return JSON:API formatted response", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -349,7 +349,7 @@ describe("UsageService", () => {
     it("should report to Stripe before storing locally", async () => {
       const callOrder: string[] = [];
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockImplementation(async () => {
         callOrder.push("stripe");
         return MOCK_STRIPE_METER_EVENT;
@@ -367,7 +367,7 @@ describe("UsageService", () => {
 
     it("should not store locally if Stripe reporting fails", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       const stripeError = new Error("Stripe API error");
       stripeUsageService.reportMeterEvent.mockRejectedValue(stripeError);
 
@@ -386,14 +386,14 @@ describe("UsageService", () => {
 
     it("should list usage records successfully", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.findBySubscriptionId.mockResolvedValue([MOCK_USAGE_RECORD]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
       const result = await service.listUsageRecords(validListParams);
 
       expect(subscriptionRepository.findById).toHaveBeenCalledWith({ id: validListParams.subscriptionId });
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({ companyId: validListParams.companyId });
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({ companyId: validListParams.companyId });
       expect(usageRecordRepository.findBySubscriptionId).toHaveBeenCalledWith({
         subscriptionId: validListParams.subscriptionId,
         startTime: undefined,
@@ -409,16 +409,16 @@ describe("UsageService", () => {
         new HttpException("Subscription not found", HttpStatus.NOT_FOUND),
       );
 
-      expect(billingCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
     });
 
     it("should throw FORBIDDEN when subscription does not belong to company", async () => {
-      const differentBillingCustomer = {
-        ...MOCK_BILLING_CUSTOMER,
+      const differentStripeCustomer = {
+        ...MOCK_STRIPE_CUSTOMER,
         id: "different_customer_id",
       };
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentBillingCustomer);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentStripeCustomer);
 
       await expect(service.listUsageRecords(validListParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -429,7 +429,7 @@ describe("UsageService", () => {
 
     it("should throw FORBIDDEN when customer does not exist", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.listUsageRecords(validListParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -441,7 +441,7 @@ describe("UsageService", () => {
     it("should support startTime filter", async () => {
       const startTime = new Date("2025-01-01T00:00:00Z");
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.findBySubscriptionId.mockResolvedValue([MOCK_USAGE_RECORD]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
@@ -460,7 +460,7 @@ describe("UsageService", () => {
     it("should support endTime filter", async () => {
       const endTime = new Date("2025-01-31T23:59:59Z");
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.findBySubscriptionId.mockResolvedValue([MOCK_USAGE_RECORD]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
@@ -480,7 +480,7 @@ describe("UsageService", () => {
       const startTime = new Date("2025-01-01T00:00:00Z");
       const endTime = new Date("2025-01-31T23:59:59Z");
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.findBySubscriptionId.mockResolvedValue([MOCK_USAGE_RECORD]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
@@ -499,7 +499,7 @@ describe("UsageService", () => {
 
     it("should return paginated JSON:API response", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.findBySubscriptionId.mockResolvedValue([MOCK_USAGE_RECORD]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
@@ -531,13 +531,13 @@ describe("UsageService", () => {
 
     it("should get usage summary successfully", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.getUsageSummary.mockResolvedValue(MOCK_REPOSITORY_SUMMARY);
 
       const result = await service.getUsageSummary(validSummaryParams);
 
       expect(subscriptionRepository.findById).toHaveBeenCalledWith({ id: validSummaryParams.subscriptionId });
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validSummaryParams.companyId,
       });
       expect(usageRecordRepository.getUsageSummary).toHaveBeenCalledWith({
@@ -562,16 +562,16 @@ describe("UsageService", () => {
         new HttpException("Subscription not found", HttpStatus.NOT_FOUND),
       );
 
-      expect(billingCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
     });
 
     it("should throw FORBIDDEN when subscription does not belong to company", async () => {
-      const differentBillingCustomer = {
-        ...MOCK_BILLING_CUSTOMER,
+      const differentStripeCustomer = {
+        ...MOCK_STRIPE_CUSTOMER,
         id: "different_customer_id",
       };
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentBillingCustomer);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentStripeCustomer);
 
       await expect(service.getUsageSummary(validSummaryParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -582,7 +582,7 @@ describe("UsageService", () => {
 
     it("should throw FORBIDDEN when customer does not exist", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getUsageSummary(validSummaryParams)).rejects.toThrow(
         new HttpException("Subscription does not belong to this company", HttpStatus.FORBIDDEN),
@@ -593,7 +593,7 @@ describe("UsageService", () => {
 
     it("should convert dates to ISO strings in response", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.getUsageSummary.mockResolvedValue(MOCK_REPOSITORY_SUMMARY);
 
       const result = await service.getUsageSummary(validSummaryParams);
@@ -604,7 +604,7 @@ describe("UsageService", () => {
 
     it("should map repository response fields correctly", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.getUsageSummary.mockResolvedValue(MOCK_REPOSITORY_SUMMARY);
 
       const result = await service.getUsageSummary(validSummaryParams);
@@ -617,7 +617,7 @@ describe("UsageService", () => {
 
     it("should require startTime and endTime", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       usageRecordRepository.getUsageSummary.mockResolvedValue(MOCK_REPOSITORY_SUMMARY);
 
       await service.getUsageSummary(validSummaryParams);
@@ -654,17 +654,17 @@ describe("UsageService", () => {
     ];
 
     it("should get meter event summaries successfully", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue(MOCK_STRIPE_SUMMARIES);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validMeterSummaryParams.companyId,
       });
       expect(stripeUsageService.getMeterEventSummaries).toHaveBeenCalledWith({
         meterId: validMeterSummaryParams.meterId,
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         startTime: Math.floor(validMeterSummaryParams.startTime.getTime() / 1000),
         endTime: Math.floor(validMeterSummaryParams.endTime.getTime() / 1000),
       });
@@ -690,10 +690,10 @@ describe("UsageService", () => {
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getMeterEventSummaries(validMeterSummaryParams)).rejects.toThrow(
-        new HttpException("Billing customer not found", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found", HttpStatus.NOT_FOUND),
       );
 
       expect(stripeUsageService.getMeterEventSummaries).not.toHaveBeenCalled();
@@ -705,7 +705,7 @@ describe("UsageService", () => {
       const expectedStartUnix = Math.floor(startTime.getTime() / 1000);
       const expectedEndUnix = Math.floor(endTime.getTime() / 1000);
 
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue([]);
 
       await service.getMeterEventSummaries({
@@ -716,7 +716,7 @@ describe("UsageService", () => {
 
       expect(stripeUsageService.getMeterEventSummaries).toHaveBeenCalledWith({
         meterId: validMeterSummaryParams.meterId,
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         startTime: expectedStartUnix,
         endTime: expectedEndUnix,
       });
@@ -730,7 +730,7 @@ describe("UsageService", () => {
         end_time: 1737475845, // Should become "2025-01-21T15:30:45.000Z"
       };
 
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue([testSummary]);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
@@ -740,7 +740,7 @@ describe("UsageService", () => {
     });
 
     it("should map Stripe summary fields correctly", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue(MOCK_STRIPE_SUMMARIES);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
@@ -752,7 +752,7 @@ describe("UsageService", () => {
     });
 
     it("should handle empty summaries array", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue([]);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
@@ -761,7 +761,7 @@ describe("UsageService", () => {
     });
 
     it("should include meterId in response", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue([]);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
@@ -770,7 +770,7 @@ describe("UsageService", () => {
     });
 
     it("should convert input dates to ISO strings in response", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.getMeterEventSummaries.mockResolvedValue([]);
 
       const result = await service.getMeterEventSummaries(validMeterSummaryParams);
@@ -838,7 +838,7 @@ describe("UsageService", () => {
       await service.listMeters();
 
       // No repository calls should be made for authorization checks
-      expect(billingCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
       expect(subscriptionRepository.findById).not.toHaveBeenCalled();
     });
 
@@ -887,7 +887,7 @@ describe("UsageService", () => {
   describe("Edge Cases", () => {
     it("should handle concurrent reportUsage requests", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -917,7 +917,7 @@ describe("UsageService", () => {
 
     it("should handle zero quantity usage", async () => {
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -940,7 +940,7 @@ describe("UsageService", () => {
     it("should handle large quantity values", async () => {
       const largeQuantity = 999999999;
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -963,7 +963,7 @@ describe("UsageService", () => {
     it("should handle timestamp at epoch", async () => {
       const epochDate = new Date(0);
       subscriptionRepository.findById.mockResolvedValue(MOCK_SUBSCRIPTION);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
@@ -992,9 +992,9 @@ describe("UsageService", () => {
         callOrder.push("findStripeSubscription");
         return MOCK_SUBSCRIPTION;
       });
-      billingCustomerRepository.findByCompanyId.mockImplementation(async () => {
+      stripeCustomerRepository.findByCompanyId.mockImplementation(async () => {
         callOrder.push("findCustomer");
-        return MOCK_BILLING_CUSTOMER;
+        return MOCK_STRIPE_CUSTOMER;
       });
       usageRecordRepository.findBySubscriptionId.mockImplementation(async () => {
         callOrder.push("findUsageRecords");
@@ -1025,7 +1025,7 @@ describe("UsageService", () => {
         ...MOCK_SUBSCRIPTION,
         id: exactStripeSubscriptionId,
       });
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeUsageService.reportMeterEvent.mockResolvedValue(MOCK_STRIPE_METER_EVENT);
       usageRecordRepository.create.mockResolvedValue(MOCK_USAGE_RECORD);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);

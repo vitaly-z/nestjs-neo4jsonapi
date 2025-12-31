@@ -8,7 +8,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { Neo4jService } from "../../../../core/neo4j";
 import { StripeSubscriptionRepository } from "../stripe-subscription.repository";
 import { stripeSubscriptionMeta } from "../../entities/stripe-subscription.meta";
-import { billingCustomerMeta } from "../../../stripe/entities/billing-customer.meta";
+import { stripeCustomerMeta } from "../../../stripe-customer/entities/stripe-customer.meta";
 import { stripePriceMeta } from "../../../stripe-price/entities/stripe-price.meta";
 import { stripeProductMeta } from "../../../stripe-product/entities/stripe-product.meta";
 import { StripeSubscription, StripeSubscriptionStatus } from "../../entities/stripe-subscription.entity";
@@ -20,7 +20,7 @@ describe("StripeSubscriptionRepository", () => {
   // Test data constants
   const TEST_IDS = {
     subscriptionId: "550e8400-e29b-41d4-a716-446655440000",
-    billingCustomerId: "660e8400-e29b-41d4-a716-446655440001",
+    stripeCustomerId: "660e8400-e29b-41d4-a716-446655440001",
     priceId: "770e8400-e29b-41d4-a716-446655440002",
     stripeSubscriptionId: "sub_test123",
     stripeSubscriptionItemId: "si_test456",
@@ -126,24 +126,24 @@ describe("StripeSubscriptionRepository", () => {
     });
   });
 
-  describe("findByBillingCustomerId", () => {
+  describe("findByStripeCustomerId", () => {
     it("should find subscriptions by billing customer ID without status filter", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_SUBSCRIPTION]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(neo4jService.initQuery).toHaveBeenCalledWith({
         serialiser: expect.anything(),
       });
       expect(mockQuery.queryParams).toEqual({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
@@ -163,13 +163,13 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_SUBSCRIPTION]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         status: "active",
       });
 
       expect(mockQuery.queryParams).toEqual({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         status: "active",
       });
       expect(mockQuery.query).toContain(`WHERE 1=1 AND ${stripeSubscriptionMeta.nodeName}.status = $status`);
@@ -181,8 +181,8 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(result).toEqual([]);
@@ -200,8 +200,8 @@ describe("StripeSubscriptionRepository", () => {
         jest.clearAllMocks();
         neo4jService.initQuery.mockReturnValue(createMockQuery());
 
-        await repository.findByBillingCustomerId({
-          billingCustomerId: TEST_IDS.billingCustomerId,
+        await repository.findByStripeCustomerId({
+          stripeCustomerId: TEST_IDS.stripeCustomerId,
           status,
         });
 
@@ -216,7 +216,7 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.readMany.mockRejectedValue(error);
 
       await expect(
-        repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId }),
+        repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId }),
       ).rejects.toThrow("Database error");
     });
 
@@ -225,8 +225,8 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_SUBSCRIPTION]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(mockQuery.query).toContain(`ORDER BY ${stripeSubscriptionMeta.nodeName}.createdAt DESC`);
@@ -248,7 +248,7 @@ describe("StripeSubscriptionRepository", () => {
         id: TEST_IDS.subscriptionId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
@@ -298,7 +298,7 @@ describe("StripeSubscriptionRepository", () => {
         stripeSubscriptionId: TEST_IDS.stripeSubscriptionId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
@@ -347,7 +347,7 @@ describe("StripeSubscriptionRepository", () => {
 
   describe("create", () => {
     const validCreateParams = {
-      billingCustomerId: TEST_IDS.billingCustomerId,
+      stripeCustomerId: TEST_IDS.stripeCustomerId,
       priceId: TEST_IDS.priceId,
       stripeSubscriptionId: TEST_IDS.stripeSubscriptionId,
       status: "active" as StripeSubscriptionStatus,
@@ -368,7 +368,7 @@ describe("StripeSubscriptionRepository", () => {
         serialiser: expect.anything(),
       });
       expect(mockQuery.queryParams).toMatchObject({
-        billingCustomerId: validCreateParams.billingCustomerId,
+        stripeCustomerId: validCreateParams.stripeCustomerId,
         priceId: validCreateParams.priceId,
         stripeSubscriptionId: validCreateParams.stripeSubscriptionId,
         status: validCreateParams.status,
@@ -382,7 +382,7 @@ describe("StripeSubscriptionRepository", () => {
       });
       expect(mockQuery.queryParams.id).toBeDefined();
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripePriceMeta.nodeName}:${stripePriceMeta.labelName} {id: $priceId})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
@@ -391,7 +391,7 @@ describe("StripeSubscriptionRepository", () => {
       expect(mockQuery.query).toContain("createdAt: datetime()");
       expect(mockQuery.query).toContain("updatedAt: datetime()");
       expect(mockQuery.query).toContain(
-        `CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName})`,
+        `CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName})`,
       );
       expect(mockQuery.query).toContain(
         `CREATE (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName})`,
@@ -767,7 +767,7 @@ describe("StripeSubscriptionRepository", () => {
       await repository.update({ id: TEST_IDS.subscriptionId, status: "active" });
 
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
@@ -928,13 +928,13 @@ describe("StripeSubscriptionRepository", () => {
         newPriceId: "new-price-id",
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[oldRel:USES_PRICE]->(:${stripePriceMeta.labelName})`,
       );
       expect(mockQuery.query).toContain("DELETE oldRel");
-      expect(mockQuery.query).toContain(`WITH ${stripeSubscriptionMeta.nodeName}, ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`WITH ${stripeSubscriptionMeta.nodeName}, ${stripeCustomerMeta.nodeName}`);
       expect(mockQuery.query).toContain(
         `MATCH (newPrice:${stripePriceMeta.labelName} {id: $newPriceId})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
       );
@@ -998,7 +998,7 @@ describe("StripeSubscriptionRepository", () => {
         newPriceId: "new-price-id",
       });
 
-      expect(mockQuery.query).toContain(`WITH ${stripeSubscriptionMeta.nodeName}, ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`WITH ${stripeSubscriptionMeta.nodeName}, ${stripeCustomerMeta.nodeName}`);
     });
   });
 
@@ -1064,7 +1064,7 @@ describe("StripeSubscriptionRepository", () => {
       expect(mockQuery.queryParams.canceledStatus).toBe("canceled");
       expect(mockQuery.queryParams.canceledAt).toBeDefined();
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
       );
       expect(mockQuery.query).toContain(
         `WHERE ${stripeSubscriptionMeta.nodeName}.status IN ['active', 'trialing', 'past_due']`,
@@ -1188,7 +1188,7 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_SUBSCRIPTION);
 
       const params = {
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         priceId: TEST_IDS.priceId,
         stripeSubscriptionId: "",
         status: "active" as StripeSubscriptionStatus,
@@ -1343,7 +1343,7 @@ describe("StripeSubscriptionRepository", () => {
 
       await repository.findById({ id: TEST_IDS.subscriptionId });
       await repository.findByStripeSubscriptionId({ stripeSubscriptionId: TEST_IDS.stripeSubscriptionId });
-      await repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId });
+      await repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId });
 
       expect(neo4jService.initQuery).toHaveBeenCalledTimes(3);
       expect(neo4jService.initQuery).toHaveBeenCalledWith({ serialiser: expect.anything() });
@@ -1355,7 +1355,7 @@ describe("StripeSubscriptionRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_SUBSCRIPTION);
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         priceId: TEST_IDS.priceId,
         stripeSubscriptionId: TEST_IDS.stripeSubscriptionId,
         status: "active",
@@ -1374,12 +1374,12 @@ describe("StripeSubscriptionRepository", () => {
       expect(neo4jService.writeOne).toHaveBeenCalledTimes(4);
     });
 
-    it("should use readMany for findByBillingCustomerId", async () => {
+    it("should use readMany for findByStripeCustomerId", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_SUBSCRIPTION]);
 
-      await repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId });
+      await repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId });
 
       expect(neo4jService.readMany).toHaveBeenCalledWith(mockQuery);
     });

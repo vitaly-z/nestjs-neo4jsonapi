@@ -37,16 +37,16 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getQueueToken } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { NotificationService, PaymentFailureNotificationParams } from "../notification.service";
-import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../../../stripe-invoice/repositories/stripe-invoice.repository";
 import { AppLoggingService } from "../../../../core/logging";
-import { BillingCustomer } from "../../entities/billing-customer.entity";
+import { StripeCustomer } from "../../../stripe-customer/entities/stripe-customer.entity";
 import { StripeInvoice } from "../../../stripe-invoice/entities/stripe-invoice.entity";
 
 describe("NotificationService", () => {
   let service: NotificationService;
   let emailQueue: jest.Mocked<Queue>;
-  let billingCustomerRepository: jest.Mocked<BillingCustomerRepository>;
+  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
   let stripeInvoiceRepository: jest.Mocked<StripeInvoiceRepository>;
   let logger: jest.Mocked<AppLoggingService>;
 
@@ -58,7 +58,7 @@ describe("NotificationService", () => {
     subscriptionId: "sub_test101",
   };
 
-  const MOCK_BILLING_CUSTOMER: BillingCustomer = {
+  const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
     id: "billing_customer_123",
     stripeCustomerId: TEST_IDS.stripeCustomerId,
     email: "test@example.com",
@@ -72,8 +72,8 @@ describe("NotificationService", () => {
     company: {} as any,
   };
 
-  const MOCK_BILLING_CUSTOMER_NO_NAME: BillingCustomer = {
-    ...MOCK_BILLING_CUSTOMER,
+  const MOCK_STRIPE_CUSTOMER_NO_NAME: StripeCustomer = {
+    ...MOCK_STRIPE_CUSTOMER,
     name: null,
   };
 
@@ -107,7 +107,7 @@ describe("NotificationService", () => {
       add: jest.fn(),
     };
 
-    const mockBillingCustomerRepository = {
+    const mockStripeCustomerRepository = {
       findByStripeCustomerId: jest.fn(),
     };
 
@@ -131,8 +131,8 @@ describe("NotificationService", () => {
           useValue: mockEmailQueue,
         },
         {
-          provide: BillingCustomerRepository,
-          useValue: mockBillingCustomerRepository,
+          provide: StripeCustomerRepository,
+          useValue: mockStripeCustomerRepository,
         },
         {
           provide: StripeInvoiceRepository,
@@ -147,7 +147,7 @@ describe("NotificationService", () => {
 
     service = module.get<NotificationService>(NotificationService);
     emailQueue = module.get(getQueueToken("email"));
-    billingCustomerRepository = module.get(BillingCustomerRepository);
+    stripeCustomerRepository = module.get(StripeCustomerRepository);
     stripeInvoiceRepository = module.get(StripeInvoiceRepository);
     logger = module.get(AppLoggingService);
   });
@@ -168,13 +168,13 @@ describe("NotificationService", () => {
 
     describe("Happy Path", () => {
       it("should queue payment failure email with all parameters", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
 
-        expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         });
         expect(stripeInvoiceRepository.findByStripeInvoiceId).toHaveBeenCalledWith({
@@ -185,8 +185,8 @@ describe("NotificationService", () => {
           {
             jobType: "payment-failure",
             payload: {
-              to: MOCK_BILLING_CUSTOMER.email,
-              customerName: MOCK_BILLING_CUSTOMER.name,
+              to: MOCK_STRIPE_CUSTOMER.email,
+              customerName: MOCK_STRIPE_CUSTOMER.name,
               stripeCustomerId: TEST_IDS.stripeCustomerId,
               stripeInvoiceId: TEST_IDS.stripeInvoiceId,
               stripePaymentIntentId: TEST_IDS.stripePaymentIntentId,
@@ -220,12 +220,12 @@ describe("NotificationService", () => {
           currency: "usd",
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(paramsWithoutInvoice);
 
-        expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         });
         expect(stripeInvoiceRepository.findByStripeInvoiceId).not.toHaveBeenCalled();
@@ -234,8 +234,8 @@ describe("NotificationService", () => {
           {
             jobType: "payment-failure",
             payload: {
-              to: MOCK_BILLING_CUSTOMER.email,
-              customerName: MOCK_BILLING_CUSTOMER.name,
+              to: MOCK_STRIPE_CUSTOMER.email,
+              customerName: MOCK_STRIPE_CUSTOMER.name,
               stripeCustomerId: TEST_IDS.stripeCustomerId,
               stripeInvoiceId: undefined,
               stripePaymentIntentId: TEST_IDS.stripePaymentIntentId,
@@ -261,7 +261,7 @@ describe("NotificationService", () => {
       });
 
       it("should fetch invoice details when stripeInvoiceId is provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -277,7 +277,7 @@ describe("NotificationService", () => {
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(paramsWithoutInvoice);
@@ -286,7 +286,7 @@ describe("NotificationService", () => {
       });
 
       it("should include invoice URL and number from invoice details", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -304,7 +304,7 @@ describe("NotificationService", () => {
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(paramsWithoutError);
@@ -318,7 +318,7 @@ describe("NotificationService", () => {
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(paramsWithoutCurrency);
@@ -328,7 +328,7 @@ describe("NotificationService", () => {
       });
 
       it("should use 'Customer' as default customerName when name is null", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER_NO_NAME);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER_NO_NAME);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -338,7 +338,7 @@ describe("NotificationService", () => {
       });
 
       it("should preserve custom errorMessage when provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail({
@@ -351,7 +351,7 @@ describe("NotificationService", () => {
       });
 
       it("should preserve custom currency when provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail({
@@ -366,11 +366,11 @@ describe("NotificationService", () => {
 
     describe("Early Returns - Customer Not Found", () => {
       it("should return early and log warning when customer not found", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
         await service.sendPaymentFailedEmail(baseParams);
 
-        expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         });
         expect(logger.warn).toHaveBeenCalledWith(
@@ -382,7 +382,7 @@ describe("NotificationService", () => {
       });
 
       it("should not throw when customer not found", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
         await expect(service.sendPaymentFailedEmail(baseParams)).resolves.toBeUndefined();
       });
@@ -390,7 +390,7 @@ describe("NotificationService", () => {
 
     describe("BullMQ Job Configuration", () => {
       it("should use correct job name", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -399,7 +399,7 @@ describe("NotificationService", () => {
       });
 
       it("should use correct jobType", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -409,7 +409,7 @@ describe("NotificationService", () => {
       });
 
       it("should configure retry attempts to 3", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -419,7 +419,7 @@ describe("NotificationService", () => {
       });
 
       it("should configure exponential backoff with 5000ms delay", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -434,7 +434,7 @@ describe("NotificationService", () => {
 
     describe("Payload Structure", () => {
       it("should include all required payload fields", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -457,7 +457,7 @@ describe("NotificationService", () => {
       });
 
       it("should set locale to 'en'", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
@@ -467,20 +467,20 @@ describe("NotificationService", () => {
       });
 
       it("should use customer email as 'to' field", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(baseParams);
 
         const addCall = emailQueue.add.mock.calls[0];
-        expect(addCall[1].payload.to).toBe(MOCK_BILLING_CUSTOMER.email);
+        expect(addCall[1].payload.to).toBe(MOCK_STRIPE_CUSTOMER.email);
       });
     });
 
     describe("Error Handling", () => {
       it("should catch and log errors from repository without throwing", async () => {
         const error = new Error("Database connection failed");
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue(error);
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue(error);
 
         await expect(service.sendPaymentFailedEmail(baseParams)).resolves.toBeUndefined();
 
@@ -492,7 +492,7 @@ describe("NotificationService", () => {
 
       it("should catch and log errors from queue without throwing", async () => {
         const error = new Error("Queue is full");
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockRejectedValue(error);
 
         await expect(service.sendPaymentFailedEmail(baseParams)).resolves.toBeUndefined();
@@ -503,7 +503,7 @@ describe("NotificationService", () => {
       });
 
       it("should handle unknown error types", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue("String error");
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue("String error");
 
         await expect(service.sendPaymentFailedEmail(baseParams)).resolves.toBeUndefined();
 
@@ -513,7 +513,7 @@ describe("NotificationService", () => {
       });
 
       it("should not throw errors to prevent blocking webhook processing", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue(new Error("Critical error"));
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue(new Error("Critical error"));
 
         await expect(service.sendPaymentFailedEmail(baseParams)).resolves.toBeUndefined();
       });
@@ -521,7 +521,7 @@ describe("NotificationService", () => {
 
     describe("Logging", () => {
       it("should log success message with invoice ID when invoice provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -537,7 +537,7 @@ describe("NotificationService", () => {
           stripeCustomerId: TEST_IDS.stripeCustomerId,
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail(paramsWithoutInvoice);
@@ -550,7 +550,7 @@ describe("NotificationService", () => {
 
     describe("Edge Cases", () => {
       it("should handle invoice not found gracefully", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -562,7 +562,7 @@ describe("NotificationService", () => {
       });
 
       it("should handle zero amount", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail({
@@ -575,7 +575,7 @@ describe("NotificationService", () => {
       });
 
       it("should handle large amount values", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail({
@@ -588,7 +588,7 @@ describe("NotificationService", () => {
       });
 
       it("should use default errorMessage when empty string provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendPaymentFailedEmail({
@@ -610,7 +610,7 @@ describe("NotificationService", () => {
           currency: "gbp",
         };
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         stripeInvoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_INVOICE);
         emailQueue.add.mockResolvedValue({} as any);
 
@@ -634,12 +634,12 @@ describe("NotificationService", () => {
 
     describe("Happy Path", () => {
       it("should queue subscription status change email with all parameters", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
 
-        expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId,
         });
         expect(emailQueue.add).toHaveBeenCalledWith(
@@ -647,8 +647,8 @@ describe("NotificationService", () => {
           {
             jobType: "subscription-status-change",
             payload: {
-              to: MOCK_BILLING_CUSTOMER.email,
-              customerName: MOCK_BILLING_CUSTOMER.name,
+              to: MOCK_STRIPE_CUSTOMER.email,
+              customerName: MOCK_STRIPE_CUSTOMER.name,
               stripeCustomerId,
               subscriptionId,
               status,
@@ -669,7 +669,7 @@ describe("NotificationService", () => {
       });
 
       it("should use 'Customer' as default customerName when name is null", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER_NO_NAME);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER_NO_NAME);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -679,23 +679,23 @@ describe("NotificationService", () => {
       });
 
       it("should preserve customer name when provided", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
 
         const addCall = emailQueue.add.mock.calls[0];
-        expect(addCall[1].payload.customerName).toBe(MOCK_BILLING_CUSTOMER.name);
+        expect(addCall[1].payload.customerName).toBe(MOCK_STRIPE_CUSTOMER.name);
       });
     });
 
     describe("Early Returns - Customer Not Found", () => {
       it("should return early and log warning when customer not found", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
 
-        expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
           stripeCustomerId,
         });
         expect(logger.warn).toHaveBeenCalledWith(
@@ -706,7 +706,7 @@ describe("NotificationService", () => {
       });
 
       it("should not throw when customer not found", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
         await expect(
           service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId),
@@ -716,7 +716,7 @@ describe("NotificationService", () => {
 
     describe("BullMQ Job Configuration", () => {
       it("should use correct job name", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -725,7 +725,7 @@ describe("NotificationService", () => {
       });
 
       it("should use correct jobType", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -735,7 +735,7 @@ describe("NotificationService", () => {
       });
 
       it("should configure retry attempts to 3", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -745,7 +745,7 @@ describe("NotificationService", () => {
       });
 
       it("should configure exponential backoff with 5000ms delay", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -760,7 +760,7 @@ describe("NotificationService", () => {
 
     describe("Payload Structure", () => {
       it("should include all required payload fields", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -777,7 +777,7 @@ describe("NotificationService", () => {
       });
 
       it("should set locale to 'en'", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -787,20 +787,20 @@ describe("NotificationService", () => {
       });
 
       it("should use customer email as 'to' field", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
 
         const addCall = emailQueue.add.mock.calls[0];
-        expect(addCall[1].payload.to).toBe(MOCK_BILLING_CUSTOMER.email);
+        expect(addCall[1].payload.to).toBe(MOCK_STRIPE_CUSTOMER.email);
       });
     });
 
     describe("Error Handling", () => {
       it("should catch and log errors from repository without throwing", async () => {
         const error = new Error("Database connection failed");
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue(error);
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue(error);
 
         await expect(
           service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId),
@@ -814,7 +814,7 @@ describe("NotificationService", () => {
 
       it("should catch and log errors from queue without throwing", async () => {
         const error = new Error("Queue is full");
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockRejectedValue(error);
 
         await expect(
@@ -827,7 +827,7 @@ describe("NotificationService", () => {
       });
 
       it("should handle unknown error types", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue("String error");
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue("String error");
 
         await expect(
           service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId),
@@ -839,7 +839,7 @@ describe("NotificationService", () => {
       });
 
       it("should not throw errors to prevent blocking webhook processing", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockRejectedValue(new Error("Critical error"));
+        stripeCustomerRepository.findByStripeCustomerId.mockRejectedValue(new Error("Critical error"));
 
         await expect(
           service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId),
@@ -849,7 +849,7 @@ describe("NotificationService", () => {
 
     describe("Logging", () => {
       it("should log success message", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, status, subscriptionId);
@@ -865,7 +865,7 @@ describe("NotificationService", () => {
 
       statuses.forEach((statusValue) => {
         it(`should handle '${statusValue}' status`, async () => {
-          billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+          stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
           emailQueue.add.mockResolvedValue({} as any);
 
           await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, statusValue, subscriptionId);
@@ -882,7 +882,7 @@ describe("NotificationService", () => {
         const exactStatus = "canceled";
         const exactSubscriptionId = "sub_exact_456";
 
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(exactCustomerId, exactStatus, exactSubscriptionId);
@@ -894,7 +894,7 @@ describe("NotificationService", () => {
       });
 
       it("should handle empty status string", async () => {
-        billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+        stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
         emailQueue.add.mockResolvedValue({} as any);
 
         await service.sendSubscriptionStatusChangeEmail(stripeCustomerId, "", subscriptionId);
@@ -906,8 +906,8 @@ describe("NotificationService", () => {
   });
 
   describe("Service Integration", () => {
-    it("should call BillingCustomerRepository.findByStripeCustomerId for both methods", async () => {
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+    it("should call StripeCustomerRepository.findByStripeCustomerId for both methods", async () => {
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       emailQueue.add.mockResolvedValue({} as any);
 
       await service.sendPaymentFailedEmail({
@@ -916,11 +916,11 @@ describe("NotificationService", () => {
 
       await service.sendSubscriptionStatusChangeEmail(TEST_IDS.stripeCustomerId, "active", TEST_IDS.subscriptionId);
 
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledTimes(2);
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledTimes(2);
     });
 
     it("should use same BullMQ options for both notification types", async () => {
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       emailQueue.add.mockResolvedValue({} as any);
 
       await service.sendPaymentFailedEmail({
@@ -934,7 +934,7 @@ describe("NotificationService", () => {
     });
 
     it("should use same job name for both notification types", async () => {
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       emailQueue.add.mockResolvedValue({} as any);
 
       await service.sendPaymentFailedEmail({

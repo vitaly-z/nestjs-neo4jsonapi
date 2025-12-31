@@ -20,7 +20,7 @@ export const mapStripeSubscription = (params: {
     trialEnd: params.data.trialEnd ? new Date(params.data.trialEnd) : undefined,
     pausedAt: params.data.pausedAt ? new Date(params.data.pausedAt) : undefined,
     quantity: Number(params.data.quantity ?? 1),
-    billingCustomer: undefined,
+    stripeCustomer: undefined,
     price: undefined,
   };
 };

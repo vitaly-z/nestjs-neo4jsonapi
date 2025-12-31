@@ -1,8 +1,17 @@
+// Mock the guards to avoid dependency resolution issues
+jest.mock("../../../../common/guards", () => ({
+  JwtAuthGuard: class MockJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+  AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+}));
+
 import { Test, TestingModule } from "@nestjs/testing";
 import { HttpStatus } from "@nestjs/common";
 import { StripeProductController } from "../stripe-product.controller";
 import { StripeProductAdminService } from "../../services/stripe-product-admin.service";
-import { AdminJwtAuthGuard } from "../../../../common/guards";
 
 // Mock UUID v4 generator for tests (proper format)
 const uuid = () =>
@@ -11,9 +20,6 @@ const uuid = () =>
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
-
-// Mock guard
-const mockGuard = { canActivate: jest.fn(() => true) };
 
 describe("StripeProductController", () => {
   let controller: StripeProductController;
@@ -38,10 +44,7 @@ describe("StripeProductController", () => {
           useValue: mockStripeProductAdminService,
         },
       ],
-    })
-      .overrideGuard(AdminJwtAuthGuard)
-      .useValue(mockGuard)
-      .compile();
+    }).compile();
 
     controller = module.get<StripeProductController>(StripeProductController);
     service = module.get<StripeProductAdminService>(StripeProductAdminService);

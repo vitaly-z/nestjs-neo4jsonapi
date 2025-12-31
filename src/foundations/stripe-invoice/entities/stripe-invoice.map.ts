@@ -23,7 +23,7 @@ export const mapStripeInvoice = (params: { data: any; record: any; entityFactory
     paidAt: params.data.paidAt ? new Date(params.data.paidAt) : null,
     attemptCount: Number(params.data.attemptCount ?? 0),
     attempted: params.data.attempted === true,
-    billingCustomer: undefined,
+    stripeCustomer: undefined,
     subscription: undefined,
   };
 };

@@ -1,14 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { BaseConfigInterface as ConfigInterface } from "../../../config/interfaces/base.config.interface";
-import { AbstractJsonApiSerialiser } from "../../../core/jsonapi";
-import { JsonApiSerialiserFactory } from "../../../core/jsonapi";
-import { JsonApiDataInterface } from "../../../core/jsonapi";
-import { JsonApiServiceInterface } from "../../../core/jsonapi";
-import { BillingCustomerModel } from "../../stripe/entities/billing-customer.model";
+import {
+  AbstractJsonApiSerialiser,
+  JsonApiDataInterface,
+  JsonApiSerialiserFactory,
+  JsonApiServiceInterface,
+} from "../../../core/jsonapi";
+import { StripeCustomerModel } from "../../stripe-customer";
+import { StripeSubscriptionModel } from "../../stripe-subscription/entities/stripe-subscription.model";
 import { StripeInvoice } from "../entities/stripe-invoice.entity";
 import { StripeInvoiceModel } from "../entities/stripe-invoice.model";
-import { StripeSubscriptionModel } from "../../stripe-subscription/entities/stripe-subscription.model";
 
 @Injectable()
 export class StripeInvoiceSerialiser extends AbstractJsonApiSerialiser implements JsonApiServiceInterface {
@@ -43,8 +45,8 @@ export class StripeInvoiceSerialiser extends AbstractJsonApiSerialiser implement
     };
 
     this.relationships = {
-      billingCustomer: {
-        data: this.serialiserFactory.create(BillingCustomerModel),
+      stripeCustomer: {
+        data: this.serialiserFactory.create(StripeCustomerModel),
       },
       subscription: {
         data: this.serialiserFactory.create(StripeSubscriptionModel),

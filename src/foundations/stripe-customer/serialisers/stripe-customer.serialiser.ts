@@ -5,17 +5,17 @@ import { AbstractJsonApiSerialiser } from "../../../core/jsonapi";
 import { JsonApiSerialiserFactory } from "../../../core/jsonapi";
 import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiServiceInterface } from "../../../core/jsonapi";
-import { BillingCustomer } from "../entities/billing-customer.entity";
-import { BillingCustomerModel } from "../entities/billing-customer.model";
+import { StripeCustomer } from "../entities/stripe-customer.entity";
+import { StripeCustomerModel } from "../entities/stripe-customer.model";
 
 @Injectable()
-export class BillingCustomerSerialiser extends AbstractJsonApiSerialiser implements JsonApiServiceInterface {
+export class StripeCustomerSerialiser extends AbstractJsonApiSerialiser implements JsonApiServiceInterface {
   constructor(serialiserFactory: JsonApiSerialiserFactory, config: ConfigService<ConfigInterface>) {
     super(serialiserFactory, config);
   }
 
   get type(): string {
-    return BillingCustomerModel.type;
+    return StripeCustomerModel.type;
   }
 
   create(): JsonApiDataInterface {
@@ -25,7 +25,7 @@ export class BillingCustomerSerialiser extends AbstractJsonApiSerialiser impleme
       name: "name",
       defaultPaymentMethodId: "defaultPaymentMethodId",
       currency: "currency",
-      balance: (data: BillingCustomer) => Number(data.balance ?? 0),
+      balance: (data: StripeCustomer) => Number(data.balance ?? 0),
       delinquent: "delinquent",
     };
 

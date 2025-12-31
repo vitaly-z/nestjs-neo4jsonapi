@@ -1,10 +1,19 @@
+// Mock the guards to avoid dependency resolution issues
+jest.mock("../../../../common/guards", () => ({
+  JwtAuthGuard: class MockJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+  AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
+    canActivate = jest.fn().mockReturnValue(true);
+  },
+}));
+
 import { Test, TestingModule } from "@nestjs/testing";
 import { HttpStatus } from "@nestjs/common";
 import { StripePriceController } from "../stripe-price.controller";
 import { StripePriceAdminService } from "../../services/stripe-price-admin.service";
 import { StripePricePostDTO, StripePricePutDTO } from "../../dtos/stripe-price.dto";
 import { stripePriceMeta } from "../../entities/stripe-price.meta";
-import { AdminJwtAuthGuard } from "../../../../common/guards";
 
 // Mock UUID v4 generator for tests (proper format)
 const uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -12,9 +21,6 @@ const uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) =
   const v = c === 'x' ? r : (r & 0x3 | 0x8);
   return v.toString(16);
 });
-
-// Mock guard
-const mockGuard = { canActivate: jest.fn(() => true) };
 
 describe("StripePriceController", () => {
   let controller: StripePriceController;
@@ -39,10 +45,7 @@ describe("StripePriceController", () => {
           useValue: mockStripePriceAdminService,
         },
       ],
-    })
-    .overrideGuard(AdminJwtAuthGuard)
-    .useValue(mockGuard)
-    .compile();
+    }).compile();
 
     controller = module.get<StripePriceController>(StripePriceController);
     service = module.get<StripePriceAdminService>(StripePriceAdminService);

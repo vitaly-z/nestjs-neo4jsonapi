@@ -2,12 +2,14 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import Stripe from "stripe";
 import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiService } from "../../../core/jsonapi";
-import { StripeCustomerService } from "./stripe.customer.service";
+import {
+  StripeCustomer,
+  StripeCustomerModel,
+  StripeCustomerRepository,
+  StripeCustomerApiService,
+} from "../../stripe-customer";
 import { StripePaymentService } from "./stripe.payment.service";
 import { StripePortalService } from "./stripe.portal.service";
-import { BillingCustomer } from "../entities/billing-customer.entity";
-import { BillingCustomerModel } from "../entities/billing-customer.model";
-import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
 
 /**
  * BillingService
@@ -28,8 +30,8 @@ import { BillingCustomerRepository } from "../repositories/billing-customer.repo
 @Injectable()
 export class BillingService {
   constructor(
-    private readonly billingCustomerRepository: BillingCustomerRepository,
-    private readonly stripeCustomerService: StripeCustomerService,
+    private readonly stripeCustomerRepository: StripeCustomerRepository,
+    private readonly stripeCustomerApiService: StripeCustomerApiService,
     private readonly stripePaymentService: StripePaymentService,
     private readonly stripePortalService: StripePortalService,
     private readonly jsonApiService: JsonApiService,
@@ -40,7 +42,7 @@ export class BillingService {
    *
    * @param params - Parameters
    * @param params.companyId - Company identifier
-   * @returns BillingCustomer if found, null otherwise
+   * @returns StripeCustomer if found, null otherwise
    *
    * @example
    * ```typescript
@@ -49,8 +51,8 @@ export class BillingService {
    * });
    * ```
    */
-  async getCustomerByCompanyId(params: { companyId: string }): Promise<BillingCustomer | null> {
-    return this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+  async getCustomerByCompanyId(params: { companyId: string }): Promise<StripeCustomer | null> {
+    return this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
   }
 
   /**
@@ -58,7 +60,7 @@ export class BillingService {
    *
    * @param params - Parameters
    * @param params.companyId - Company identifier
-   * @returns BillingCustomer
+   * @returns StripeCustomer
    * @throws {HttpException} NOT_FOUND if customer does not exist
    *
    * @example
@@ -68,10 +70,10 @@ export class BillingService {
    * });
    * ```
    */
-  async getCustomerOrFail(params: { companyId: string }): Promise<BillingCustomer> {
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+  async getCustomerOrFail(params: { companyId: string }): Promise<StripeCustomer> {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
-      throw new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND);
+      throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
     }
     return customer;
   }
@@ -106,7 +108,7 @@ export class BillingService {
     email: string;
     currency: string;
   }): Promise<JsonApiDataInterface> {
-    const existingCustomer = await this.billingCustomerRepository.findByCompanyId({
+    const existingCustomer = await this.stripeCustomerRepository.findByCompanyId({
       companyId: params.companyId,
     });
 
@@ -114,13 +116,13 @@ export class BillingService {
       throw new HttpException("Billing customer already exists for this company", HttpStatus.CONFLICT);
     }
 
-    const stripeCustomer = await this.stripeCustomerService.createCustomer({
+    const stripeCustomer = await this.stripeCustomerApiService.createCustomer({
       companyId: params.companyId,
       email: params.email,
       name: params.name,
     });
 
-    const billingCustomer = await this.billingCustomerRepository.create({
+    const billingCustomer = await this.stripeCustomerRepository.create({
       companyId: params.companyId,
       stripeCustomerId: stripeCustomer.id,
       email: params.email,
@@ -128,7 +130,7 @@ export class BillingService {
       currency: params.currency,
     });
 
-    return this.jsonApiService.buildSingle(BillingCustomerModel, billingCustomer);
+    return this.jsonApiService.buildSingle(StripeCustomerModel, billingCustomer);
   }
 
   /**
@@ -149,7 +151,7 @@ export class BillingService {
   async getCustomer(params: { companyId: string }): Promise<JsonApiDataInterface> {
     const customer = await this.getCustomerOrFail({ companyId: params.companyId });
 
-    return this.jsonApiService.buildSingle(BillingCustomerModel, customer);
+    return this.jsonApiService.buildSingle(StripeCustomerModel, customer);
   }
 
   /**
@@ -237,7 +239,7 @@ export class BillingService {
   async listPaymentMethods(params: { companyId: string }): Promise<{ data: Stripe.PaymentMethod[] }> {
     const customer = await this.getCustomerOrFail({ companyId: params.companyId });
 
-    const paymentMethods = await this.stripeCustomerService.listPaymentMethods(customer.stripeCustomerId, "card");
+    const paymentMethods = await this.stripeCustomerApiService.listPaymentMethods(customer.stripeCustomerId, "card");
 
     return { data: paymentMethods };
   }
@@ -265,12 +267,12 @@ export class BillingService {
   async setDefaultPaymentMethod(params: { companyId: string; paymentMethodId: string }): Promise<void> {
     const customer = await this.getCustomerOrFail({ companyId: params.companyId });
 
-    await this.stripeCustomerService.updateCustomer({
+    await this.stripeCustomerApiService.updateCustomer({
       stripeCustomerId: customer.stripeCustomerId,
       defaultPaymentMethodId: params.paymentMethodId,
     });
 
-    await this.billingCustomerRepository.update({
+    await this.stripeCustomerRepository.update({
       id: customer.id,
       defaultPaymentMethodId: params.paymentMethodId,
     });
@@ -306,10 +308,10 @@ export class BillingService {
       throw new HttpException("Payment method does not belong to this customer", HttpStatus.FORBIDDEN);
     }
 
-    await this.stripeCustomerService.detachPaymentMethod(params.paymentMethodId);
+    await this.stripeCustomerApiService.detachPaymentMethod(params.paymentMethodId);
 
     if (customer.defaultPaymentMethodId === params.paymentMethodId) {
-      await this.billingCustomerRepository.update({
+      await this.stripeCustomerRepository.update({
         id: customer.id,
         defaultPaymentMethodId: null,
       });
@@ -336,14 +338,14 @@ export class BillingService {
    */
   async syncCustomerFromStripe(params: { stripeCustomerId: string }): Promise<void> {
     try {
-      const stripeCustomer = await this.stripeCustomerService.retrieveCustomer(params.stripeCustomerId);
+      const stripeCustomer = await this.stripeCustomerApiService.retrieveCustomer(params.stripeCustomerId);
 
-      const existingCustomer = await this.billingCustomerRepository.findByStripeCustomerId({
+      const existingCustomer = await this.stripeCustomerRepository.findByStripeCustomerId({
         stripeCustomerId: params.stripeCustomerId,
       });
 
       if (existingCustomer) {
-        await this.billingCustomerRepository.updateByStripeCustomerId({
+        await this.stripeCustomerRepository.updateByStripeCustomerId({
           stripeCustomerId: params.stripeCustomerId,
           email: stripeCustomer.email ?? existingCustomer.email,
           name: stripeCustomer.name ?? existingCustomer.name,

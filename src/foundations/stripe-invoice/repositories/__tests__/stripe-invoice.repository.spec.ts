@@ -8,7 +8,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { Neo4jService } from "../../../../core/neo4j";
 import { StripeInvoiceRepository } from "../stripe-invoice.repository";
 import { stripeInvoiceMeta } from "../../entities/stripe-invoice.meta";
-import { billingCustomerMeta } from "../../../stripe/entities/billing-customer.meta";
+import { stripeCustomerMeta } from "../../../stripe-customer/entities/stripe-customer.meta";
 import { stripeSubscriptionMeta } from "../../../stripe-subscription/entities/stripe-subscription.meta";
 import { StripeInvoice, StripeInvoiceStatus } from "../../entities/stripe-invoice.entity";
 
@@ -19,7 +19,7 @@ describe("StripeInvoiceRepository", () => {
   // Test data constants
   const TEST_IDS = {
     invoiceId: "550e8400-e29b-41d4-a716-446655440000",
-    billingCustomerId: "660e8400-e29b-41d4-a716-446655440001",
+    stripeCustomerId: "660e8400-e29b-41d4-a716-446655440001",
     subscriptionId: "770e8400-e29b-41d4-a716-446655440002",
     stripeInvoiceId: "in_test123",
   };
@@ -129,25 +129,25 @@ describe("StripeInvoiceRepository", () => {
     });
   });
 
-  describe("findByBillingCustomerId", () => {
+  describe("findByStripeCustomerId", () => {
     it("should find invoices by billing customer ID without status filter", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(neo4jService.initQuery).toHaveBeenCalledWith({
         serialiser: expect.anything(),
       });
       expect(mockQuery.queryParams).toEqual({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         limit: 100,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})`,
+        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})`,
       );
       expect(mockQuery.query).toContain(
         `OPTIONAL MATCH (${stripeInvoiceMeta.nodeName})-[:FOR_SUBSCRIPTION]->(${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})`,
@@ -166,13 +166,13 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         status: "paid",
       });
 
       expect(mockQuery.queryParams).toEqual({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         status: "paid",
         limit: 100,
       });
@@ -185,8 +185,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(mockQuery.queryParams.limit).toBe(100);
@@ -197,8 +197,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         limit: 50,
       });
 
@@ -210,8 +210,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([]);
 
-      const result = await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      const result = await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(result).toEqual([]);
@@ -229,8 +229,8 @@ describe("StripeInvoiceRepository", () => {
         jest.clearAllMocks();
         neo4jService.initQuery.mockReturnValue(createMockQuery());
 
-        await repository.findByBillingCustomerId({
-          billingCustomerId: TEST_IDS.billingCustomerId,
+        await repository.findByStripeCustomerId({
+          stripeCustomerId: TEST_IDS.stripeCustomerId,
           status,
         });
 
@@ -245,7 +245,7 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.readMany.mockRejectedValue(error);
 
       await expect(
-        repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId }),
+        repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId }),
       ).rejects.toThrow("Database error");
     });
 
@@ -254,8 +254,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(mockQuery.query).toContain(`ORDER BY ${stripeInvoiceMeta.nodeName}.createdAt DESC`);
@@ -266,8 +266,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(mockQuery.query).toContain("OPTIONAL MATCH");
@@ -292,13 +292,13 @@ describe("StripeInvoiceRepository", () => {
         id: TEST_IDS.invoiceId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `OPTIONAL MATCH (${stripeInvoiceMeta.nodeName})-[:FOR_SUBSCRIPTION]->(${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
-        `RETURN ${stripeInvoiceMeta.nodeName}, ${billingCustomerMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}`,
+        `RETURN ${stripeInvoiceMeta.nodeName}, ${stripeCustomerMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}`,
       );
       expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
       expect(result).toEqual(MOCK_INVOICE);
@@ -332,7 +332,7 @@ describe("StripeInvoiceRepository", () => {
       await repository.findById({ id: TEST_IDS.invoiceId });
 
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`,
+        `MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
     });
 
@@ -408,7 +408,7 @@ describe("StripeInvoiceRepository", () => {
 
   describe("create", () => {
     const validCreateParams = {
-      billingCustomerId: TEST_IDS.billingCustomerId,
+      stripeCustomerId: TEST_IDS.stripeCustomerId,
       stripeInvoiceId: TEST_IDS.stripeInvoiceId,
       stripeInvoiceNumber: "ABC-1234",
       stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -440,7 +440,7 @@ describe("StripeInvoiceRepository", () => {
         serialiser: expect.anything(),
       });
       expect(mockQuery.queryParams).toMatchObject({
-        billingCustomerId: validCreateParams.billingCustomerId,
+        stripeCustomerId: validCreateParams.stripeCustomerId,
         subscriptionId: null,
         stripeInvoiceId: validCreateParams.stripeInvoiceId,
         stripeInvoiceNumber: validCreateParams.stripeInvoiceNumber,
@@ -463,7 +463,7 @@ describe("StripeInvoiceRepository", () => {
       });
       expect(mockQuery.queryParams.id).toBeDefined();
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})`,
       );
       expect(mockQuery.query).not.toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {id: $subscriptionId})`,
@@ -472,7 +472,7 @@ describe("StripeInvoiceRepository", () => {
       expect(mockQuery.query).toContain("createdAt: datetime()");
       expect(mockQuery.query).toContain("updatedAt: datetime()");
       expect(mockQuery.query).toContain(
-        `CREATE (${stripeInvoiceMeta.nodeName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName})`,
+        `CREATE (${stripeInvoiceMeta.nodeName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName})`,
       );
       expect(mockQuery.query).not.toContain(
         `CREATE (${stripeInvoiceMeta.nodeName})-[:FOR_SUBSCRIPTION]->(${stripeSubscriptionMeta.nodeName})`,
@@ -1055,7 +1055,7 @@ describe("StripeInvoiceRepository", () => {
       const futureDate = new Date("2099-12-31T23:59:59Z");
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
         stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -1100,7 +1100,7 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_INVOICE);
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
         stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -1171,7 +1171,7 @@ describe("StripeInvoiceRepository", () => {
       const exactDate = new Date("2025-06-15T14:30:00.000Z");
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
         stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -1206,7 +1206,7 @@ describe("StripeInvoiceRepository", () => {
 
       await repository.findById({ id: TEST_IDS.invoiceId });
       await repository.findByStripeInvoiceId({ stripeInvoiceId: TEST_IDS.stripeInvoiceId });
-      await repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId });
+      await repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId });
 
       expect(neo4jService.initQuery).toHaveBeenCalledTimes(3);
       expect(neo4jService.initQuery).toHaveBeenCalledWith({ serialiser: expect.anything() });
@@ -1218,7 +1218,7 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_INVOICE);
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
         stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -1244,12 +1244,12 @@ describe("StripeInvoiceRepository", () => {
       expect(neo4jService.writeOne).toHaveBeenCalledTimes(2);
     });
 
-    it("should use readMany for findByBillingCustomerId", async () => {
+    it("should use readMany for findByStripeCustomerId", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({ billingCustomerId: TEST_IDS.billingCustomerId });
+      await repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId });
 
       expect(neo4jService.readMany).toHaveBeenCalledWith(mockQuery);
     });
@@ -1273,7 +1273,7 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_INVOICE);
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
         stripeHostedInvoiceUrl: "https://stripe.com/invoice/test123",
@@ -1304,7 +1304,7 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.writeOne.mockResolvedValue(MOCK_INVOICE);
 
       await repository.create({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         subscriptionId: TEST_IDS.subscriptionId,
         stripeInvoiceId: TEST_IDS.stripeInvoiceId,
         stripeInvoiceNumber: "ABC-1234",
@@ -1339,8 +1339,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
       expect(mockQuery.query).toContain("WHERE 1=1");
@@ -1352,8 +1352,8 @@ describe("StripeInvoiceRepository", () => {
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readMany.mockResolvedValue([MOCK_INVOICE]);
 
-      await repository.findByBillingCustomerId({
-        billingCustomerId: TEST_IDS.billingCustomerId,
+      await repository.findByStripeCustomerId({
+        stripeCustomerId: TEST_IDS.stripeCustomerId,
         status: "paid",
       });
 

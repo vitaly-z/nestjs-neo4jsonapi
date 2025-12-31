@@ -1,7 +1,7 @@
 import { Entity } from "../../../common/abstracts/entity";
 import { Company } from "../../company/entities/company.entity";
 
-export type BillingCustomer = Entity & {
+export type StripeCustomer = Entity & {
   stripeCustomerId: string;
   email: string;
   name: string;

@@ -30,26 +30,26 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 import Stripe from "stripe";
 import { StripeInvoiceAdminService } from "../stripe-invoice-admin.service";
 import { StripeInvoiceRepository } from "../../repositories/stripe-invoice.repository";
-import { BillingCustomerRepository } from "../../../stripe/repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
 import { JsonApiService } from "../../../../core/jsonapi";
 import { StripeInvoiceApiService } from "../stripe-invoice-api.service";
 import { StripeInvoice, StripeInvoiceStatus } from "../../entities/stripe-invoice.entity";
-import { BillingCustomer } from "../../../stripe/entities/billing-customer.entity";
+import { StripeCustomer } from "../../../stripe-customer/entities/stripe-customer.entity";
 import { StripeSubscription } from "../../../stripe-subscription/entities/stripe-subscription.entity";
 import { MOCK_INVOICE, TEST_IDS } from "../../../stripe/__tests__/fixtures/stripe.fixtures";
 
 describe("StripeInvoiceAdminService", () => {
   let service: StripeInvoiceAdminService;
   let invoiceRepository: jest.Mocked<StripeInvoiceRepository>;
-  let billingCustomerRepository: jest.Mocked<BillingCustomerRepository>;
+  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
   let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
   let stripeInvoiceApiService: jest.Mocked<StripeInvoiceApiService>;
   let jsonApiService: jest.Mocked<JsonApiService>;
 
   // Test data constants
-  const MOCK_BILLING_CUSTOMER: BillingCustomer = {
-    id: "billing_customer_123",
+  const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
+    id: "stripe_customer_123",
     stripeCustomerId: TEST_IDS.customerId,
     email: "test@example.com",
     name: "Test Customer",
@@ -73,7 +73,7 @@ describe("StripeInvoiceAdminService", () => {
     quantity: 1,
     createdAt: new Date("2025-01-01T00:00:00Z"),
     updatedAt: new Date("2025-01-01T00:00:00Z"),
-    billingCustomer: MOCK_BILLING_CUSTOMER,
+    stripeCustomer: MOCK_STRIPE_CUSTOMER,
     price: {} as any,
   };
 
@@ -99,7 +99,7 @@ describe("StripeInvoiceAdminService", () => {
     attempted: false,
     createdAt: new Date("2025-01-01T00:00:00Z"),
     updatedAt: new Date("2025-01-01T00:00:00Z"),
-    billingCustomer: MOCK_BILLING_CUSTOMER,
+    stripeCustomer: MOCK_STRIPE_CUSTOMER,
     subscription: MOCK_DB_SUBSCRIPTION,
   };
 
@@ -128,13 +128,13 @@ describe("StripeInvoiceAdminService", () => {
   beforeEach(async () => {
     const mockStripeInvoiceRepository = {
       findById: jest.fn(),
-      findByBillingCustomerId: jest.fn(),
+      findByStripeCustomerId: jest.fn(),
       findByStripeInvoiceId: jest.fn(),
       create: jest.fn(),
       updateByStripeInvoiceId: jest.fn(),
     };
 
-    const mockBillingCustomerRepository = {
+    const mockStripeCustomerRepository = {
       findByCompanyId: jest.fn(),
       findByStripeCustomerId: jest.fn(),
     };
@@ -162,8 +162,8 @@ describe("StripeInvoiceAdminService", () => {
           useValue: mockStripeInvoiceRepository,
         },
         {
-          provide: BillingCustomerRepository,
-          useValue: mockBillingCustomerRepository,
+          provide: StripeCustomerRepository,
+          useValue: mockStripeCustomerRepository,
         },
         {
           provide: StripeSubscriptionRepository,
@@ -182,7 +182,7 @@ describe("StripeInvoiceAdminService", () => {
 
     service = module.get<StripeInvoiceAdminService>(StripeInvoiceAdminService);
     invoiceRepository = module.get(StripeInvoiceRepository);
-    billingCustomerRepository = module.get(BillingCustomerRepository);
+    stripeCustomerRepository = module.get(StripeCustomerRepository);
     subscriptionRepository = module.get(StripeSubscriptionRepository);
     stripeInvoiceApiService = module.get(StripeInvoiceApiService);
     jsonApiService = module.get(JsonApiService);
@@ -199,17 +199,17 @@ describe("StripeInvoiceAdminService", () => {
     };
 
     it("should return paginated invoices list", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      invoiceRepository.findByBillingCustomerId.mockResolvedValue([MOCK_DB_INVOICE]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      invoiceRepository.findByStripeCustomerId.mockResolvedValue([MOCK_DB_INVOICE]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
       const result = await service.listInvoices(validParams);
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validParams.companyId,
       });
-      expect(invoiceRepository.findByBillingCustomerId).toHaveBeenCalledWith({
-        billingCustomerId: MOCK_BILLING_CUSTOMER.id,
+      expect(invoiceRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.id,
         status: undefined,
       });
       expect(jsonApiService.buildList).toHaveBeenCalledWith(expect.any(Object), [MOCK_DB_INVOICE], expect.any(Object));
@@ -217,26 +217,26 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.listInvoices(validParams)).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
-      expect(invoiceRepository.findByBillingCustomerId).not.toHaveBeenCalled();
+      expect(invoiceRepository.findByStripeCustomerId).not.toHaveBeenCalled();
       expect(jsonApiService.buildList).not.toHaveBeenCalled();
     });
 
     it("should filter by status when provided", async () => {
       const paramsWithStatus = { ...validParams, status: "paid" as StripeInvoiceStatus };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      invoiceRepository.findByBillingCustomerId.mockResolvedValue([MOCK_DB_INVOICE]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      invoiceRepository.findByStripeCustomerId.mockResolvedValue([MOCK_DB_INVOICE]);
       jsonApiService.buildList.mockReturnValue(MOCK_JSON_API_LIST_RESPONSE);
 
       await service.listInvoices(paramsWithStatus);
 
-      expect(invoiceRepository.findByBillingCustomerId).toHaveBeenCalledWith({
-        billingCustomerId: MOCK_BILLING_CUSTOMER.id,
+      expect(invoiceRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.id,
         status: "paid",
       });
     });
@@ -244,8 +244,8 @@ describe("StripeInvoiceAdminService", () => {
     it("should use JsonApiPaginator with query params", async () => {
       const customQuery = { page: { number: 2, size: 20 } };
       const paramsWithCustomQuery = { ...validParams, query: customQuery };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      invoiceRepository.findByBillingCustomerId.mockResolvedValue([]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      invoiceRepository.findByStripeCustomerId.mockResolvedValue([]);
       jsonApiService.buildList.mockReturnValue({ data: [], meta: {} });
 
       await service.listInvoices(paramsWithCustomQuery);
@@ -258,8 +258,8 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should return empty list when no invoices exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      invoiceRepository.findByBillingCustomerId.mockResolvedValue([]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      invoiceRepository.findByStripeCustomerId.mockResolvedValue([]);
       jsonApiService.buildList.mockReturnValue({ data: [], meta: {} });
 
       const result = await service.listInvoices(validParams);
@@ -276,13 +276,13 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should return invoice when found and ownership verified", async () => {
       invoiceRepository.findById.mockResolvedValue(MOCK_DB_INVOICE);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const result = await service.getInvoice(validParams);
 
       expect(invoiceRepository.findById).toHaveBeenCalledWith({ id: validParams.id });
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validParams.companyId,
       });
       expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_DB_INVOICE);
@@ -296,13 +296,13 @@ describe("StripeInvoiceAdminService", () => {
         new HttpException("Invoice not found", HttpStatus.NOT_FOUND),
       );
 
-      expect(billingCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByCompanyId).not.toHaveBeenCalled();
       expect(jsonApiService.buildSingle).not.toHaveBeenCalled();
     });
 
     it("should throw FORBIDDEN when customer does not exist", async () => {
       invoiceRepository.findById.mockResolvedValue(MOCK_DB_INVOICE);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getInvoice(validParams)).rejects.toThrow(
         new HttpException("Invoice does not belong to this company", HttpStatus.FORBIDDEN),
@@ -312,9 +312,9 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should throw FORBIDDEN when invoice does not belong to company", async () => {
-      const differentCustomer = { ...MOCK_BILLING_CUSTOMER, id: "different_customer_id" };
+      const differentCustomer = { ...MOCK_STRIPE_CUSTOMER, id: "different_customer_id" };
       invoiceRepository.findById.mockResolvedValue(MOCK_DB_INVOICE);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
 
       await expect(service.getInvoice(validParams)).rejects.toThrow(
         new HttpException("Invoice does not belong to this company", HttpStatus.FORBIDDEN),
@@ -324,9 +324,9 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should throw FORBIDDEN with correct status code", async () => {
-      const differentCustomer = { ...MOCK_BILLING_CUSTOMER, id: "different_customer_id" };
+      const differentCustomer = { ...MOCK_STRIPE_CUSTOMER, id: "different_customer_id" };
       invoiceRepository.findById.mockResolvedValue(MOCK_DB_INVOICE);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
 
       try {
         await service.getInvoice(validParams);
@@ -374,16 +374,16 @@ describe("StripeInvoiceAdminService", () => {
     };
 
     it("should return upcoming invoice without subscriptionId", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeInvoiceApiService.getUpcomingInvoice.mockResolvedValue(mockUpcomingInvoice);
 
       const result = await service.getUpcomingInvoice(validParams);
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validParams.companyId,
       });
       expect(stripeInvoiceApiService.getUpcomingInvoice).toHaveBeenCalledWith({
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         subscriptionId: undefined,
       });
       expect(result).toEqual({
@@ -409,7 +409,7 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should return upcoming invoice with subscriptionId parameter", async () => {
       const paramsWithStripeSubscription = { ...validParams, subscriptionId: MOCK_DB_SUBSCRIPTION.id };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       subscriptionRepository.findById.mockResolvedValue(MOCK_DB_SUBSCRIPTION);
       stripeInvoiceApiService.getUpcomingInvoice.mockResolvedValue(mockUpcomingInvoice);
 
@@ -419,17 +419,17 @@ describe("StripeInvoiceAdminService", () => {
         id: MOCK_DB_SUBSCRIPTION.id,
       });
       expect(stripeInvoiceApiService.getUpcomingInvoice).toHaveBeenCalledWith({
-        customerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         subscriptionId: MOCK_DB_SUBSCRIPTION.stripeSubscriptionId,
       });
       expect(result.lines).toHaveLength(1);
     });
 
     it("should throw NOT_FOUND when customer not found", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getUpcomingInvoice(validParams)).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
       expect(stripeInvoiceApiService.getUpcomingInvoice).not.toHaveBeenCalled();
@@ -437,7 +437,7 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should throw NOT_FOUND when subscription not found", async () => {
       const paramsWithStripeSubscription = { ...validParams, subscriptionId: "non_existent_sub" };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       subscriptionRepository.findById.mockResolvedValue(null);
 
       await expect(service.getUpcomingInvoice(paramsWithStripeSubscription)).rejects.toThrow(
@@ -449,8 +449,8 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should throw NOT_FOUND when subscription does not belong to company", async () => {
       const paramsWithStripeSubscription = { ...validParams, subscriptionId: MOCK_DB_SUBSCRIPTION.id };
-      const differentCustomer = { ...MOCK_BILLING_CUSTOMER, id: "different_customer_id" };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
+      const differentCustomer = { ...MOCK_STRIPE_CUSTOMER, id: "different_customer_id" };
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(differentCustomer);
       subscriptionRepository.findById.mockResolvedValue(MOCK_DB_SUBSCRIPTION);
 
       await expect(service.getUpcomingInvoice(paramsWithStripeSubscription)).rejects.toThrow(
@@ -461,7 +461,7 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should convert Unix timestamps to ISO strings (multiply by 1000)", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeInvoiceApiService.getUpcomingInvoice.mockResolvedValue(mockUpcomingInvoice);
 
       const result = await service.getUpcomingInvoice(validParams);
@@ -478,7 +478,7 @@ describe("StripeInvoiceAdminService", () => {
         period_start: null,
         period_end: null,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeInvoiceApiService.getUpcomingInvoice.mockResolvedValue(invoiceWithNullPeriods as any);
 
       const result = await service.getUpcomingInvoice(validParams);
@@ -488,7 +488,7 @@ describe("StripeInvoiceAdminService", () => {
     });
 
     it("should map line items with all required fields", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripeInvoiceApiService.getUpcomingInvoice.mockResolvedValue(mockUpcomingInvoice);
 
       const result = await service.getUpcomingInvoice(validParams);
@@ -546,18 +546,18 @@ describe("StripeInvoiceAdminService", () => {
       await service.syncInvoiceFromStripe(validParams);
 
       expect(stripeInvoiceApiService.getInvoice).toHaveBeenCalledWith(TEST_IDS.invoiceId);
-      expect(billingCustomerRepository.findByStripeCustomerId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.findByStripeCustomerId).not.toHaveBeenCalled();
       expect(invoiceRepository.create).not.toHaveBeenCalled();
       expect(invoiceRepository.updateByStripeInvoiceId).not.toHaveBeenCalled();
     });
 
     it("should early return if customer not found in database", async () => {
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
       await service.syncInvoiceFromStripe(validParams);
 
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
       });
       expect(invoiceRepository.create).not.toHaveBeenCalled();
@@ -570,13 +570,13 @@ describe("StripeInvoiceAdminService", () => {
         customer: TEST_IDS.customerId, // string
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithStringCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_DB_INVOICE);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
       await service.syncInvoiceFromStripe(validParams);
 
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
       });
     });
@@ -587,20 +587,20 @@ describe("StripeInvoiceAdminService", () => {
         customer: { id: TEST_IDS.customerId } as Stripe.Customer, // object
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithObjectCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_DB_INVOICE);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
       await service.syncInvoiceFromStripe(validParams);
 
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
       });
     });
 
     it("should update existing invoice if found", async () => {
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_DB_INVOICE);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
@@ -626,14 +626,14 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should create new invoice if not found", async () => {
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
       await service.syncInvoiceFromStripe(validParams);
 
       expect(invoiceRepository.create).toHaveBeenCalledWith({
-        billingCustomerId: MOCK_BILLING_CUSTOMER.id,
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.id,
         subscriptionId: undefined,
         stripeInvoiceId: TEST_IDS.invoiceId,
         stripeInvoiceNumber: "INV-001",
@@ -659,7 +659,7 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should calculate tax as total - total_excluding_tax", async () => {
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -678,7 +678,7 @@ describe("StripeInvoiceAdminService", () => {
         total_excluding_tax: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithNullTax as any);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -693,7 +693,7 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should convert Unix timestamps to Date objects (multiply by 1000)", async () => {
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -719,7 +719,7 @@ describe("StripeInvoiceAdminService", () => {
         },
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithoutPaidAt);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -743,7 +743,7 @@ describe("StripeInvoiceAdminService", () => {
         },
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithPaidAt);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -762,7 +762,7 @@ describe("StripeInvoiceAdminService", () => {
         due_date: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithoutDueDate);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -781,7 +781,7 @@ describe("StripeInvoiceAdminService", () => {
         attempt_count: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithNullAttemptCount as any);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -800,7 +800,7 @@ describe("StripeInvoiceAdminService", () => {
         attempted: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithNullAttempted as any);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -823,7 +823,7 @@ describe("StripeInvoiceAdminService", () => {
         } as any,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithStripeSubscription);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       subscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(MOCK_DB_SUBSCRIPTION);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
@@ -850,7 +850,7 @@ describe("StripeInvoiceAdminService", () => {
         } as any,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithStripeSubscription);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       subscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(MOCK_DB_SUBSCRIPTION);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
@@ -873,7 +873,7 @@ describe("StripeInvoiceAdminService", () => {
         parent: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithoutStripeSubscription);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
 
@@ -897,7 +897,7 @@ describe("StripeInvoiceAdminService", () => {
         } as any,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithStripeSubscription);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       subscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(null);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       invoiceRepository.create.mockResolvedValue(undefined);
@@ -922,7 +922,7 @@ describe("StripeInvoiceAdminService", () => {
         },
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithPaidAt);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_DB_INVOICE);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
@@ -949,7 +949,7 @@ describe("StripeInvoiceAdminService", () => {
         invoice_pdf: null,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(invoiceWithoutUrls);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(MOCK_DB_INVOICE);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
@@ -968,7 +968,7 @@ describe("StripeInvoiceAdminService", () => {
     it("should handle concurrent requests for same invoice", async () => {
       const validParams = { id: MOCK_DB_INVOICE.id, companyId: TEST_IDS.companyId };
       invoiceRepository.findById.mockResolvedValue(MOCK_DB_INVOICE);
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const promises = [
@@ -985,10 +985,10 @@ describe("StripeInvoiceAdminService", () => {
 
     it("should handle empty string company ID gracefully", async () => {
       const params = { companyId: "", query: {} };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.listInvoices(params)).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
     });
 
@@ -1002,7 +1002,7 @@ describe("StripeInvoiceAdminService", () => {
       };
 
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(invoice);
       invoiceRepository.updateByStripeInvoiceId.mockResolvedValue(undefined);
 
@@ -1030,7 +1030,7 @@ describe("StripeInvoiceAdminService", () => {
         customer: TEST_IDS.customerId,
       };
       stripeInvoiceApiService.getInvoice.mockResolvedValue(mockStripeInvoice);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       invoiceRepository.findByStripeInvoiceId.mockResolvedValue(null);
       const dbError = new Error("Database error");
       invoiceRepository.create.mockRejectedValue(dbError);

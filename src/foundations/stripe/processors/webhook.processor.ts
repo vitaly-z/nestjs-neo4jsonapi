@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { AppLoggingService } from "../../../core/logging";
 import { WebhookEventRepository } from "../repositories/webhook-event.repository";
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
-import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
 import { NotificationService } from "../services/notification.service";
@@ -21,7 +21,7 @@ export class WebhookProcessor extends WorkerHost {
   constructor(
     private readonly webhookEventRepository: WebhookEventRepository,
     private readonly subscriptionService: StripeSubscriptionAdminService,
-    private readonly billingCustomerRepository: BillingCustomerRepository,
+    private readonly stripeCustomerRepository: StripeCustomerRepository,
     private readonly subscriptionRepository: StripeSubscriptionRepository,
     private readonly stripeInvoiceRepository: StripeInvoiceRepository,
     private readonly notificationService: NotificationService,
@@ -189,7 +189,7 @@ export class WebhookProcessor extends WorkerHost {
     }
 
     if (eventType === "customer.updated" && "email" in customer) {
-      await this.billingCustomerRepository.updateByStripeCustomerId({
+      await this.stripeCustomerRepository.updateByStripeCustomerId({
         stripeCustomerId: customer.id,
         email: customer.email || undefined,
         name: customer.name || undefined,

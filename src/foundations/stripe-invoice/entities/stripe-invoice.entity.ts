@@ -1,5 +1,5 @@
 import { Entity } from "../../../common/abstracts/entity";
-import { BillingCustomer } from "../../stripe/entities/billing-customer.entity";
+import { StripeCustomer } from "../../stripe-customer/entities/stripe-customer.entity";
 import { StripeSubscription } from "../../stripe-subscription/entities/stripe-subscription.entity";
 
 export type StripeInvoiceStatus = "draft" | "open" | "paid" | "uncollectible" | "void";
@@ -26,6 +26,6 @@ export type StripeInvoice = Entity & {
   attemptCount: number;
   attempted: boolean;
 
-  billingCustomer?: BillingCustomer;
+  stripeCustomer?: StripeCustomer;
   subscription?: StripeSubscription;
 };

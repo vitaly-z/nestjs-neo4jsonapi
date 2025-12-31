@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { AppLoggingService } from "../../../core/logging";
 import { QueueId } from "../../../config/enums/queue.id";
-import { BillingCustomerRepository } from "../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
 
 export interface PaymentFailureNotificationParams {
@@ -46,7 +46,7 @@ export interface PaymentFailureNotificationParams {
 export class NotificationService {
   constructor(
     @InjectQueue(QueueId.EMAIL) private readonly emailQueue: Queue,
-    private readonly billingCustomerRepository: BillingCustomerRepository,
+    private readonly stripeCustomerRepository: StripeCustomerRepository,
     private readonly stripeInvoiceRepository: StripeInvoiceRepository,
     private readonly logger: AppLoggingService,
   ) {}
@@ -82,10 +82,10 @@ export class NotificationService {
     const { stripeCustomerId, stripeInvoiceId, stripePaymentIntentId, errorMessage, amount, currency } = params;
 
     try {
-      // Retrieve billing customer from Neo4j
-      const billingCustomer = await this.billingCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
+      // Retrieve stripe customer from Neo4j
+      const stripeCustomer = await this.stripeCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
 
-      if (!billingCustomer) {
+      if (!stripeCustomer) {
         this.logger.warn(`Cannot send payment failure notification: Customer ${stripeCustomerId} not found in Neo4j`);
         return;
       }
@@ -102,8 +102,8 @@ export class NotificationService {
         {
           jobType: "payment-failure" as const,
           payload: {
-            to: billingCustomer.email,
-            customerName: billingCustomer.name || "Customer",
+            to: stripeCustomer.email,
+            customerName: stripeCustomer.name || "Customer",
             stripeCustomerId,
             stripeInvoiceId,
             stripePaymentIntentId,
@@ -160,9 +160,9 @@ export class NotificationService {
     subscriptionId: string,
   ): Promise<void> {
     try {
-      const billingCustomer = await this.billingCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
+      const stripeCustomer = await this.stripeCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
 
-      if (!billingCustomer) {
+      if (!stripeCustomer) {
         this.logger.warn(`Cannot send subscription notification: Customer ${stripeCustomerId} not found in Neo4j`);
         return;
       }
@@ -172,8 +172,8 @@ export class NotificationService {
         {
           jobType: "subscription-status-change" as const,
           payload: {
-            to: billingCustomer.email,
-            customerName: billingCustomer.name || "Customer",
+            to: stripeCustomer.email,
+            customerName: stripeCustomer.name || "Customer",
             stripeCustomerId,
             subscriptionId,
             status,

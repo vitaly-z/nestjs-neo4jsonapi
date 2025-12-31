@@ -21,15 +21,15 @@ jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { Neo4jService } from "../../../../core/neo4j";
-import { BillingCustomerRepository } from "../billing-customer.repository";
-import { billingCustomerMeta } from "../../entities/billing-customer.meta";
-import { BillingCustomer } from "../../entities/billing-customer.entity";
+import { StripeCustomerRepository } from "../stripe-customer.repository";
+import { stripeCustomerMeta } from "../../entities/stripe-customer.meta";
+import { StripeCustomer } from "../../entities/stripe-customer.entity";
 
 // Get companyMeta from the mocked module
 const { companyMeta } = jest.requireMock("@carlonicora/nestjs-neo4jsonapi");
 
-describe("BillingCustomerRepository", () => {
-  let repository: BillingCustomerRepository;
+describe("StripeCustomerRepository", () => {
+  let repository: StripeCustomerRepository;
   let neo4jService: jest.Mocked<Neo4jService>;
 
   // Test data constants
@@ -40,7 +40,7 @@ describe("BillingCustomerRepository", () => {
     paymentMethodId: "pm_test456",
   };
 
-  const MOCK_BILLING_CUSTOMER: BillingCustomer = {
+  const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
     id: TEST_IDS.customerId,
     stripeCustomerId: TEST_IDS.stripeCustomerId,
     email: "test@example.com",
@@ -68,7 +68,7 @@ describe("BillingCustomerRepository", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        BillingCustomerRepository,
+        StripeCustomerRepository,
         {
           provide: Neo4jService,
           useValue: mockNeo4jService,
@@ -76,7 +76,7 @@ describe("BillingCustomerRepository", () => {
       ],
     }).compile();
 
-    repository = module.get<BillingCustomerRepository>(BillingCustomerRepository);
+    repository = module.get<StripeCustomerRepository>(StripeCustomerRepository);
     neo4jService = module.get<Neo4jService>(Neo4jService) as jest.Mocked<Neo4jService>;
 
     // Reset mocks before each test
@@ -94,7 +94,7 @@ describe("BillingCustomerRepository", () => {
       await repository.onModuleInit();
 
       expect(neo4jService.writeOne).toHaveBeenCalledWith({
-        query: `CREATE CONSTRAINT ${billingCustomerMeta.nodeName}_id IF NOT EXISTS FOR (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName}) REQUIRE ${billingCustomerMeta.nodeName}.id IS UNIQUE`,
+        query: `CREATE CONSTRAINT ${stripeCustomerMeta.nodeName}_id IF NOT EXISTS FOR (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName}) REQUIRE ${stripeCustomerMeta.nodeName}.id IS UNIQUE`,
       });
     });
 
@@ -104,7 +104,7 @@ describe("BillingCustomerRepository", () => {
       await repository.onModuleInit();
 
       expect(neo4jService.writeOne).toHaveBeenCalledWith({
-        query: `CREATE CONSTRAINT ${billingCustomerMeta.nodeName}_stripeCustomerId IF NOT EXISTS FOR (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName}) REQUIRE ${billingCustomerMeta.nodeName}.stripeCustomerId IS UNIQUE`,
+        query: `CREATE CONSTRAINT ${stripeCustomerMeta.nodeName}_stripeCustomerId IF NOT EXISTS FOR (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName}) REQUIRE ${stripeCustomerMeta.nodeName}.stripeCustomerId IS UNIQUE`,
       });
     });
 
@@ -125,10 +125,10 @@ describe("BillingCustomerRepository", () => {
   });
 
   describe("findByCompanyId", () => {
-    it("should find billing customer by company ID successfully", async () => {
+    it("should find stripe customer by company ID successfully", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await repository.findByCompanyId({ companyId: TEST_IDS.companyId });
 
@@ -138,15 +138,15 @@ describe("BillingCustomerRepository", () => {
       expect(mockQuery.queryParams).toEqual({
         companyId: TEST_IDS.companyId,
       });
-      expect(mockQuery.query).toContain(`MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})`);
+      expect(mockQuery.query).toContain(`MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`);
       expect(mockQuery.query).toContain(`BELONGS_TO`);
       expect(mockQuery.query).toContain(`${companyMeta.nodeName}:${companyMeta.labelName} {id: $companyId}`);
-      expect(mockQuery.query).toContain(`RETURN ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`RETURN ${stripeCustomerMeta.nodeName}`);
       expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
-    it("should return null when billing customer not found", async () => {
+    it("should return null when stripe customer not found", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readOne.mockResolvedValue(null);
@@ -168,10 +168,10 @@ describe("BillingCustomerRepository", () => {
   });
 
   describe("findByStripeCustomerId", () => {
-    it("should find billing customer by Stripe customer ID successfully", async () => {
+    it("should find stripe customer by Stripe customer ID successfully", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await repository.findByStripeCustomerId({ stripeCustomerId: TEST_IDS.stripeCustomerId });
 
@@ -182,14 +182,14 @@ describe("BillingCustomerRepository", () => {
         stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
       );
-      expect(mockQuery.query).toContain(`RETURN ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`RETURN ${stripeCustomerMeta.nodeName}`);
       expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
-    it("should return null when billing customer not found by Stripe ID", async () => {
+    it("should return null when stripe customer not found by Stripe ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readOne.mockResolvedValue(null);
@@ -213,10 +213,10 @@ describe("BillingCustomerRepository", () => {
   });
 
   describe("findById", () => {
-    it("should find billing customer by ID successfully", async () => {
+    it("should find stripe customer by ID successfully", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await repository.findById({ id: TEST_IDS.customerId });
 
@@ -227,14 +227,14 @@ describe("BillingCustomerRepository", () => {
         id: TEST_IDS.customerId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})`,
       );
-      expect(mockQuery.query).toContain(`RETURN ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`RETURN ${stripeCustomerMeta.nodeName}`);
       expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
-    it("should return null when billing customer not found by ID", async () => {
+    it("should return null when stripe customer not found by ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.readOne.mockResolvedValue(null);
@@ -264,10 +264,10 @@ describe("BillingCustomerRepository", () => {
       currency: "usd",
     };
 
-    it("should create billing customer with required fields only", async () => {
+    it("should create stripe customer with required fields only", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await repository.create(validCreateParams);
 
@@ -284,22 +284,22 @@ describe("BillingCustomerRepository", () => {
       });
       expect(mockQuery.queryParams.id).toBeDefined();
       expect(mockQuery.query).toContain(`MATCH (${companyMeta.nodeName}:${companyMeta.labelName} {id: $companyId})`);
-      expect(mockQuery.query).toContain(`CREATE (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName}`);
+      expect(mockQuery.query).toContain(`CREATE (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName}`);
       expect(mockQuery.query).toContain("balance: 0");
       expect(mockQuery.query).toContain("delinquent: false");
       expect(mockQuery.query).toContain("createdAt: datetime()");
       expect(mockQuery.query).toContain("updatedAt: datetime()");
       expect(mockQuery.query).toContain(
-        `CREATE (${billingCustomerMeta.nodeName})-[:BELONGS_TO]->(${companyMeta.nodeName})`,
+        `CREATE (${stripeCustomerMeta.nodeName})-[:BELONGS_TO]->(${companyMeta.nodeName})`,
       );
       expect(neo4jService.writeOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
-    it("should create billing customer with optional defaultPaymentMethodId", async () => {
+    it("should create stripe customer with optional defaultPaymentMethodId", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const paramsWithPaymentMethod = {
         ...validCreateParams,
@@ -317,7 +317,7 @@ describe("BillingCustomerRepository", () => {
     it("should set defaultPaymentMethodId to null when not provided", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.create(validCreateParams);
 
@@ -328,7 +328,7 @@ describe("BillingCustomerRepository", () => {
       const mockQuery1 = createMockQuery();
       const mockQuery2 = createMockQuery();
       neo4jService.initQuery.mockReturnValueOnce(mockQuery1).mockReturnValueOnce(mockQuery2);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.create(validCreateParams);
       await repository.create(validCreateParams);
@@ -350,7 +350,7 @@ describe("BillingCustomerRepository", () => {
     it("should preserve exact parameter values", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const exactParams = {
         companyId: "exact_company_123",
@@ -371,7 +371,7 @@ describe("BillingCustomerRepository", () => {
     it("should update email field", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -389,18 +389,18 @@ describe("BillingCustomerRepository", () => {
         delinquent: undefined,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})`,
       );
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
       expect(neo4jService.writeOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
     it("should update name field", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -409,14 +409,14 @@ describe("BillingCustomerRepository", () => {
 
       await repository.update(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
       expect(mockQuery.queryParams.name).toBe("Updated Name");
     });
 
     it("should update defaultPaymentMethodId field", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -426,7 +426,7 @@ describe("BillingCustomerRepository", () => {
       await repository.update(params);
 
       expect(mockQuery.query).toContain(
-        `${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
+        `${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
       );
       expect(mockQuery.queryParams.defaultPaymentMethodId).toBe("pm_new_method");
     });
@@ -434,7 +434,7 @@ describe("BillingCustomerRepository", () => {
     it("should update balance field", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -443,14 +443,14 @@ describe("BillingCustomerRepository", () => {
 
       await repository.update(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.balance = $balance`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.balance = $balance`);
       expect(mockQuery.queryParams.balance).toBe(1000);
     });
 
     it("should update delinquent field", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -459,14 +459,14 @@ describe("BillingCustomerRepository", () => {
 
       await repository.update(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
       expect(mockQuery.queryParams.delinquent).toBe(true);
     });
 
     it("should update multiple fields at once", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -479,13 +479,13 @@ describe("BillingCustomerRepository", () => {
 
       await repository.update(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.email = $email`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
       expect(mockQuery.query).toContain(
-        `${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
+        `${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
       );
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.balance = $balance`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.balance = $balance`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
       expect(mockQuery.queryParams).toMatchObject({
         email: "multi@update.com",
         name: "Multi Update",
@@ -498,7 +498,7 @@ describe("BillingCustomerRepository", () => {
     it("should only update id when no optional fields provided", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         id: TEST_IDS.customerId,
@@ -506,19 +506,19 @@ describe("BillingCustomerRepository", () => {
 
       await repository.update(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
-      expect(mockQuery.query).not.toContain(`${billingCustomerMeta.nodeName}.email = $email`);
-      expect(mockQuery.query).not.toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).not.toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).not.toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
     });
 
     it("should always update updatedAt timestamp", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.update({ id: TEST_IDS.customerId, email: "test@test.com" });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
     });
 
     it("should handle update errors", async () => {
@@ -535,22 +535,22 @@ describe("BillingCustomerRepository", () => {
     it("should handle balance as zero", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.update({ id: TEST_IDS.customerId, balance: 0 });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.balance = $balance`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.balance = $balance`);
       expect(mockQuery.queryParams.balance).toBe(0);
     });
 
     it("should handle delinquent as false", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.update({ id: TEST_IDS.customerId, delinquent: false });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
       expect(mockQuery.queryParams.delinquent).toBe(false);
     });
   });
@@ -559,7 +559,7 @@ describe("BillingCustomerRepository", () => {
     it("should update email field by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         stripeCustomerId: TEST_IDS.stripeCustomerId,
@@ -577,32 +577,32 @@ describe("BillingCustomerRepository", () => {
         delinquent: undefined,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})`,
       );
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
       expect(neo4jService.writeOne).toHaveBeenCalledWith(mockQuery);
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
     it("should update name field by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
         name: "Updated Name",
       });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
       expect(mockQuery.queryParams.name).toBe("Updated Name");
     });
 
     it("should update defaultPaymentMethodId by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
@@ -610,7 +610,7 @@ describe("BillingCustomerRepository", () => {
       });
 
       expect(mockQuery.query).toContain(
-        `${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
+        `${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
       );
       expect(mockQuery.queryParams.defaultPaymentMethodId).toBe("pm_new");
     });
@@ -618,35 +618,35 @@ describe("BillingCustomerRepository", () => {
     it("should update balance by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
         balance: 2000,
       });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.balance = $balance`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.balance = $balance`);
       expect(mockQuery.queryParams.balance).toBe(2000);
     });
 
     it("should update delinquent by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
         delinquent: true,
       });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
       expect(mockQuery.queryParams.delinquent).toBe(true);
     });
 
     it("should update multiple fields at once by Stripe customer ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         stripeCustomerId: TEST_IDS.stripeCustomerId,
@@ -659,13 +659,13 @@ describe("BillingCustomerRepository", () => {
 
       await repository.updateByStripeCustomerId(params);
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.email = $email`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
       expect(mockQuery.query).toContain(
-        `${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
+        `${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`,
       );
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.balance = $balance`);
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.balance = $balance`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
       expect(mockQuery.queryParams).toMatchObject({
         email: "multi@update.com",
         name: "Multi Update",
@@ -678,28 +678,28 @@ describe("BillingCustomerRepository", () => {
     it("should only update stripeCustomerId when no optional fields provided", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
       });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
-      expect(mockQuery.query).not.toContain(`${billingCustomerMeta.nodeName}.email = $email`);
-      expect(mockQuery.query).not.toContain(`${billingCustomerMeta.nodeName}.name = $name`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).not.toContain(`${stripeCustomerMeta.nodeName}.email = $email`);
+      expect(mockQuery.query).not.toContain(`${stripeCustomerMeta.nodeName}.name = $name`);
     });
 
     it("should always update updatedAt timestamp", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.updateByStripeCustomerId({
         stripeCustomerId: TEST_IDS.stripeCustomerId,
         email: "test@test.com",
       });
 
-      expect(mockQuery.query).toContain(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
+      expect(mockQuery.query).toContain(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
     });
 
     it("should handle update errors", async () => {
@@ -718,7 +718,7 @@ describe("BillingCustomerRepository", () => {
   });
 
   describe("delete", () => {
-    it("should delete billing customer by ID", async () => {
+    it("should delete stripe customer by ID", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
       neo4jService.writeOne.mockResolvedValue(undefined);
@@ -730,9 +730,9 @@ describe("BillingCustomerRepository", () => {
         id: TEST_IDS.customerId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})`,
+        `MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})`,
       );
-      expect(mockQuery.query).toContain(`DETACH DELETE ${billingCustomerMeta.nodeName}`);
+      expect(mockQuery.query).toContain(`DETACH DELETE ${stripeCustomerMeta.nodeName}`);
       expect(neo4jService.writeOne).toHaveBeenCalledWith(mockQuery);
     });
 
@@ -770,7 +770,7 @@ describe("BillingCustomerRepository", () => {
     it("should handle empty string values in create", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const params = {
         companyId: TEST_IDS.companyId,
@@ -789,7 +789,7 @@ describe("BillingCustomerRepository", () => {
     it("should handle special characters in customer name", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.update({
         id: TEST_IDS.customerId,
@@ -802,7 +802,7 @@ describe("BillingCustomerRepository", () => {
     it("should handle negative balance values", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.update({
         id: TEST_IDS.customerId,
@@ -815,7 +815,7 @@ describe("BillingCustomerRepository", () => {
     it("should handle very long email addresses", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const longEmail = "a".repeat(100) + "@example.com";
 
@@ -842,7 +842,7 @@ describe("BillingCustomerRepository", () => {
     it("should preserve exact UUID values", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const exactId = "123e4567-e89b-12d3-a456-426614174000";
 
@@ -854,7 +854,7 @@ describe("BillingCustomerRepository", () => {
     it("should preserve exact Stripe customer ID format", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const exactStripeId = "cus_MvN8z3FkJ0LJ6p";
 
@@ -866,7 +866,7 @@ describe("BillingCustomerRepository", () => {
     it("should preserve currency code case sensitivity", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.create({
         companyId: TEST_IDS.companyId,
@@ -884,7 +884,7 @@ describe("BillingCustomerRepository", () => {
     it("should call Neo4jService.initQuery before each read operation", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.readOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.findById({ id: TEST_IDS.customerId });
       await repository.findByCompanyId({ companyId: TEST_IDS.companyId });
@@ -896,7 +896,7 @@ describe("BillingCustomerRepository", () => {
     it("should call Neo4jService.writeOne for create, update, and delete operations", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.writeOne.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      neo4jService.writeOne.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await repository.create({
         companyId: TEST_IDS.companyId,

@@ -1,5 +1,5 @@
 import { DataModelInterface } from "../../../common/interfaces/datamodel.interface";
-import { billingCustomerMeta } from "../../stripe/entities/billing-customer.meta";
+import { stripeCustomerMeta } from "../../stripe-customer/entities/stripe-customer.meta";
 import { stripePriceMeta } from "../../stripe-price/entities/stripe-price.meta";
 import { StripeSubscription } from "./stripe-subscription.entity";
 import { mapStripeSubscription } from "./stripe-subscription.map";
@@ -11,6 +11,6 @@ export const StripeSubscriptionModel: DataModelInterface<StripeSubscription> = {
   entity: undefined as unknown as StripeSubscription,
   mapper: mapStripeSubscription,
   serialiser: StripeSubscriptionSerialiser,
-  singleChildrenTokens: [billingCustomerMeta.nodeName, stripePriceMeta.nodeName],
+  singleChildrenTokens: [stripeCustomerMeta.nodeName, stripePriceMeta.nodeName],
   childrenTokens: [],
 };

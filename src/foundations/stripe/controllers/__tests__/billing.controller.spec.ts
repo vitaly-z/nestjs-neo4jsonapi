@@ -53,17 +53,6 @@ describe("BillingController", () => {
     meterId: "meter_test123",
   };
 
-  const MOCK_CUSTOMER_RESPONSE = {
-    data: {
-      type: "billing-customers",
-      id: "billing_customer_123",
-      attributes: {
-        stripeCustomerId: TEST_IDS.customerId,
-        email: "test@example.com",
-        name: "Test Customer",
-      },
-    },
-  };
 
   // Create a mock authenticated request
   const createMockRequest = (companyId: string = TEST_IDS.companyId): AuthenticatedRequest => {
@@ -87,8 +76,6 @@ describe("BillingController", () => {
 
   beforeEach(async () => {
     const mockBillingService = {
-      getCustomer: jest.fn(),
-      createCustomer: jest.fn(),
       createSetupIntent: jest.fn(),
       createPortalSession: jest.fn(),
       listPaymentMethods: jest.fn(),
@@ -130,100 +117,11 @@ describe("BillingController", () => {
   });
 
   // ===================================================================
-  // CUSTOMER ENDPOINTS (4 endpoints)
+  // SETUP INTENT AND PORTAL ENDPOINTS
+  // Note: Customer GET/POST endpoints moved to StripeCustomerController
   // ===================================================================
 
-  describe("Customer Endpoints", () => {
-    describe("GET /billing/customer", () => {
-      it("should get customer successfully", async () => {
-        const req = createMockRequest();
-        billingService.getCustomer.mockResolvedValue(MOCK_CUSTOMER_RESPONSE);
-
-        await controller.getCustomer(req, mockReply);
-
-        expect(billingService.getCustomer).toHaveBeenCalledWith({
-          companyId: TEST_IDS.companyId,
-        });
-        expect(mockReply.send).toHaveBeenCalledWith(MOCK_CUSTOMER_RESPONSE);
-      });
-
-      it("should extract companyId from req.user", async () => {
-        const customCompanyId = "custom_company_456";
-        const req = createMockRequest(customCompanyId);
-        billingService.getCustomer.mockResolvedValue(MOCK_CUSTOMER_RESPONSE);
-
-        await controller.getCustomer(req, mockReply);
-
-        expect(billingService.getCustomer).toHaveBeenCalledWith({
-          companyId: customCompanyId,
-        });
-      });
-
-      it("should handle service errors", async () => {
-        const req = createMockRequest();
-        const error = new Error("Service error");
-        billingService.getCustomer.mockRejectedValue(error);
-
-        await expect(controller.getCustomer(req, mockReply)).rejects.toThrow("Service error");
-        expect(billingService.getCustomer).toHaveBeenCalledWith({
-          companyId: TEST_IDS.companyId,
-        });
-      });
-    });
-
-    describe("POST /billing/customer", () => {
-      const validCreateCustomerBody = {
-        name: "New Customer",
-        email: "new@example.com",
-        currency: "usd",
-      };
-
-      it("should create customer successfully with 201 status", async () => {
-        const req = createMockRequest();
-        billingService.createCustomer.mockResolvedValue(MOCK_CUSTOMER_RESPONSE);
-
-        await controller.createCustomer(req, mockReply, validCreateCustomerBody);
-
-        expect(billingService.createCustomer).toHaveBeenCalledWith({
-          companyId: TEST_IDS.companyId,
-          name: validCreateCustomerBody.name,
-          email: validCreateCustomerBody.email,
-          currency: validCreateCustomerBody.currency,
-        });
-        expect(mockReply.status).toHaveBeenCalledWith(HttpStatus.CREATED);
-        expect(mockReply.send).toHaveBeenCalledWith(MOCK_CUSTOMER_RESPONSE);
-      });
-
-      it("should pass all body parameters to service", async () => {
-        const req = createMockRequest();
-        const bodyWithAllFields = {
-          name: "Complete Customer",
-          email: "complete@example.com",
-          currency: "eur",
-        };
-        billingService.createCustomer.mockResolvedValue(MOCK_CUSTOMER_RESPONSE);
-
-        await controller.createCustomer(req, mockReply, bodyWithAllFields);
-
-        expect(billingService.createCustomer).toHaveBeenCalledWith({
-          companyId: TEST_IDS.companyId,
-          name: bodyWithAllFields.name,
-          email: bodyWithAllFields.email,
-          currency: bodyWithAllFields.currency,
-        });
-      });
-
-      it("should handle service errors during creation", async () => {
-        const req = createMockRequest();
-        const error = new Error("Customer creation failed");
-        billingService.createCustomer.mockRejectedValue(error);
-
-        await expect(controller.createCustomer(req, mockReply, validCreateCustomerBody)).rejects.toThrow(
-          "Customer creation failed",
-        );
-      });
-    });
-
+  describe("Setup Intent and Portal Endpoints", () => {
     describe("POST /billing/setup-intent", () => {
       const validSetupIntentBody = {
         paymentMethodType: "card" as const,
@@ -859,17 +757,17 @@ describe("BillingController", () => {
       expect(controller["usageService"]).toBeDefined();
     });
 
-    it("should extract companyId consistently across all endpoints", async () => {
+    it("should extract companyId consistently across endpoints", async () => {
       const customCompanyId = "integration_test_company_123";
       const req = createMockRequest(customCompanyId);
 
       // Mock all services
-      billingService.getCustomer.mockResolvedValue({} as any);
+      billingService.createPortalSession.mockResolvedValue({} as any);
       usageService.listMeters.mockResolvedValue({ data: [] });
 
-      // Test customer endpoint
-      await controller.getCustomer(req, createMockReply());
-      expect(billingService.getCustomer).toHaveBeenCalledWith(expect.objectContaining({ companyId: customCompanyId }));
+      // Test portal session endpoint
+      await controller.createPortalSession(req, createMockReply());
+      expect(billingService.createPortalSession).toHaveBeenCalledWith(expect.objectContaining({ companyId: customCompanyId }));
     });
 
     it("should handle multiple validation errors correctly", async () => {

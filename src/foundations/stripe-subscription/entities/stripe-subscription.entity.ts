@@ -1,5 +1,5 @@
 import { Entity } from "../../../common/abstracts/entity";
-import { BillingCustomer } from "../../stripe/entities/billing-customer.entity";
+import { StripeCustomer } from "../../stripe-customer/entities/stripe-customer.entity";
 import { StripePrice } from "../../stripe-price/entities/stripe-price.entity";
 
 export type StripeSubscriptionStatus =
@@ -28,6 +28,6 @@ export type StripeSubscription = Entity & {
 
   quantity: number;
 
-  billingCustomer: BillingCustomer;
+  stripeCustomer: StripeCustomer;
   price: StripePrice;
 };

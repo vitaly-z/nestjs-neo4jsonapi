@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
-import { billingCustomerMeta } from "../../stripe/entities/billing-customer.meta";
+import { stripeCustomerMeta } from "../../stripe-customer/entities/stripe-customer.meta";
 import { StripeInvoice, StripeInvoiceStatus } from "../entities/stripe-invoice.entity";
 import { stripeInvoiceMeta } from "../entities/stripe-invoice.meta";
 import { StripeInvoiceModel } from "../entities/stripe-invoice.model";
@@ -69,13 +69,13 @@ export class StripeInvoiceRepository implements OnModuleInit {
    * Find invoices by billing customer ID
    *
    * @param params - Query parameters
-   * @param params.billingCustomerId - Billing customer identifier
+   * @param params.stripeCustomerId - Stripe customer identifier
    * @param params.status - Optional filter by invoice status
    * @param params.limit - Optional limit (default: 100)
    * @returns Array of invoices ordered by creation date descending
    */
-  async findByBillingCustomerId(params: {
-    billingCustomerId: string;
+  async findByStripeCustomerId(params: {
+    stripeCustomerId: string;
     status?: StripeInvoiceStatus;
     limit?: number;
   }): Promise<StripeInvoice[]> {
@@ -89,11 +89,11 @@ export class StripeInvoiceRepository implements OnModuleInit {
 
     const where = whereParams.length > 0 ? `AND ${whereParams.join(" AND ")}` : "";
 
-    query.queryParams.billingCustomerId = params.billingCustomerId;
+    query.queryParams.stripeCustomerId = params.stripeCustomerId;
     query.queryParams.limit = params.limit ?? 100;
 
     query.query = `
-      MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})
+      MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})
       OPTIONAL MATCH (${stripeInvoiceMeta.nodeName})-[:FOR_SUBSCRIPTION]->(${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})
       WHERE 1=1 ${where}
       RETURN ${stripeInvoiceMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}
@@ -119,9 +119,9 @@ export class StripeInvoiceRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})
+      MATCH (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {id: $id})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})
       OPTIONAL MATCH (${stripeInvoiceMeta.nodeName})-[:FOR_SUBSCRIPTION]->(${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})
-      RETURN ${stripeInvoiceMeta.nodeName}, ${billingCustomerMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}
+      RETURN ${stripeInvoiceMeta.nodeName}, ${stripeCustomerMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);
@@ -156,7 +156,7 @@ export class StripeInvoiceRepository implements OnModuleInit {
    * and optional FOR_SUBSCRIPTION relationship to Subscription.
    *
    * @param params - Creation parameters
-   * @param params.billingCustomerId - Billing customer ID to link to
+   * @param params.stripeCustomerId - Stripe customer ID to link to
    * @param params.subscriptionId - Optional subscription ID to link to
    * @param params.stripeInvoiceId - Stripe invoice ID
    * @param params.stripeInvoiceNumber - Stripe invoice number (e.g., 'INV-2024-001')
@@ -179,7 +179,7 @@ export class StripeInvoiceRepository implements OnModuleInit {
    * @returns Created Invoice
    */
   async create(params: {
-    billingCustomerId: string;
+    stripeCustomerId: string;
     subscriptionId?: string;
     stripeInvoiceId: string;
     stripeInvoiceNumber: string | null;
@@ -206,7 +206,7 @@ export class StripeInvoiceRepository implements OnModuleInit {
 
     query.queryParams = {
       id,
-      billingCustomerId: params.billingCustomerId,
+      stripeCustomerId: params.stripeCustomerId,
       subscriptionId: params.subscriptionId ?? null,
       stripeInvoiceId: params.stripeInvoiceId,
       stripeInvoiceNumber: params.stripeInvoiceNumber,
@@ -236,7 +236,7 @@ export class StripeInvoiceRepository implements OnModuleInit {
       : "";
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $billingCustomerId})
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})
       ${subscriptionMatch}
       CREATE (${stripeInvoiceMeta.nodeName}:${stripeInvoiceMeta.labelName} {
         id: $id,
@@ -261,7 +261,7 @@ export class StripeInvoiceRepository implements OnModuleInit {
         createdAt: datetime(),
         updatedAt: datetime()
       })
-      CREATE (${stripeInvoiceMeta.nodeName})-[:BELONGS_TO]->(${billingCustomerMeta.nodeName})
+      CREATE (${stripeInvoiceMeta.nodeName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName})
       ${subscriptionRelation}
       RETURN ${stripeInvoiceMeta.nodeName}
     `;

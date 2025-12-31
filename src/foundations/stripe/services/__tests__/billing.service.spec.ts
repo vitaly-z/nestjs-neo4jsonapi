@@ -24,12 +24,12 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import Stripe from "stripe";
 import { BillingService } from "../billing.service";
-import { BillingCustomerRepository } from "../../repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { JsonApiService } from "../../../../core/jsonapi";
-import { StripeCustomerService } from "../stripe.customer.service";
+import { StripeCustomerApiService } from "../../../stripe-customer/services/stripe-customer-api.service";
 import { StripePaymentService } from "../stripe.payment.service";
 import { StripePortalService } from "../stripe.portal.service";
-import { BillingCustomer } from "../../entities/billing-customer.entity";
+import { StripeCustomer } from "../../../stripe-customer/entities/stripe-customer.entity";
 import {
   MOCK_CUSTOMER,
   MOCK_PAYMENT_METHOD,
@@ -40,14 +40,14 @@ import {
 
 describe("BillingService", () => {
   let service: BillingService;
-  let billingCustomerRepository: jest.Mocked<BillingCustomerRepository>;
-  let stripeCustomerService: jest.Mocked<StripeCustomerService>;
+  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
+  let stripeCustomerApiService: jest.Mocked<StripeCustomerApiService>;
   let stripePaymentService: jest.Mocked<StripePaymentService>;
   let stripePortalService: jest.Mocked<StripePortalService>;
   let jsonApiService: jest.Mocked<JsonApiService>;
 
   // Test data constants
-  const MOCK_BILLING_CUSTOMER: BillingCustomer = {
+  const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
     id: "billing_customer_123",
     stripeCustomerId: TEST_IDS.customerId,
     email: "test@example.com",
@@ -64,21 +64,21 @@ describe("BillingService", () => {
   const MOCK_JSON_API_RESPONSE = {
     data: {
       type: "billing-customers",
-      id: MOCK_BILLING_CUSTOMER.id,
+      id: MOCK_STRIPE_CUSTOMER.id,
       attributes: {
-        stripeCustomerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
-        email: MOCK_BILLING_CUSTOMER.email,
-        name: MOCK_BILLING_CUSTOMER.name,
-        currency: MOCK_BILLING_CUSTOMER.currency,
-        balance: MOCK_BILLING_CUSTOMER.balance,
-        delinquent: MOCK_BILLING_CUSTOMER.delinquent,
-        defaultPaymentMethodId: MOCK_BILLING_CUSTOMER.defaultPaymentMethodId,
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
+        email: MOCK_STRIPE_CUSTOMER.email,
+        name: MOCK_STRIPE_CUSTOMER.name,
+        currency: MOCK_STRIPE_CUSTOMER.currency,
+        balance: MOCK_STRIPE_CUSTOMER.balance,
+        delinquent: MOCK_STRIPE_CUSTOMER.delinquent,
+        defaultPaymentMethodId: MOCK_STRIPE_CUSTOMER.defaultPaymentMethodId,
       },
     },
   };
 
   beforeEach(async () => {
-    const mockBillingCustomerRepository = {
+    const mockStripeCustomerRepository = {
       findByCompanyId: jest.fn(),
       findByStripeCustomerId: jest.fn(),
       create: jest.fn(),
@@ -86,7 +86,7 @@ describe("BillingService", () => {
       updateByStripeCustomerId: jest.fn(),
     };
 
-    const mockStripeCustomerService = {
+    const mockStripeCustomerApiService = {
       createCustomer: jest.fn(),
       retrieveCustomer: jest.fn(),
       updateCustomer: jest.fn(),
@@ -111,12 +111,12 @@ describe("BillingService", () => {
       providers: [
         BillingService,
         {
-          provide: BillingCustomerRepository,
-          useValue: mockBillingCustomerRepository,
+          provide: StripeCustomerRepository,
+          useValue: mockStripeCustomerRepository,
         },
         {
-          provide: StripeCustomerService,
-          useValue: mockStripeCustomerService,
+          provide: StripeCustomerApiService,
+          useValue: mockStripeCustomerApiService,
         },
         {
           provide: StripePaymentService,
@@ -134,8 +134,8 @@ describe("BillingService", () => {
     }).compile();
 
     service = module.get<BillingService>(BillingService);
-    billingCustomerRepository = module.get(BillingCustomerRepository);
-    stripeCustomerService = module.get(StripeCustomerService);
+    stripeCustomerRepository = module.get(StripeCustomerRepository);
+    stripeCustomerApiService = module.get(StripeCustomerApiService);
     stripePaymentService = module.get(StripePaymentService);
     stripePortalService = module.get(StripePortalService);
     jsonApiService = module.get(JsonApiService);
@@ -147,33 +147,33 @@ describe("BillingService", () => {
 
   describe("getCustomerByCompanyId", () => {
     it("should return billing customer when found", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await service.getCustomerByCompanyId({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
     it("should return null when customer not found", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       const result = await service.getCustomerByCompanyId({ companyId: TEST_IDS.companyId });
 
       expect(result).toBeNull();
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
     });
 
     it("should delegate to repository without transformation", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.getCustomerByCompanyId({ companyId: "test_company_id" });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: "test_company_id",
       });
     });
@@ -181,30 +181,30 @@ describe("BillingService", () => {
 
   describe("getCustomerOrFail", () => {
     it("should return billing customer when found", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       const result = await service.getCustomerOrFail({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
-      expect(result).toEqual(MOCK_BILLING_CUSTOMER);
+      expect(result).toEqual(MOCK_STRIPE_CUSTOMER);
     });
 
     it("should throw NOT_FOUND exception when customer not found", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getCustomerOrFail({ companyId: TEST_IDS.companyId })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
     });
 
     it("should throw NOT_FOUND with correct status code", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       try {
         await service.getCustomerOrFail({ companyId: TEST_IDS.companyId });
@@ -212,15 +212,15 @@ describe("BillingService", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
         expect((error as HttpException).getStatus()).toBe(HttpStatus.NOT_FOUND);
-        expect((error as HttpException).message).toBe("Billing customer not found for this company");
+        expect((error as HttpException).message).toBe("Stripe customer not found for this company");
       }
     });
 
     it("should throw NOT_FOUND with correct message", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getCustomerOrFail({ companyId: "nonexistent_company" })).rejects.toThrow(
-        "Billing customer not found for this company",
+        "Stripe customer not found for this company",
       );
     });
   });
@@ -234,48 +234,48 @@ describe("BillingService", () => {
     };
 
     it("should create customer successfully when no existing customer", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.create.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.create.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const result = await service.createCustomer(validCreateParams);
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validCreateParams.companyId,
       });
-      expect(stripeCustomerService.createCustomer).toHaveBeenCalledWith({
+      expect(stripeCustomerApiService.createCustomer).toHaveBeenCalledWith({
         companyId: validCreateParams.companyId,
         email: validCreateParams.email,
         name: validCreateParams.name,
       });
-      expect(billingCustomerRepository.create).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.create).toHaveBeenCalledWith({
         companyId: validCreateParams.companyId,
         stripeCustomerId: MOCK_CUSTOMER.id,
         email: validCreateParams.email,
         name: validCreateParams.name,
         currency: validCreateParams.currency,
       });
-      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_BILLING_CUSTOMER);
+      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_STRIPE_CUSTOMER);
       expect(result).toEqual(MOCK_JSON_API_RESPONSE);
     });
 
     it("should throw CONFLICT when customer already exists", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await expect(service.createCustomer(validCreateParams)).rejects.toThrow(
         new HttpException("Billing customer already exists for this company", HttpStatus.CONFLICT),
       );
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: validCreateParams.companyId,
       });
-      expect(stripeCustomerService.createCustomer).not.toHaveBeenCalled();
-      expect(billingCustomerRepository.create).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.createCustomer).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.create).not.toHaveBeenCalled();
     });
 
     it("should throw CONFLICT with correct status code", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       try {
         await service.createCustomer(validCreateParams);
@@ -289,14 +289,14 @@ describe("BillingService", () => {
 
     it("should create customer in Stripe before database", async () => {
       const callOrder: string[] = [];
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockImplementation(async () => {
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockImplementation(async () => {
         callOrder.push("stripe");
         return MOCK_CUSTOMER;
       });
-      billingCustomerRepository.create.mockImplementation(async () => {
+      stripeCustomerRepository.create.mockImplementation(async () => {
         callOrder.push("database");
-        return MOCK_BILLING_CUSTOMER;
+        return MOCK_STRIPE_CUSTOMER;
       });
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
@@ -307,17 +307,17 @@ describe("BillingService", () => {
 
     it("should pass Stripe customer ID to database creation", async () => {
       const customStripeId = "cus_custom_12345";
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockResolvedValue({
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockResolvedValue({
         ...MOCK_CUSTOMER,
         id: customStripeId,
       });
-      billingCustomerRepository.create.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.create.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       await service.createCustomer(validCreateParams);
 
-      expect(billingCustomerRepository.create).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.create).toHaveBeenCalledWith({
         companyId: validCreateParams.companyId,
         stripeCustomerId: customStripeId,
         email: validCreateParams.email,
@@ -327,15 +327,15 @@ describe("BillingService", () => {
     });
 
     it("should return JSON:API formatted response", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.create.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.create.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const result = await service.createCustomer(validCreateParams);
 
       expect(result).toEqual(MOCK_JSON_API_RESPONSE);
-      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_BILLING_CUSTOMER);
+      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_STRIPE_CUSTOMER);
     });
 
     it("should preserve exact parameter values", async () => {
@@ -345,19 +345,19 @@ describe("BillingService", () => {
         email: "exact@test.com",
         currency: "eur",
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.create.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.create.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       await service.createCustomer(exactParams);
 
-      expect(stripeCustomerService.createCustomer).toHaveBeenCalledWith({
+      expect(stripeCustomerApiService.createCustomer).toHaveBeenCalledWith({
         companyId: exactParams.companyId,
         email: exactParams.email,
         name: exactParams.name,
       });
-      expect(billingCustomerRepository.create).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.create).toHaveBeenCalledWith({
         companyId: exactParams.companyId,
         stripeCustomerId: MOCK_CUSTOMER.id,
         email: exactParams.email,
@@ -367,58 +367,58 @@ describe("BillingService", () => {
     });
 
     it("should handle Stripe customer creation failure", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
       const stripeError = new Error("Stripe API error");
-      stripeCustomerService.createCustomer.mockRejectedValue(stripeError);
+      stripeCustomerApiService.createCustomer.mockRejectedValue(stripeError);
 
       await expect(service.createCustomer(validCreateParams)).rejects.toThrow("Stripe API error");
 
-      expect(billingCustomerRepository.create).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.create).not.toHaveBeenCalled();
     });
 
     it("should handle database creation failure", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
-      stripeCustomerService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerApiService.createCustomer.mockResolvedValue(MOCK_CUSTOMER);
       const dbError = new Error("Database error");
-      billingCustomerRepository.create.mockRejectedValue(dbError);
+      stripeCustomerRepository.create.mockRejectedValue(dbError);
 
       await expect(service.createCustomer(validCreateParams)).rejects.toThrow("Database error");
 
-      expect(stripeCustomerService.createCustomer).toHaveBeenCalled();
+      expect(stripeCustomerApiService.createCustomer).toHaveBeenCalled();
     });
   });
 
   describe("getCustomer", () => {
     it("should get customer and format as JSON:API", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const result = await service.getCustomer({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
-      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_BILLING_CUSTOMER);
+      expect(jsonApiService.buildSingle).toHaveBeenCalledWith(expect.any(Object), MOCK_STRIPE_CUSTOMER);
       expect(result).toEqual(MOCK_JSON_API_RESPONSE);
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getCustomer({ companyId: TEST_IDS.companyId })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
       expect(jsonApiService.buildSingle).not.toHaveBeenCalled();
     });
 
     it("should use getCustomerOrFail internally", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       await service.getCustomer({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
     });
@@ -426,16 +426,16 @@ describe("BillingService", () => {
 
   describe("createSetupIntent", () => {
     it("should create setup intent successfully", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.createSetupIntent.mockResolvedValue(MOCK_SETUP_INTENT);
 
       const result = await service.createSetupIntent({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
       expect(stripePaymentService.createSetupIntent).toHaveBeenCalledWith({
-        stripeCustomerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       });
       expect(result).toEqual({
         clientSecret: MOCK_SETUP_INTENT.client_secret,
@@ -443,10 +443,10 @@ describe("BillingService", () => {
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.createSetupIntent({ companyId: TEST_IDS.companyId })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
       expect(stripePaymentService.createSetupIntent).not.toHaveBeenCalled();
@@ -454,7 +454,7 @@ describe("BillingService", () => {
 
     it("should return client secret from setup intent", async () => {
       const customClientSecret = "seti_custom_secret_123";
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.createSetupIntent.mockResolvedValue({
         ...MOCK_SETUP_INTENT,
         client_secret: customClientSecret,
@@ -466,7 +466,7 @@ describe("BillingService", () => {
     });
 
     it("should accept optional paymentMethodType parameter", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.createSetupIntent.mockResolvedValue(MOCK_SETUP_INTENT);
 
       await service.createSetupIntent({
@@ -475,23 +475,23 @@ describe("BillingService", () => {
       });
 
       expect(stripePaymentService.createSetupIntent).toHaveBeenCalledWith({
-        stripeCustomerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       });
     });
   });
 
   describe("createPortalSession", () => {
     it("should create portal session with default return URL", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePortalService.createPortalSession.mockResolvedValue(MOCK_PORTAL_SESSION);
 
       const result = await service.createPortalSession({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
       expect(stripePortalService.createPortalSession).toHaveBeenCalledWith(
-        MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         undefined,
       );
       expect(result).toEqual({
@@ -501,7 +501,7 @@ describe("BillingService", () => {
 
     it("should create portal session with custom return URL", async () => {
       const customReturnUrl = "https://custom.com/billing";
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePortalService.createPortalSession.mockResolvedValue({
         ...MOCK_PORTAL_SESSION,
         return_url: customReturnUrl,
@@ -513,17 +513,17 @@ describe("BillingService", () => {
       });
 
       expect(stripePortalService.createPortalSession).toHaveBeenCalledWith(
-        MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         customReturnUrl,
       );
       expect(result.url).toBe(MOCK_PORTAL_SESSION.url);
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.createPortalSession({ companyId: TEST_IDS.companyId })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
       expect(stripePortalService.createPortalSession).not.toHaveBeenCalled();
@@ -531,7 +531,7 @@ describe("BillingService", () => {
 
     it("should return portal session URL", async () => {
       const customUrl = "https://billing.stripe.com/custom_session";
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePortalService.createPortalSession.mockResolvedValue({
         ...MOCK_PORTAL_SESSION,
         url: customUrl,
@@ -546,34 +546,34 @@ describe("BillingService", () => {
   describe("listPaymentMethods", () => {
     it("should list payment methods for customer", async () => {
       const mockPaymentMethods = [MOCK_PAYMENT_METHOD];
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.listPaymentMethods.mockResolvedValue(mockPaymentMethods);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.listPaymentMethods.mockResolvedValue(mockPaymentMethods);
 
       const result = await service.listPaymentMethods({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
-      expect(stripeCustomerService.listPaymentMethods).toHaveBeenCalledWith(
-        MOCK_BILLING_CUSTOMER.stripeCustomerId,
+      expect(stripeCustomerApiService.listPaymentMethods).toHaveBeenCalledWith(
+        MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         "card",
       );
       expect(result).toEqual({ data: mockPaymentMethods });
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.listPaymentMethods({ companyId: TEST_IDS.companyId })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
 
-      expect(stripeCustomerService.listPaymentMethods).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.listPaymentMethods).not.toHaveBeenCalled();
     });
 
     it("should return empty array when no payment methods", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.listPaymentMethods.mockResolvedValue([]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.listPaymentMethods.mockResolvedValue([]);
 
       const result = await service.listPaymentMethods({ companyId: TEST_IDS.companyId });
 
@@ -581,13 +581,13 @@ describe("BillingService", () => {
     });
 
     it("should always use card as payment method type", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.listPaymentMethods.mockResolvedValue([]);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.listPaymentMethods.mockResolvedValue([]);
 
       await service.listPaymentMethods({ companyId: TEST_IDS.companyId });
 
-      expect(stripeCustomerService.listPaymentMethods).toHaveBeenCalledWith(
-        MOCK_BILLING_CUSTOMER.stripeCustomerId,
+      expect(stripeCustomerApiService.listPaymentMethods).toHaveBeenCalledWith(
+        MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         "card",
       );
     });
@@ -598,8 +598,8 @@ describe("BillingService", () => {
         { ...MOCK_PAYMENT_METHOD, id: "pm_second_123" },
         { ...MOCK_PAYMENT_METHOD, id: "pm_third_456" },
       ];
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.listPaymentMethods.mockResolvedValue(multiplePaymentMethods);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.listPaymentMethods.mockResolvedValue(multiplePaymentMethods);
 
       const result = await service.listPaymentMethods({ companyId: TEST_IDS.companyId });
 
@@ -610,52 +610,52 @@ describe("BillingService", () => {
 
   describe("setDefaultPaymentMethod", () => {
     it("should set default payment method in Stripe and database", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.updateCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.update.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.updateCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.update.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.setDefaultPaymentMethod({
         companyId: TEST_IDS.companyId,
         paymentMethodId: "pm_new_123",
       });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
-      expect(stripeCustomerService.updateCustomer).toHaveBeenCalledWith({
-        stripeCustomerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+      expect(stripeCustomerApiService.updateCustomer).toHaveBeenCalledWith({
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         defaultPaymentMethodId: "pm_new_123",
       });
-      expect(billingCustomerRepository.update).toHaveBeenCalledWith({
-        id: MOCK_BILLING_CUSTOMER.id,
+      expect(stripeCustomerRepository.update).toHaveBeenCalledWith({
+        id: MOCK_STRIPE_CUSTOMER.id,
         defaultPaymentMethodId: "pm_new_123",
       });
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(
         service.setDefaultPaymentMethod({
           companyId: TEST_IDS.companyId,
           paymentMethodId: "pm_test_123",
         }),
-      ).rejects.toThrow(new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND));
+      ).rejects.toThrow(new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND));
 
-      expect(stripeCustomerService.updateCustomer).not.toHaveBeenCalled();
-      expect(billingCustomerRepository.update).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.updateCustomer).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.update).not.toHaveBeenCalled();
     });
 
     it("should update Stripe before database", async () => {
       const callOrder: string[] = [];
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.updateCustomer.mockImplementation(async () => {
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.updateCustomer.mockImplementation(async () => {
         callOrder.push("stripe");
         return MOCK_CUSTOMER;
       });
-      billingCustomerRepository.update.mockImplementation(async () => {
+      stripeCustomerRepository.update.mockImplementation(async () => {
         callOrder.push("database");
-        return MOCK_BILLING_CUSTOMER;
+        return MOCK_STRIPE_CUSTOMER;
       });
 
       await service.setDefaultPaymentMethod({
@@ -667,9 +667,9 @@ describe("BillingService", () => {
     });
 
     it("should not update database if Stripe update fails", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       const stripeError = new Error("Stripe update failed");
-      stripeCustomerService.updateCustomer.mockRejectedValue(stripeError);
+      stripeCustomerApiService.updateCustomer.mockRejectedValue(stripeError);
 
       await expect(
         service.setDefaultPaymentMethod({
@@ -678,26 +678,26 @@ describe("BillingService", () => {
         }),
       ).rejects.toThrow("Stripe update failed");
 
-      expect(billingCustomerRepository.update).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.update).not.toHaveBeenCalled();
     });
 
     it("should preserve exact payment method ID", async () => {
       const exactPaymentMethodId = "pm_exact_test_456789";
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      stripeCustomerService.updateCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.update.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerApiService.updateCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.update.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.setDefaultPaymentMethod({
         companyId: TEST_IDS.companyId,
         paymentMethodId: exactPaymentMethodId,
       });
 
-      expect(stripeCustomerService.updateCustomer).toHaveBeenCalledWith({
-        stripeCustomerId: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+      expect(stripeCustomerApiService.updateCustomer).toHaveBeenCalledWith({
+        stripeCustomerId: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
         defaultPaymentMethodId: exactPaymentMethodId,
       });
-      expect(billingCustomerRepository.update).toHaveBeenCalledWith({
-        id: MOCK_BILLING_CUSTOMER.id,
+      expect(stripeCustomerRepository.update).toHaveBeenCalledWith({
+        id: MOCK_STRIPE_CUSTOMER.id,
         defaultPaymentMethodId: exactPaymentMethodId,
       });
     });
@@ -707,22 +707,22 @@ describe("BillingService", () => {
     it("should remove payment method successfully", async () => {
       const mockPaymentMethod: Stripe.PaymentMethod = {
         ...MOCK_PAYMENT_METHOD,
-        customer: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customer: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
-      stripeCustomerService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
+      stripeCustomerApiService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
 
       await service.removePaymentMethod({
         companyId: TEST_IDS.companyId,
         paymentMethodId: TEST_IDS.paymentMethodId,
       });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
       expect(stripePaymentService.retrievePaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
-      expect(stripeCustomerService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
+      expect(stripeCustomerApiService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
     });
 
     it("should throw FORBIDDEN when payment method does not belong to customer", async () => {
@@ -730,7 +730,7 @@ describe("BillingService", () => {
         ...MOCK_PAYMENT_METHOD,
         customer: "cus_different_customer",
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
 
       await expect(
@@ -740,7 +740,7 @@ describe("BillingService", () => {
         }),
       ).rejects.toThrow(new HttpException("Payment method does not belong to this customer", HttpStatus.FORBIDDEN));
 
-      expect(stripeCustomerService.detachPaymentMethod).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.detachPaymentMethod).not.toHaveBeenCalled();
     });
 
     it("should throw FORBIDDEN with correct status code", async () => {
@@ -748,7 +748,7 @@ describe("BillingService", () => {
         ...MOCK_PAYMENT_METHOD,
         customer: "cus_different_customer",
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
 
       try {
@@ -764,39 +764,39 @@ describe("BillingService", () => {
     });
 
     it("should throw NOT_FOUND when customer does not exist", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(
         service.removePaymentMethod({
           companyId: TEST_IDS.companyId,
           paymentMethodId: TEST_IDS.paymentMethodId,
         }),
-      ).rejects.toThrow(new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND));
+      ).rejects.toThrow(new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND));
 
       expect(stripePaymentService.retrievePaymentMethod).not.toHaveBeenCalled();
     });
 
     it("should clear defaultPaymentMethodId when removing default payment method", async () => {
       const customerWithDefaultPM = {
-        ...MOCK_BILLING_CUSTOMER,
+        ...MOCK_STRIPE_CUSTOMER,
         defaultPaymentMethodId: TEST_IDS.paymentMethodId,
       };
       const mockPaymentMethod: Stripe.PaymentMethod = {
         ...MOCK_PAYMENT_METHOD,
-        customer: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customer: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(customerWithDefaultPM);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(customerWithDefaultPM);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
-      stripeCustomerService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
-      billingCustomerRepository.update.mockResolvedValue(customerWithDefaultPM);
+      stripeCustomerApiService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
+      stripeCustomerRepository.update.mockResolvedValue(customerWithDefaultPM);
 
       await service.removePaymentMethod({
         companyId: TEST_IDS.companyId,
         paymentMethodId: TEST_IDS.paymentMethodId,
       });
 
-      expect(stripeCustomerService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
-      expect(billingCustomerRepository.update).toHaveBeenCalledWith({
+      expect(stripeCustomerApiService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
+      expect(stripeCustomerRepository.update).toHaveBeenCalledWith({
         id: customerWithDefaultPM.id,
         defaultPaymentMethodId: null,
       });
@@ -804,34 +804,34 @@ describe("BillingService", () => {
 
     it("should not update database when removing non-default payment method", async () => {
       const customerWithDifferentDefaultPM = {
-        ...MOCK_BILLING_CUSTOMER,
+        ...MOCK_STRIPE_CUSTOMER,
         defaultPaymentMethodId: "pm_different_123",
       };
       const mockPaymentMethod: Stripe.PaymentMethod = {
         ...MOCK_PAYMENT_METHOD,
-        customer: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customer: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(customerWithDifferentDefaultPM);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(customerWithDifferentDefaultPM);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
-      stripeCustomerService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
+      stripeCustomerApiService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
 
       await service.removePaymentMethod({
         companyId: TEST_IDS.companyId,
         paymentMethodId: TEST_IDS.paymentMethodId,
       });
 
-      expect(stripeCustomerService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
-      expect(billingCustomerRepository.update).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
+      expect(stripeCustomerRepository.update).not.toHaveBeenCalled();
     });
 
     it("should validate ownership before detaching", async () => {
       const mockPaymentMethod: Stripe.PaymentMethod = {
         ...MOCK_PAYMENT_METHOD,
-        customer: MOCK_BILLING_CUSTOMER.stripeCustomerId,
+        customer: MOCK_STRIPE_CUSTOMER.stripeCustomerId,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
-      stripeCustomerService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
+      stripeCustomerApiService.detachPaymentMethod.mockResolvedValue(MOCK_PAYMENT_METHOD);
 
       await service.removePaymentMethod({
         companyId: TEST_IDS.companyId,
@@ -840,7 +840,7 @@ describe("BillingService", () => {
 
       // Verify ownership validation by checking retrievePaymentMethod was called
       expect(stripePaymentService.retrievePaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
-      expect(stripeCustomerService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
+      expect(stripeCustomerApiService.detachPaymentMethod).toHaveBeenCalledWith(TEST_IDS.paymentMethodId);
     });
 
     it("should handle payment method with null customer", async () => {
@@ -848,7 +848,7 @@ describe("BillingService", () => {
         ...MOCK_PAYMENT_METHOD,
         customer: null,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       stripePaymentService.retrievePaymentMethod.mockResolvedValue(mockPaymentMethod);
 
       await expect(
@@ -873,17 +873,17 @@ describe("BillingService", () => {
           default_payment_method: "pm_updated_123",
         },
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(stripeCustomerService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerApiService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
       });
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
         email: "updated@example.com",
         name: "Updated Name",
@@ -894,37 +894,37 @@ describe("BillingService", () => {
     });
 
     it("should not update when customer does not exist in database", async () => {
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(MOCK_CUSTOMER);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(MOCK_CUSTOMER);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(stripeCustomerService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
-      expect(billingCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerApiService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
+      expect(stripeCustomerRepository.findByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
       });
-      expect(billingCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
     });
 
     it("should silently ignore 'Customer has been deleted' error", async () => {
       const deletedError = new Error("Customer has been deleted");
-      stripeCustomerService.retrieveCustomer.mockRejectedValue(deletedError);
+      stripeCustomerApiService.retrieveCustomer.mockRejectedValue(deletedError);
 
       await expect(service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId })).resolves.not.toThrow();
 
-      expect(stripeCustomerService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
-      expect(billingCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
+      expect(stripeCustomerApiService.retrieveCustomer).toHaveBeenCalledWith(TEST_IDS.customerId);
+      expect(stripeCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
     });
 
     it("should rethrow other errors", async () => {
       const otherError = new Error("Some other Stripe error");
-      stripeCustomerService.retrieveCustomer.mockRejectedValue(otherError);
+      stripeCustomerApiService.retrieveCustomer.mockRejectedValue(otherError);
 
       await expect(service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId })).rejects.toThrow(
         "Some other Stripe error",
       );
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
+      expect(stripeCustomerRepository.updateByStripeCustomerId).not.toHaveBeenCalled();
     });
 
     it("should use existing email when Stripe customer has null email", async () => {
@@ -933,15 +933,15 @@ describe("BillingService", () => {
         email: null,
         name: "Updated Name",
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
-        email: MOCK_BILLING_CUSTOMER.email,
+        email: MOCK_STRIPE_CUSTOMER.email,
         name: "Updated Name",
         defaultPaymentMethodId: undefined,
         balance: mockStripeCustomer.balance,
@@ -955,16 +955,16 @@ describe("BillingService", () => {
         email: "updated@example.com",
         name: null,
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
         email: "updated@example.com",
-        name: MOCK_BILLING_CUSTOMER.name,
+        name: MOCK_STRIPE_CUSTOMER.name,
         defaultPaymentMethodId: undefined,
         balance: mockStripeCustomer.balance,
         delinquent: false,
@@ -979,13 +979,13 @@ describe("BillingService", () => {
           default_payment_method: MOCK_PAYMENT_METHOD as any,
         },
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
         email: mockStripeCustomer.email,
         name: mockStripeCustomer.name,
@@ -1004,13 +1004,13 @@ describe("BillingService", () => {
           default_payment_method: pmId,
         },
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith({
         stripeCustomerId: TEST_IDS.customerId,
         email: mockStripeCustomer.email,
         name: mockStripeCustomer.name,
@@ -1025,13 +1025,13 @@ describe("BillingService", () => {
         ...MOCK_CUSTOMER,
         delinquent: null as any,
       };
-      stripeCustomerService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
-      billingCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
-      billingCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerApiService.retrieveCustomer.mockResolvedValue(mockStripeCustomer);
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
+      stripeCustomerRepository.updateByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
 
       await service.syncCustomerFromStripe({ stripeCustomerId: TEST_IDS.customerId });
 
-      expect(billingCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith(
+      expect(stripeCustomerRepository.updateByStripeCustomerId).toHaveBeenCalledWith(
         expect.objectContaining({
           delinquent: false,
         }),
@@ -1041,7 +1041,7 @@ describe("BillingService", () => {
 
   describe("Edge Cases", () => {
     it("should handle concurrent requests for same company", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       const promises = [
@@ -1053,24 +1053,24 @@ describe("BillingService", () => {
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(3);
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledTimes(3);
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledTimes(3);
     });
 
     it("should handle empty string company ID gracefully", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(null);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(null);
 
       await expect(service.getCustomerOrFail({ companyId: "" })).rejects.toThrow(
-        new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND),
+        new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND),
       );
     });
 
     it("should preserve exact Stripe customer ID in all operations", async () => {
       const exactStripeId = "cus_exact_test_123456";
       const customerWithExactId = {
-        ...MOCK_BILLING_CUSTOMER,
+        ...MOCK_STRIPE_CUSTOMER,
         stripeCustomerId: exactStripeId,
       };
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(customerWithExactId);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(customerWithExactId);
       stripePaymentService.createSetupIntent.mockResolvedValue(MOCK_SETUP_INTENT);
 
       await service.createSetupIntent({ companyId: TEST_IDS.companyId });
@@ -1083,29 +1083,29 @@ describe("BillingService", () => {
 
   describe("Service Integration", () => {
     it("should call repository methods with correct parameters", async () => {
-      billingCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_BILLING_CUSTOMER);
+      stripeCustomerRepository.findByCompanyId.mockResolvedValue(MOCK_STRIPE_CUSTOMER);
       jsonApiService.buildSingle.mockReturnValue(MOCK_JSON_API_RESPONSE);
 
       await service.getCustomer({ companyId: TEST_IDS.companyId });
 
-      expect(billingCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
+      expect(stripeCustomerRepository.findByCompanyId).toHaveBeenCalledWith({
         companyId: TEST_IDS.companyId,
       });
     });
 
     it("should orchestrate multiple service calls in correct order", async () => {
       const callOrder: string[] = [];
-      billingCustomerRepository.findByCompanyId.mockImplementation(async () => {
+      stripeCustomerRepository.findByCompanyId.mockImplementation(async () => {
         callOrder.push("checkExisting");
         return null;
       });
-      stripeCustomerService.createCustomer.mockImplementation(async () => {
+      stripeCustomerApiService.createCustomer.mockImplementation(async () => {
         callOrder.push("createStripe");
         return MOCK_CUSTOMER;
       });
-      billingCustomerRepository.create.mockImplementation(async () => {
+      stripeCustomerRepository.create.mockImplementation(async () => {
         callOrder.push("createDatabase");
-        return MOCK_BILLING_CUSTOMER;
+        return MOCK_STRIPE_CUSTOMER;
       });
       jsonApiService.buildSingle.mockImplementation(() => {
         callOrder.push("formatResponse");

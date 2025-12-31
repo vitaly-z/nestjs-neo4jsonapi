@@ -1,17 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "./stripe.service";
-import { HandleStripeErrors } from "../errors/stripe.errors";
+import { StripeService } from "../../stripe/services/stripe.service";
+import { HandleStripeErrors } from "../../stripe/errors/stripe.errors";
 
 /**
- * Stripe Customer Service
+ * Stripe Customer API Service
  *
  * Manages Stripe customer operations including creation, retrieval, updates, and payment method management.
  * Provides a thin wrapper around Stripe's customer API with error handling and company metadata integration.
  *
  * @example
  * ```typescript
- * const customer = await stripeCustomerService.createCustomer({
+ * const customer = await stripeCustomerApiService.createCustomer({
  *   companyId: 'company_123',
  *   email: 'user@example.com',
  *   name: 'John Doe',
@@ -19,7 +19,7 @@ import { HandleStripeErrors } from "../errors/stripe.errors";
  * ```
  */
 @Injectable()
-export class StripeCustomerService {
+export class StripeCustomerApiService {
   constructor(private readonly stripeService: StripeService) {}
 
   /**

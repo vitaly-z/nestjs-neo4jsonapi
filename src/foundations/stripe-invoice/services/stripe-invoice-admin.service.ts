@@ -4,7 +4,7 @@ import { JsonApiDataInterface } from "../../../core/jsonapi";
 import { JsonApiPaginator } from "../../../core/jsonapi";
 import { JsonApiService } from "../../../core/jsonapi";
 import { StripeInvoiceApiService } from "./stripe-invoice-api.service";
-import { BillingCustomerRepository } from "../../stripe/repositories/billing-customer.repository";
+import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../repositories/stripe-invoice.repository";
 import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceModel } from "../entities/stripe-invoice.model";
@@ -30,7 +30,7 @@ import { StripeInvoiceStatus } from "../entities/stripe-invoice.entity";
 export class StripeInvoiceAdminService {
   constructor(
     private readonly stripeInvoiceRepository: StripeInvoiceRepository,
-    private readonly billingCustomerRepository: BillingCustomerRepository,
+    private readonly stripeCustomerRepository: StripeCustomerRepository,
     private readonly subscriptionRepository: StripeSubscriptionRepository,
     private readonly stripeInvoiceApiService: StripeInvoiceApiService,
     private readonly jsonApiService: JsonApiService,
@@ -62,13 +62,13 @@ export class StripeInvoiceAdminService {
   }): Promise<JsonApiDataInterface> {
     const paginator = new JsonApiPaginator(params.query);
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
-      throw new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND);
+      throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
     }
 
-    const invoices = await this.stripeInvoiceRepository.findByBillingCustomerId({
-      billingCustomerId: customer.id,
+    const invoices = await this.stripeInvoiceRepository.findByStripeCustomerId({
+      stripeCustomerId: customer.id,
       status: params.status,
     });
 
@@ -92,8 +92,8 @@ export class StripeInvoiceAdminService {
       throw new HttpException("Invoice not found", HttpStatus.NOT_FOUND);
     }
 
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
-    if (!customer || invoice.billingCustomer?.id !== customer.id) {
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    if (!customer || invoice.stripeCustomer?.id !== customer.id) {
       throw new HttpException("Invoice does not belong to this company", HttpStatus.FORBIDDEN);
     }
 
@@ -122,16 +122,16 @@ export class StripeInvoiceAdminService {
    * ```
    */
   async getUpcomingInvoice(params: { companyId: string; subscriptionId?: string }): Promise<any> {
-    const customer = await this.billingCustomerRepository.findByCompanyId({ companyId: params.companyId });
+    const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
-      throw new HttpException("Billing customer not found for this company", HttpStatus.NOT_FOUND);
+      throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
     }
 
     let subscriptionStripeId: string | undefined;
 
     if (params.subscriptionId) {
       const subscription = await this.subscriptionRepository.findById({ id: params.subscriptionId });
-      if (!subscription || subscription.billingCustomer?.id !== customer.id) {
+      if (!subscription || subscription.stripeCustomer?.id !== customer.id) {
         throw new HttpException("Subscription not found or does not belong to this company", HttpStatus.NOT_FOUND);
       }
       subscriptionStripeId = subscription.stripeSubscriptionId;
@@ -189,7 +189,7 @@ export class StripeInvoiceAdminService {
       return;
     }
 
-    const customer = await this.billingCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
+    const customer = await this.stripeCustomerRepository.findByStripeCustomerId({ stripeCustomerId });
     if (!customer) {
       return;
     }
@@ -235,7 +235,7 @@ export class StripeInvoiceAdminService {
           : null;
 
       await this.stripeInvoiceRepository.create({
-        billingCustomerId: customer.id,
+        stripeCustomerId: customer.id,
         subscriptionId,
         stripeInvoiceId: stripeInvoice.id,
         stripeInvoiceNumber: stripeInvoice.number,

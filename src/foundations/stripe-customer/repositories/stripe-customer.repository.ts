@@ -2,14 +2,14 @@ import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
 import { companyMeta } from "../../company";
-import { BillingCustomer } from "../entities/billing-customer.entity";
-import { billingCustomerMeta } from "../entities/billing-customer.meta";
-import { BillingCustomerModel } from "../entities/billing-customer.model";
+import { StripeCustomer } from "../entities/stripe-customer.entity";
+import { stripeCustomerMeta } from "../entities/stripe-customer.meta";
+import { StripeCustomerModel } from "../entities/stripe-customer.model";
 
 /**
- * BillingCustomerRepository
+ * StripeCustomerRepository
  *
- * Neo4j repository for managing BillingCustomer nodes and their relationships to Company nodes.
+ * Neo4j repository for managing StripeCustomer nodes and their relationships to Company nodes.
  * Handles CRUD operations and maintains unique constraints for customer identifiers.
  *
  * Key Features:
@@ -22,7 +22,7 @@ import { BillingCustomerModel } from "../entities/billing-customer.model";
  *
  * @example
  * ```typescript
- * const customer = await billingCustomerRepository.create({
+ * const customer = await stripeCustomerRepository.create({
  *   companyId: 'comp_123',
  *   stripeCustomerId: 'cus_stripe123',
  *   email: 'customer@example.com',
@@ -32,7 +32,7 @@ import { BillingCustomerModel } from "../entities/billing-customer.model";
  * ```
  */
 @Injectable()
-export class BillingCustomerRepository implements OnModuleInit {
+export class StripeCustomerRepository implements OnModuleInit {
   constructor(private readonly neo4j: Neo4jService) {}
 
   /**
@@ -42,84 +42,84 @@ export class BillingCustomerRepository implements OnModuleInit {
    */
   async onModuleInit() {
     await this.neo4j.writeOne({
-      query: `CREATE CONSTRAINT ${billingCustomerMeta.nodeName}_id IF NOT EXISTS FOR (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName}) REQUIRE ${billingCustomerMeta.nodeName}.id IS UNIQUE`,
+      query: `CREATE CONSTRAINT ${stripeCustomerMeta.nodeName}_id IF NOT EXISTS FOR (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName}) REQUIRE ${stripeCustomerMeta.nodeName}.id IS UNIQUE`,
     });
 
     await this.neo4j.writeOne({
-      query: `CREATE CONSTRAINT ${billingCustomerMeta.nodeName}_stripeCustomerId IF NOT EXISTS FOR (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName}) REQUIRE ${billingCustomerMeta.nodeName}.stripeCustomerId IS UNIQUE`,
+      query: `CREATE CONSTRAINT ${stripeCustomerMeta.nodeName}_stripeCustomerId IF NOT EXISTS FOR (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName}) REQUIRE ${stripeCustomerMeta.nodeName}.stripeCustomerId IS UNIQUE`,
     });
   }
 
   /**
-   * Find billing customer by company ID
+   * Find stripe customer by company ID
    *
    * @param params - Query parameters
    * @param params.companyId - Company identifier
-   * @returns BillingCustomer if found, null otherwise
+   * @returns StripeCustomer if found, null otherwise
    */
-  async findByCompanyId(params: { companyId: string }): Promise<BillingCustomer | null> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  async findByCompanyId(params: { companyId: string }): Promise<StripeCustomer | null> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     query.queryParams = {
       companyId: params.companyId,
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName})-[:BELONGS_TO]->(${companyMeta.nodeName}:${companyMeta.labelName} {id: $companyId})
-      RETURN ${billingCustomerMeta.nodeName}
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})-[:BELONGS_TO]->(${companyMeta.nodeName}:${companyMeta.labelName} {id: $companyId})
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);
   }
 
   /**
-   * Find billing customer by Stripe customer ID
+   * Find stripe customer by Stripe customer ID
    *
    * @param params - Query parameters
    * @param params.stripeCustomerId - Stripe customer ID
-   * @returns BillingCustomer if found, null otherwise
+   * @returns StripeCustomer if found, null otherwise
    */
-  async findByStripeCustomerId(params: { stripeCustomerId: string }): Promise<BillingCustomer | null> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  async findByStripeCustomerId(params: { stripeCustomerId: string }): Promise<StripeCustomer | null> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     query.queryParams = {
       stripeCustomerId: params.stripeCustomerId,
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
-      RETURN ${billingCustomerMeta.nodeName}
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);
   }
 
   /**
-   * Find billing customer by internal ID
+   * Find stripe customer by internal ID
    *
    * @param params - Query parameters
-   * @param params.id - Internal billing customer ID
-   * @returns BillingCustomer if found, null otherwise
+   * @param params.id - Internal stripe customer ID
+   * @returns StripeCustomer if found, null otherwise
    */
-  async findById(params: { id: string }): Promise<BillingCustomer | null> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  async findById(params: { id: string }): Promise<StripeCustomer | null> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     query.queryParams = {
       id: params.id,
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})
-      RETURN ${billingCustomerMeta.nodeName}
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);
   }
 
   /**
-   * Create a new billing customer
+   * Create a new stripe customer
    *
-   * Creates a BillingCustomer node and establishes BELONGS_TO relationship with Company.
+   * Creates a StripeCustomer node and establishes BELONGS_TO relationship with Company.
    * Initializes balance to 0 and delinquent to false.
    *
    * @param params - Creation parameters
@@ -129,11 +129,11 @@ export class BillingCustomerRepository implements OnModuleInit {
    * @param params.name - Customer name
    * @param params.currency - Default currency code (e.g., 'usd')
    * @param params.defaultPaymentMethodId - Optional default payment method ID
-   * @returns Created BillingCustomer
+   * @returns Created StripeCustomer
    *
    * @example
    * ```typescript
-   * const customer = await billingCustomerRepository.create({
+   * const customer = await stripeCustomerRepository.create({
    *   companyId: 'comp_123',
    *   stripeCustomerId: 'cus_stripe123',
    *   email: 'billing@company.com',
@@ -149,8 +149,8 @@ export class BillingCustomerRepository implements OnModuleInit {
     name: string;
     currency: string;
     defaultPaymentMethodId?: string;
-  }): Promise<BillingCustomer> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  }): Promise<StripeCustomer> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     const id = randomUUID();
 
@@ -166,7 +166,7 @@ export class BillingCustomerRepository implements OnModuleInit {
 
     query.query = `
       MATCH (${companyMeta.nodeName}:${companyMeta.labelName} {id: $companyId})
-      CREATE (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {
+      CREATE (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {
         id: $id,
         stripeCustomerId: $stripeCustomerId,
         email: $email,
@@ -178,24 +178,24 @@ export class BillingCustomerRepository implements OnModuleInit {
         createdAt: datetime(),
         updatedAt: datetime()
       })
-      CREATE (${billingCustomerMeta.nodeName})-[:BELONGS_TO]->(${companyMeta.nodeName})
-      RETURN ${billingCustomerMeta.nodeName}
+      CREATE (${stripeCustomerMeta.nodeName})-[:BELONGS_TO]->(${companyMeta.nodeName})
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.writeOne(query);
   }
 
   /**
-   * Update billing customer by internal ID
+   * Update stripe customer by internal ID
    *
    * @param params - Update parameters
-   * @param params.id - Internal billing customer ID
+   * @param params.id - Internal stripe customer ID
    * @param params.email - Optional new email address
    * @param params.name - Optional new name
    * @param params.defaultPaymentMethodId - Optional new default payment method ID
    * @param params.balance - Optional new balance
    * @param params.delinquent - Optional new delinquency status
-   * @returns Updated BillingCustomer
+   * @returns Updated StripeCustomer
    */
   async update(params: {
     id: string;
@@ -204,26 +204,26 @@ export class BillingCustomerRepository implements OnModuleInit {
     defaultPaymentMethodId?: string;
     balance?: number;
     delinquent?: boolean;
-  }): Promise<BillingCustomer> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  }): Promise<StripeCustomer> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     const setParams: string[] = [];
-    setParams.push(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
+    setParams.push(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
 
     if (params.email !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.email = $email`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.email = $email`);
     }
     if (params.name !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.name = $name`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.name = $name`);
     }
     if (params.defaultPaymentMethodId !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`);
     }
     if (params.balance !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.balance = $balance`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.balance = $balance`);
     }
     if (params.delinquent !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
     }
 
     query.queryParams = {
@@ -236,16 +236,16 @@ export class BillingCustomerRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})
       SET ${setParams.join(", ")}
-      RETURN ${billingCustomerMeta.nodeName}
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.writeOne(query);
   }
 
   /**
-   * Update billing customer by Stripe customer ID
+   * Update stripe customer by Stripe customer ID
    *
    * Used primarily by webhook handlers to sync customer data from Stripe.
    *
@@ -256,7 +256,7 @@ export class BillingCustomerRepository implements OnModuleInit {
    * @param params.defaultPaymentMethodId - Optional new default payment method ID
    * @param params.balance - Optional new balance
    * @param params.delinquent - Optional new delinquency status
-   * @returns Updated BillingCustomer
+   * @returns Updated StripeCustomer
    */
   async updateByStripeCustomerId(params: {
     stripeCustomerId: string;
@@ -265,26 +265,26 @@ export class BillingCustomerRepository implements OnModuleInit {
     defaultPaymentMethodId?: string;
     balance?: number;
     delinquent?: boolean;
-  }): Promise<BillingCustomer> {
-    const query = this.neo4j.initQuery({ serialiser: BillingCustomerModel });
+  }): Promise<StripeCustomer> {
+    const query = this.neo4j.initQuery({ serialiser: StripeCustomerModel });
 
     const setParams: string[] = [];
-    setParams.push(`${billingCustomerMeta.nodeName}.updatedAt = datetime()`);
+    setParams.push(`${stripeCustomerMeta.nodeName}.updatedAt = datetime()`);
 
     if (params.email !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.email = $email`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.email = $email`);
     }
     if (params.name !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.name = $name`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.name = $name`);
     }
     if (params.defaultPaymentMethodId !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.defaultPaymentMethodId = $defaultPaymentMethodId`);
     }
     if (params.balance !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.balance = $balance`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.balance = $balance`);
     }
     if (params.delinquent !== undefined) {
-      setParams.push(`${billingCustomerMeta.nodeName}.delinquent = $delinquent`);
+      setParams.push(`${stripeCustomerMeta.nodeName}.delinquent = $delinquent`);
     }
 
     query.queryParams = {
@@ -297,21 +297,21 @@ export class BillingCustomerRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
       SET ${setParams.join(", ")}
-      RETURN ${billingCustomerMeta.nodeName}
+      RETURN ${stripeCustomerMeta.nodeName}
     `;
 
     return this.neo4j.writeOne(query);
   }
 
   /**
-   * Delete billing customer
+   * Delete stripe customer
    *
    * Performs a DETACH DELETE to remove the customer and all relationships.
    *
    * @param params - Deletion parameters
-   * @param params.id - Internal billing customer ID
+   * @param params.id - Internal stripe customer ID
    * @returns Promise that resolves when deletion is complete
    */
   async delete(params: { id: string }): Promise<void> {
@@ -322,8 +322,8 @@ export class BillingCustomerRepository implements OnModuleInit {
     };
 
     query.query = `
-      MATCH (${billingCustomerMeta.nodeName}:${billingCustomerMeta.labelName} {id: $id})
-      DETACH DELETE ${billingCustomerMeta.nodeName}
+      MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $id})
+      DETACH DELETE ${stripeCustomerMeta.nodeName}
     `;
 
     await this.neo4j.writeOne(query);

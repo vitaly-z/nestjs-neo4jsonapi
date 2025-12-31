@@ -10,42 +10,17 @@ export * from "./stripe.module";
 
 // Controllers
 export * from "./controllers/billing.controller";
-export * from "./controllers/webhook.controller";
 
 // Services - Stripe API Wrappers
 export * from "./services/stripe.service";
 export * from "./services/stripe.payment.service";
 export * from "./services/stripe.portal.service";
-export * from "./services/stripe.usage.service";
-export * from "./services/stripe.webhook.service";
 
 // Services - Business Logic
 export * from "./services/billing.service";
-export * from "./services/usage.service";
-export * from "./services/notification.service";
-
-// Repositories
-export * from "./repositories/usage-record.repository";
-export * from "./repositories/webhook-event.repository";
-
-// Entities
-export * from "./entities/usage-record.entity";
-export * from "./entities/usage-record.model";
-export * from "./entities/usage-record.meta";
-export * from "./entities/webhook-event.entity";
-export * from "./entities/webhook-event.model";
-export * from "./entities/webhook-event.meta";
-
-// Serializers
-export * from "./serialisers/usage-record.serialiser";
-export * from "./serialisers/webhook-event.serialiser";
 
 // DTOs
 export * from "./dtos/create-setup-intent.dto";
-export * from "./dtos/report-usage.dto";
-
-// Processors
-export * from "./processors/webhook.processor";
 
 // Error handling
 export * from "./errors/stripe.errors";
@@ -61,3 +36,9 @@ export * from "../stripe-subscription";
 
 // Re-export stripe-invoice module for backward compatibility
 export * from "../stripe-invoice";
+
+// Re-export stripe-usage module for backward compatibility
+export * from "../stripe-usage";
+
+// Re-export stripe-webhook module for backward compatibility
+export * from "../stripe-webhook";

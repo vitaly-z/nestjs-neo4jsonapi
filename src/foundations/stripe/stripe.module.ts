@@ -1,81 +1,59 @@
-import { BullModule } from "@nestjs/bullmq";
-import { Module, OnModuleInit, forwardRef } from "@nestjs/common";
-import { createWorkerProvider } from "../../common/decorators/conditional-service.decorator";
-import { modelRegistry } from "../../common/registries/registry";
-import { QueueId } from "../../config/enums/queue.id";
+import { Module, forwardRef } from "@nestjs/common";
 import { StripeCustomerModule } from "../stripe-customer/stripe-customer.module";
 import { StripeCustomerApiService, StripeCustomerRepository } from "../stripe-customer";
 import { StripeInvoiceModule } from "../stripe-invoice/stripe-invoice.module";
 import { StripeSubscriptionModule } from "../stripe-subscription/stripe-subscription.module";
+import { StripeUsageModule } from "../stripe-usage/stripe-usage.module";
+import { StripeWebhookModule } from "../stripe-webhook/stripe-webhook.module";
 import { BillingController } from "./controllers/billing.controller";
-import { WebhookController } from "./controllers/webhook.controller";
-import { UsageRecordModel } from "./entities/usage-record.model";
-import { WebhookEventModel } from "./entities/webhook-event.model";
-import { WebhookProcessor } from "./processors/webhook.processor";
-import { UsageRecordRepository } from "./repositories/usage-record.repository";
-import { WebhookEventRepository } from "./repositories/webhook-event.repository";
-import { UsageRecordSerialiser } from "./serialisers/usage-record.serialiser";
-import { WebhookEventSerialiser } from "./serialisers/webhook-event.serialiser";
 import { BillingService } from "./services/billing.service";
-import { NotificationService } from "./services/notification.service";
 import { StripePaymentService } from "./services/stripe.payment.service";
 import { StripePortalService } from "./services/stripe.portal.service";
 import { StripeService } from "./services/stripe.service";
-import { StripeUsageService } from "./services/stripe.usage.service";
-import { StripeWebhookService } from "./services/stripe.webhook.service";
-import { UsageService } from "./services/usage.service";
 
+/**
+ * StripeModule
+ *
+ * Core Stripe integration module providing the Stripe SDK client and billing orchestration.
+ * This module focuses on payment setup, portal sessions, and payment method management.
+ *
+ * Usage-based billing functionality has been moved to StripeUsageModule.
+ * Webhook processing functionality has been moved to StripeWebhookModule.
+ *
+ * Dependencies:
+ * - StripeCustomerModule (customer management)
+ * - StripeInvoiceModule (invoice management)
+ * - StripeSubscriptionModule (subscription management)
+ * - StripeUsageModule (usage-based billing)
+ * - StripeWebhookModule (webhook processing)
+ */
 @Module({
   imports: [
     forwardRef(() => StripeCustomerModule),
     forwardRef(() => StripeInvoiceModule),
     forwardRef(() => StripeSubscriptionModule),
-    BullModule.registerQueue({ name: QueueId.BILLING_WEBHOOK }),
-    BullModule.registerQueue({ name: QueueId.EMAIL }),
+    forwardRef(() => StripeUsageModule),
+    forwardRef(() => StripeWebhookModule),
   ],
-  controllers: [BillingController, WebhookController],
+  controllers: [BillingController],
   providers: [
     // Stripe API Services
     StripeService,
     StripePaymentService,
     StripePortalService,
-    StripeUsageService,
-    StripeWebhookService,
     // Business Logic Services
     BillingService,
-    UsageService,
-    NotificationService,
-    // Repositories
-    UsageRecordRepository,
-    WebhookEventRepository,
-    // Serializers
-    UsageRecordSerialiser,
-    WebhookEventSerialiser,
-    // Processor only runs in Worker mode via createWorkerProvider
-    createWorkerProvider(WebhookProcessor),
   ],
   exports: [
     // Stripe API Services
     StripeService,
     StripePaymentService,
     StripePortalService,
-    StripeUsageService,
-    StripeWebhookService,
     // Business Logic Services
     BillingService,
-    UsageService,
-    NotificationService,
-    // Repositories
-    UsageRecordRepository,
-    WebhookEventRepository,
     // Re-export from StripeCustomerModule for backward compatibility
     StripeCustomerApiService,
     StripeCustomerRepository,
   ],
 })
-export class StripeModule implements OnModuleInit {
-  onModuleInit() {
-    modelRegistry.register(UsageRecordModel);
-    modelRegistry.register(WebhookEventModel);
-  }
-}
+export class StripeModule {}

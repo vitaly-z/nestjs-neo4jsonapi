@@ -20,6 +20,8 @@ import { StripeInvoiceModule } from "./stripe-invoice/stripe-invoice.module";
 import { StripePriceModule } from "./stripe-price";
 import { StripeProductModule } from "./stripe-product";
 import { StripeSubscriptionModule } from "./stripe-subscription";
+import { StripeUsageModule } from "./stripe-usage/stripe-usage.module";
+import { StripeWebhookModule } from "./stripe-webhook/stripe-webhook.module";
 import { StripeModule } from "./stripe/stripe.module";
 import { TokenUsageModule } from "./tokenusage/tokenusage.module";
 import { UserModule } from "./user/user.module";
@@ -59,6 +61,8 @@ const STATIC_FOUNDATION_MODULES = [
   StripePriceModule,
   StripeProductModule,
   StripeInvoiceModule,
+  StripeUsageModule,
+  StripeWebhookModule,
 ];
 
 /**

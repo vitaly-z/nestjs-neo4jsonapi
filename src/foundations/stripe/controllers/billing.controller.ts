@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Param,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
@@ -16,16 +15,22 @@ import { FastifyReply } from "fastify";
 import { JwtAuthGuard } from "../../../common/guards";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { CreateSetupIntentDTO } from "../dtos/create-setup-intent.dto";
-import { ReportUsageDTO } from "../dtos/report-usage.dto";
 import { BillingService } from "../services/billing.service";
-import { UsageService } from "../services/usage.service";
 
+/**
+ * BillingController
+ *
+ * Handles core billing operations including:
+ * - Setup intent creation for payment method collection
+ * - Customer portal session creation
+ * - Payment method management (list, set default, remove)
+ *
+ * Usage-related endpoints have been moved to StripeUsageController.
+ * Webhook endpoint has been moved to WebhookController in stripe-webhook module.
+ */
 @Controller("billing")
 export class BillingController {
-  constructor(
-    private readonly billingService: BillingService,
-    private readonly usageService: UsageService,
-  ) {}
+  constructor(private readonly billingService: BillingService) {}
 
   // Setup Intent endpoints
 
@@ -95,98 +100,5 @@ export class BillingController {
     });
 
     reply.send();
-  }
-
-  // Usage endpoints
-
-  @Get("meters")
-  async listMeters(@Req() req: AuthenticatedRequest, @Res() reply: FastifyReply) {
-    const response = await this.usageService.listMeters();
-    reply.send(response);
-  }
-
-  @Get("meters/:meterId/summaries")
-  async getMeterSummaries(
-    @Req() req: AuthenticatedRequest,
-    @Res() reply: FastifyReply,
-    @Param("meterId") meterId: string,
-    @Query("startTime") startTime: string,
-    @Query("endTime") endTime: string,
-  ) {
-    if (!startTime || !endTime) {
-      reply.status(HttpStatus.BAD_REQUEST).send({ error: "startTime and endTime query parameters are required" });
-      return;
-    }
-
-    const response = await this.usageService.getMeterEventSummaries({
-      companyId: req.user.companyId,
-      meterId,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-    });
-
-    reply.send(response);
-  }
-
-  @Post("subscriptions/:subscriptionId/usage")
-  async reportUsage(
-    @Req() req: AuthenticatedRequest,
-    @Res() reply: FastifyReply,
-    @Param("subscriptionId") subscriptionId: string,
-    @Body() body: ReportUsageDTO,
-  ) {
-    const response = await this.usageService.reportUsage({
-      companyId: req.user.companyId,
-      subscriptionId,
-      meterId: body.meterId,
-      meterEventName: body.meterEventName,
-      quantity: body.quantity,
-      timestamp: body.timestamp ? new Date(body.timestamp) : undefined,
-    });
-
-    reply.status(HttpStatus.CREATED).send(response);
-  }
-
-  @Get("subscriptions/:subscriptionId/usage")
-  async listUsageRecords(
-    @Req() req: AuthenticatedRequest,
-    @Res() reply: FastifyReply,
-    @Param("subscriptionId") subscriptionId: string,
-    @Query() query: any,
-    @Query("startTime") startTime?: string,
-    @Query("endTime") endTime?: string,
-  ) {
-    const response = await this.usageService.listUsageRecords({
-      companyId: req.user.companyId,
-      subscriptionId,
-      query,
-      startTime: startTime ? new Date(startTime) : undefined,
-      endTime: endTime ? new Date(endTime) : undefined,
-    });
-
-    reply.send(response);
-  }
-
-  @Get("subscriptions/:subscriptionId/usage/summary")
-  async getUsageSummary(
-    @Req() req: AuthenticatedRequest,
-    @Res() reply: FastifyReply,
-    @Param("subscriptionId") subscriptionId: string,
-    @Query("startTime") startTime: string,
-    @Query("endTime") endTime: string,
-  ) {
-    if (!startTime || !endTime) {
-      reply.status(HttpStatus.BAD_REQUEST).send({ error: "startTime and endTime query parameters are required" });
-      return;
-    }
-
-    const response = await this.usageService.getUsageSummary({
-      companyId: req.user.companyId,
-      subscriptionId,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-    });
-
-    reply.send(response);
   }
 }

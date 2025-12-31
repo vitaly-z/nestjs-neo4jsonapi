@@ -505,6 +505,11 @@ export abstract class AbstractRepository<
 
     // Create relationships
     for (const [name, rel] of Object.entries(relationships)) {
+      // Skip company relationship if isCompanyScoped - it's already handled above
+      if (this.descriptor.isCompanyScoped && rel.relationship === "BELONGS_TO" && rel.model.labelName === "Company") {
+        continue;
+      }
+
       const paramValue = mergedParams[name];
       // Add param to query params
       query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];
@@ -607,6 +612,11 @@ export abstract class AbstractRepository<
 
     // Update relationships
     for (const [name, rel] of Object.entries(relationships)) {
+      // Skip company relationship if isCompanyScoped - it's managed automatically
+      if (this.descriptor.isCompanyScoped && rel.relationship === "BELONGS_TO" && rel.model.labelName === "Company") {
+        continue;
+      }
+
       const paramValue = params[name];
       // Add param to query params
       query.queryParams[name] = paramValue ? (Array.isArray(paramValue) ? paramValue : [paramValue]) : [];

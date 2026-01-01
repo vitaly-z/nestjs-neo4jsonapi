@@ -16,6 +16,8 @@ export const mapStripePrice = (params: { data: any; record: any; entityFactory: 
     nickname: params.data.nickname,
     lookupKey: params.data.lookupKey,
     metadata: params.data.metadata,
+    description: params.data.description,
+    features: params.data.features,
     product: undefined,
   };
 };

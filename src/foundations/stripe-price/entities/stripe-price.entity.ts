@@ -19,6 +19,8 @@ export type StripePrice = Entity & {
   nickname?: string;
   lookupKey?: string;
   metadata?: string;
+  description?: string;
+  features?: string; // JSON array stored as string
 
   product: StripeProduct;
 };

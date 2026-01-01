@@ -41,6 +41,8 @@ export class StripePriceSerialiser extends AbstractJsonApiSerialiser implements 
           return data.metadata;
         }
       },
+      description: "description",
+      features: "features",
     };
 
     this.relationships = {

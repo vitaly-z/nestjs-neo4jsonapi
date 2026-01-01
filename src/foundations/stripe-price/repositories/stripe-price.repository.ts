@@ -162,6 +162,8 @@ export class StripePriceRepository implements OnModuleInit {
    * @param params.nickname - Optional display name
    * @param params.lookupKey - Optional lookup key
    * @param params.metadata - Optional metadata JSON string
+   * @param params.description - Optional description
+   * @param params.features - Optional features JSON string
    * @returns Created StripePrice
    */
   async create(params: {
@@ -177,6 +179,8 @@ export class StripePriceRepository implements OnModuleInit {
     nickname?: string;
     lookupKey?: string;
     metadata?: string;
+    description?: string;
+    features?: string;
   }): Promise<StripePrice> {
     const query = this.neo4j.initQuery({ serialiser: StripePriceModel });
 
@@ -196,6 +200,8 @@ export class StripePriceRepository implements OnModuleInit {
       nickname: params.nickname ?? null,
       lookupKey: params.lookupKey ?? null,
       metadata: params.metadata ?? null,
+      description: params.description ?? null,
+      features: params.features ?? null,
     };
 
     query.query = `
@@ -213,6 +219,8 @@ export class StripePriceRepository implements OnModuleInit {
         nickname: $nickname,
         lookupKey: $lookupKey,
         metadata: $metadata,
+        description: $description,
+        features: $features,
         createdAt: datetime(),
         updatedAt: datetime()
       })
@@ -233,9 +241,18 @@ export class StripePriceRepository implements OnModuleInit {
    * @param params.active - Optional new active status
    * @param params.nickname - Optional new nickname
    * @param params.metadata - Optional new metadata JSON string
+   * @param params.description - Optional new description
+   * @param params.features - Optional new features JSON string
    * @returns Updated StripePrice
    */
-  async update(params: { id: string; active?: boolean; nickname?: string; metadata?: string }): Promise<StripePrice> {
+  async update(params: {
+    id: string;
+    active?: boolean;
+    nickname?: string;
+    metadata?: string;
+    description?: string;
+    features?: string;
+  }): Promise<StripePrice> {
     const query = this.neo4j.initQuery({ serialiser: StripePriceModel });
 
     const setParams: string[] = [];
@@ -250,12 +267,20 @@ export class StripePriceRepository implements OnModuleInit {
     if (params.metadata !== undefined) {
       setParams.push(`${stripePriceMeta.nodeName}.metadata = $metadata`);
     }
+    if (params.description !== undefined) {
+      setParams.push(`${stripePriceMeta.nodeName}.description = $description`);
+    }
+    if (params.features !== undefined) {
+      setParams.push(`${stripePriceMeta.nodeName}.features = $features`);
+    }
 
     query.queryParams = {
       id: params.id,
       active: params.active,
       nickname: params.nickname,
       metadata: params.metadata,
+      description: params.description,
+      features: params.features,
     };
 
     query.query = `
@@ -277,6 +302,8 @@ export class StripePriceRepository implements OnModuleInit {
    * @param params.active - Optional new active status
    * @param params.nickname - Optional new nickname
    * @param params.metadata - Optional new metadata JSON string
+   * @param params.description - Optional new description
+   * @param params.features - Optional new features JSON string
    * @returns Updated StripePrice
    */
   async updateByStripePriceId(params: {
@@ -284,6 +311,8 @@ export class StripePriceRepository implements OnModuleInit {
     active?: boolean;
     nickname?: string;
     metadata?: string;
+    description?: string;
+    features?: string;
   }): Promise<StripePrice> {
     const query = this.neo4j.initQuery({ serialiser: StripePriceModel });
 
@@ -299,12 +328,20 @@ export class StripePriceRepository implements OnModuleInit {
     if (params.metadata !== undefined) {
       setParams.push(`${stripePriceMeta.nodeName}.metadata = $metadata`);
     }
+    if (params.description !== undefined) {
+      setParams.push(`${stripePriceMeta.nodeName}.description = $description`);
+    }
+    if (params.features !== undefined) {
+      setParams.push(`${stripePriceMeta.nodeName}.features = $features`);
+    }
 
     query.queryParams = {
       stripePriceId: params.stripePriceId,
       active: params.active,
       nickname: params.nickname,
       metadata: params.metadata,
+      description: params.description,
+      features: params.features,
     };
 
     query.query = `

@@ -72,6 +72,14 @@ export class StripePricePostAttributesDTO {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, string>;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  features?: string;
 }
 
 export class StripePricePostDataDTO {
@@ -107,6 +115,14 @@ export class StripePricePutAttributesDTO {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, string>;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  features?: string;
 }
 
 export class StripePricePutDataDTO {

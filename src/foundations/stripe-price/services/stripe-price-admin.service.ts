@@ -152,6 +152,8 @@ export class StripePriceAdminService {
       nickname: params.data.attributes.nickname,
       lookupKey: params.data.attributes.lookupKey,
       metadata: params.data.attributes.metadata ? JSON.stringify(params.data.attributes.metadata) : undefined,
+      description: params.data.attributes.description,
+      features: params.data.attributes.features,
     });
 
     return this.jsonApiService.buildSingle(StripePriceModel, price);
@@ -188,6 +190,8 @@ export class StripePriceAdminService {
       id: params.data.id,
       nickname: params.data.attributes?.nickname,
       metadata: params.data.attributes?.metadata ? JSON.stringify(params.data.attributes.metadata) : undefined,
+      description: params.data.attributes?.description,
+      features: params.data.attributes?.features,
     });
 
     return this.jsonApiService.buildSingle(StripePriceModel, price);

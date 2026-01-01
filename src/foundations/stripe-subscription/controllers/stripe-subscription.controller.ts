@@ -59,10 +59,10 @@ export class StripeSubscriptionController {
   ) {
     const response = await this.subscriptionService.createSubscription({
       companyId: req.user.companyId,
-      priceId: body.data.attributes.priceId,
-      paymentMethodId: body.data.attributes.paymentMethodId,
-      trialPeriodDays: body.data.attributes.trialPeriodDays,
-      quantity: body.data.attributes.quantity,
+      priceId: body.data.relationships.stripePrice.data.id,
+      paymentMethodId: body.data.attributes?.paymentMethodId,
+      trialPeriodDays: body.data.attributes?.trialPeriodDays,
+      quantity: body.data.attributes?.quantity,
     });
 
     reply.status(HttpStatus.CREATED).send(response);

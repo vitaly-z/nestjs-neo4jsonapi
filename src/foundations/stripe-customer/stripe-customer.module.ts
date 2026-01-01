@@ -7,8 +7,10 @@ import { StripeModule } from "../stripe/stripe.module";
 import { UserModule } from "../user/user.module";
 import { StripeCustomerController } from "./controllers/stripe-customer.controller";
 import { StripeCustomerModel } from "./entities/stripe-customer.model";
+import { StripePaymentMethodModel } from "./entities/stripe-payment-method.model";
 import { StripeCustomerRepository } from "./repositories/stripe-customer.repository";
 import { StripeCustomerSerialiser } from "./serialisers/stripe-customer.serialiser";
+import { StripePaymentMethodSerialiser } from "./serialisers/stripe-payment-method.serialiser";
 import { StripeCustomerAdminService } from "./services/stripe-customer-admin.service";
 import { StripeCustomerApiService } from "./services/stripe-customer-api.service";
 
@@ -54,8 +56,9 @@ import { StripeCustomerApiService } from "./services/stripe-customer-api.service
     StripeCustomerAdminService,
     // Repository
     StripeCustomerRepository,
-    // Serializer
+    // Serializers
     StripeCustomerSerialiser,
+    StripePaymentMethodSerialiser,
   ],
   exports: [
     // Services
@@ -68,5 +71,6 @@ import { StripeCustomerApiService } from "./services/stripe-customer-api.service
 export class StripeCustomerModule implements OnModuleInit {
   onModuleInit() {
     modelRegistry.register(StripeCustomerModel);
+    modelRegistry.register(StripePaymentMethodModel);
   }
 }

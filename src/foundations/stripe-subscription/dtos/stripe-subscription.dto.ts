@@ -26,11 +26,6 @@ export class StripeSubscriptionDTO {
 
 // POST DTOs (for creating subscriptions)
 export class StripeSubscriptionPostAttributesDTO {
-  @IsDefined()
-  @IsString()
-  @IsUUID()
-  priceId: string;
-
   @IsOptional()
   @IsString()
   paymentMethodId?: string;
@@ -47,6 +42,28 @@ export class StripeSubscriptionPostAttributesDTO {
   quantity?: number;
 }
 
+// Relationship DTOs for stripePrice
+export class StripePriceRelationshipDataDTO {
+  @IsString()
+  type: string;
+
+  @IsUUID()
+  id: string;
+}
+
+export class StripePriceRelationshipDTO {
+  @ValidateNested()
+  @Type(() => StripePriceRelationshipDataDTO)
+  data: StripePriceRelationshipDataDTO;
+}
+
+export class StripeSubscriptionPostRelationshipsDTO {
+  @ValidateNested()
+  @IsDefined()
+  @Type(() => StripePriceRelationshipDTO)
+  stripePrice: StripePriceRelationshipDTO;
+}
+
 export class StripeSubscriptionPostDataDTO {
   @Equals(stripeSubscriptionMeta.endpoint)
   type: string;
@@ -55,9 +72,14 @@ export class StripeSubscriptionPostDataDTO {
   id: string;
 
   @ValidateNested()
-  @IsNotEmpty()
+  @IsOptional()
   @Type(() => StripeSubscriptionPostAttributesDTO)
-  attributes: StripeSubscriptionPostAttributesDTO;
+  attributes?: StripeSubscriptionPostAttributesDTO;
+
+  @ValidateNested()
+  @IsDefined()
+  @Type(() => StripeSubscriptionPostRelationshipsDTO)
+  relationships: StripeSubscriptionPostRelationshipsDTO;
 }
 
 export class StripeSubscriptionPostDTO {

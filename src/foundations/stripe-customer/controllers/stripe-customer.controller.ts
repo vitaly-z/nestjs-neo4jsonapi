@@ -15,7 +15,9 @@ import {
 import { FastifyReply } from "fastify";
 import { JwtAuthGuard } from "../../../common/guards";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
+import { JsonApiService } from "../../../core/jsonapi";
 import { StripeCustomerPostDTO, StripeCustomerPutDTO } from "../dtos/stripe-customer.dto";
+import { StripePaymentMethodModel } from "../entities/stripe-payment-method.model";
 import { StripeCustomerRepository } from "../repositories/stripe-customer.repository";
 import { StripeCustomerAdminService } from "../services/stripe-customer-admin.service";
 import { StripeCustomerApiService } from "../services/stripe-customer-api.service";
@@ -34,6 +36,7 @@ export class StripeCustomerController {
     private readonly stripeCustomerAdminService: StripeCustomerAdminService,
     private readonly stripeCustomerApiService: StripeCustomerApiService,
     private readonly stripeCustomerRepository: StripeCustomerRepository,
+    private readonly jsonApiService: JsonApiService,
   ) {}
 
   /**
@@ -153,9 +156,30 @@ export class StripeCustomerController {
       return;
     }
 
-    const paymentMethods = await this.stripeCustomerApiService.listPaymentMethods(customer.stripeCustomerId);
+    const stripePaymentMethods = await this.stripeCustomerApiService.listPaymentMethods(customer.stripeCustomerId);
 
-    reply.send({ data: paymentMethods });
+    // Transform Stripe PaymentMethod to StripePaymentMethod entity format
+    const paymentMethods = stripePaymentMethods.map((pm) => ({
+      id: pm.id,
+      type: pm.type,
+      brand: pm.card?.brand,
+      last4: pm.card?.last4,
+      expMonth: pm.card?.exp_month,
+      expYear: pm.card?.exp_year,
+      billingName: pm.billing_details?.name ?? null,
+      billingEmail: pm.billing_details?.email ?? null,
+      billingPhone: pm.billing_details?.phone ?? null,
+      billingAddressCity: pm.billing_details?.address?.city ?? null,
+      billingAddressCountry: pm.billing_details?.address?.country ?? null,
+      billingAddressLine1: pm.billing_details?.address?.line1 ?? null,
+      billingAddressLine2: pm.billing_details?.address?.line2 ?? null,
+      billingAddressPostalCode: pm.billing_details?.address?.postal_code ?? null,
+      billingAddressState: pm.billing_details?.address?.state ?? null,
+    }));
+
+    // Serialize to JSON:API format
+    const response = await this.jsonApiService.buildList(StripePaymentMethodModel, paymentMethods);
+    reply.send(response);
   }
 
   /**

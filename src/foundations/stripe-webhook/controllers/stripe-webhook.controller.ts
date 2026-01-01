@@ -2,13 +2,14 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Controller, Headers, HttpStatus, Post, Req, Res } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { AppLoggingService } from "../../../core/logging";
 import { QueueId } from "../../../config/enums/queue.id";
-import { StripeWebhookService } from "../services/stripe-webhook.service";
+import { AppLoggingService } from "../../../core/logging";
+import { stripeWebhookEventMeta } from "../entities/stripe-webhook-event.meta";
 import { StripeWebhookJobData } from "../processors/stripe-webhook.processor";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
+import { StripeWebhookService } from "../services/stripe-webhook.service";
 
-@Controller("billing/webhooks")
+@Controller()
 export class StripeWebhookController {
   constructor(
     private readonly stripeWebhookService: StripeWebhookService,
@@ -17,7 +18,7 @@ export class StripeWebhookController {
     @InjectQueue(QueueId.BILLING_WEBHOOK) private readonly webhookQueue: Queue<StripeWebhookJobData>,
   ) {}
 
-  @Post("stripe")
+  @Post(stripeWebhookEventMeta.endpoint)
   async handleStripeWebhook(
     @Req() req: FastifyRequest,
     @Res() reply: FastifyReply,

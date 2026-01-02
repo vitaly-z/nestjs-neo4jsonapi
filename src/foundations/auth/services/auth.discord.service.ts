@@ -4,7 +4,7 @@ import axios from "axios";
 import { randomUUID } from "crypto";
 import { ClsService } from "nestjs-cls";
 import { AuthService } from "..";
-import { BaseConfigInterface, ConfigApiInterface, ConfigAppInterface } from "../../../config";
+import { BaseConfigInterface, ConfigApiInterface, ConfigAppInterface, ConfigAuthInterface } from "../../../config";
 import { ConfigDiscordInterface } from "../../../config/interfaces/config.discord.interface";
 import { DiscordUserService } from "../../discord-user";
 import { DiscordUser } from "../../discord-user/entities/discord-user";
@@ -25,6 +25,10 @@ export class AuthDiscordService {
 
   private readonly _discordApiUrl = "https://discord.com/api/";
 
+  private get authConfig(): ConfigAuthInterface {
+    return this.config.get<ConfigAuthInterface>("auth");
+  }
+
   generateLoginUrl(): string {
     return `${this._discordApiUrl}oauth2/authorize?client_id=${this.config.get<ConfigDiscordInterface>("discord").clientId}&redirect_uri=${this.config.get<ConfigApiInterface>("api").url}auth/callback/discord&response_type=code&scope=identify%20email`;
   }
@@ -44,6 +48,11 @@ export class AuthDiscordService {
       }
       user = discordUser.user;
     } else {
+      // New user - check if registration is allowed
+      if (!this.authConfig.allowRegistration) {
+        return `${this.config.get<ConfigAppInterface>("app").url}auth?error=registration_disabled`;
+      }
+
       const id = randomUUID();
       const companyId = randomUUID();
       await this.discordUserService.create({ userId: id, companyId: companyId, userDetails: params.userDetails });

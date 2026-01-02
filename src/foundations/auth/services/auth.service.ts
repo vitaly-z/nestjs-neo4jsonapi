@@ -8,7 +8,7 @@ import { checkPassword, hashPassword, SecurityService } from "../../../core/secu
 import { AuthPostLoginDataDTO } from "../../auth/dtos/auth.post.login.dto";
 
 import { ClsService } from "nestjs-cls";
-import { BaseConfigInterface, ConfigAppInterface } from "../../../config/interfaces";
+import { BaseConfigInterface, ConfigAppInterface, ConfigAuthInterface } from "../../../config/interfaces";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
@@ -41,6 +41,10 @@ export class AuthService {
 
   private get appConfig(): ConfigAppInterface {
     return this.configService.get<ConfigAppInterface>("app");
+  }
+
+  private get authConfig(): ConfigAuthInterface {
+    return this.configService.get<ConfigAuthInterface>("auth");
   }
 
   async findCurrentAuth(): Promise<JsonApiDataInterface> {
@@ -175,6 +179,10 @@ export class AuthService {
   }
 
   async register(params: { data: AuthPostRegisterDataDTO }): Promise<void> {
+    if (!this.authConfig.allowRegistration) {
+      throw new HttpException("Registration is currently disabled", HttpStatus.FORBIDDEN);
+    }
+
     await this.userService.expectNotExists({ email: params.data.attributes.email });
 
     const company = await this.companyRepository.createByName({

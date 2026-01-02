@@ -1,6 +1,7 @@
 import { ConfigAiInterface } from "./config.ai.interface";
 import { ConfigApiInterface } from "./config.api.interface";
 import { ConfigAppInterface } from "./config.app.interface";
+import { ConfigAuthInterface } from "./config.auth.interface";
 import { ConfigCacheInterface } from "./config.cache.interface";
 import { ConfigChunkQueuesInterface } from "./config.chunk.queues.interface";
 import { ConfigContentTypesInterface } from "./config.content.types.interface";
@@ -25,6 +26,7 @@ export interface BaseConfigInterface {
   environment: ConfigEnvironmentInterface;
   api: ConfigApiInterface;
   app: ConfigAppInterface;
+  auth: ConfigAuthInterface;
   neo4j: ConfigNeo4jInterface;
   redis: ConfigRedisInterface;
   cache: ConfigCacheInterface;

@@ -227,6 +227,9 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       token: process.env.DISCORD_TOKEN || "",
       devGuildId: process.env.DISCORD_DEV_GUILD_ID || "",
     },
+    auth: {
+      allowRegistration: process.env.ALLOW_REGISTRATION !== "false",
+    },
     prompts: options?.prompts ?? {},
     chunkQueues: options?.chunkQueues ?? { queueIds: [] },
     contentTypes: options?.contentTypes ?? { types: [] },

@@ -1,3 +1,41 @@
+## [1.17.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.16.0...v1.17.0) (2026-01-02)
+
+### 🚀 Features
+
+* add description and features fields to stripe prices ([4ffd666](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/4ffd666cdb0013ea24289c17d7ad9b255f15c52b))
+* add stripe backend implementation ([684b332](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/684b332760f2dc054ce87e0419bb5c38ddac4be1))
+* add stripe price archival and restore ([8605990](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/860599057964a6fda0b82842209905bbfba0d872))
+* add stripe-prices to stripe-product ([1c80b9a](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/1c80b9ac0f0ba71f823b76295532547a16b56d6b))
+* enhance DiscordUserRepository to include role and user metadata in return statement ([3326188](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/33261887ccb4ddb8307fb5a3fda46da41b754e3b))
+* implement SCA-compliant payment confirmation flow for subscriptions ([690a9be](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/690a9bed794a418865d2bdde7ed96585c6deb519))
+* implement Stripe payment methods handling and serialization ([659a1d1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/659a1d1dfc0d8a8e411c63b321dd5e7435ca6f48))
+
+### 🐛 Bug Fixes
+
+* add payment method validation for subscription creation ([9eb1ec3](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/9eb1ec3e66ba121fc5aa51553051c9bc4baeba55))
+* correct billing endpoint ([ef42a7f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/ef42a7f8aeb64c59208419cbb6cf8051f72014f7))
+* correct import paths ([9c3f1fb](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/9c3f1fb4557e1630b58375232dc15bec4d92862b))
+* correct linting ([0e458ba](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/0e458baff16ea6ab1737f78499fb5d29a9240bb0))
+* ensure user is active upon creation in DiscordUserService ([740b8df](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/740b8df5d61e78dcead17fa31e177d77d1f1206f))
+* update module migration tool ([74db063](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/74db063e35a9b79c00feb2c055e74c2216d0c5ac))
+* update stripe dependency to version 20.1.0 and adjust test imports ([3a9d45a](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/3a9d45a6ee6014015f938d74d7a8085514c6f271))
+* update test files to latest implementation ([e6bac20](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/e6bac2077a81e0212d6f9738dfc90e5e61bda611))
+
+### 📦 Code Refactoring
+
+* consolidate stripe and billing into unified stripe foundation module ([10d5a07](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/10d5a076b57b88a3b90a1d10eb14539c528b75b4))
+* move stripe customer ([88c907b](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/88c907bd107926d562c0413560e3f5e93cf8e168))
+* move stripe invoice ([fd9bfa0](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/fd9bfa002381d263acc5ec51e4cbb7c1b019c941))
+* move stripe invoice ([044414d](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/044414d98d79da5ad320d24352fe3ad59b586d97))
+* move stripe price ([80263d7](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/80263d772534539e7d57a041a883477559ff1407))
+* move stripe product ([8c27335](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/8c2733594e17f0a292adda5a8ae827811fb2802c))
+* move stripe subscriptions ([371af3b](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/371af3b9497f3505dbee2d1f83522b1124a671e8))
+* move stripe webhooks and usage ([15149e4](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/15149e44414b8aef61f897d4bb9bd7344b962745))
+* rename product references to stripeProduct in StripePrice and StripeSubscription entities ([808a1bd](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/808a1bd7b8136c719bbcfaf8a597d225437e203f))
+* skip company relationship handling in scoped contexts ([c9110c8](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/c9110c850992f57b9a743876cdf5f681a86cb67c))
+* update import paths for DataModelInterface in Stripe models and adjust query in StripeSubscriptionRepository ([0ea82d2](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/0ea82d202cad09822068785866b8ab21eafb186d))
+* update module imports to include Neo4JModule and StripeCustomerModule ([575e4ef](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/575e4efabd080707e4c9d37ac63b71e7164f75db))
+
 ## [1.16.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.15.0...v1.16.0) (2025-12-28)
 
 ### 🚀 Features

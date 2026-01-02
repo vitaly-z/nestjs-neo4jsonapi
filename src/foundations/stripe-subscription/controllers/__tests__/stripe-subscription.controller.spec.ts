@@ -1,22 +1,23 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../chunker/chunker.module", () => ({
+vi.mock("../../../chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the guards to avoid dependency resolution issues
-jest.mock("../../../../common/guards", () => ({
+vi.mock("../../../../common/guards", () => ({
   JwtAuthGuard: class MockJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
   AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
 }));
 
 // Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -40,8 +41,8 @@ import type { StripeSubscriptionStatus } from "../../entities/stripe-subscriptio
 
 describe("StripeSubscriptionController", () => {
   let controller: StripeSubscriptionController;
-  let subscriptionService: jest.Mocked<StripeSubscriptionAdminService>;
-  let mockReply: jest.Mocked<FastifyReply>;
+  let subscriptionService: vi.Mocked<StripeSubscriptionAdminService>;
+  let mockReply: vi.Mocked<FastifyReply>;
 
   // Test data constants
   const TEST_IDS = {
@@ -72,26 +73,26 @@ describe("StripeSubscriptionController", () => {
   };
 
   // Create a mock Fastify reply
-  const createMockReply = (): jest.Mocked<FastifyReply> => {
+  const createMockReply = (): vi.Mocked<FastifyReply> => {
     const reply = {
-      send: jest.fn().mockReturnThis(),
-      status: jest.fn().mockReturnThis(),
-      code: jest.fn().mockReturnThis(),
-      header: jest.fn().mockReturnThis(),
-    } as unknown as jest.Mocked<FastifyReply>;
+      send: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      code: vi.fn().mockReturnThis(),
+      header: vi.fn().mockReturnThis(),
+    } as unknown as vi.Mocked<FastifyReply>;
     return reply;
   };
 
   beforeEach(async () => {
     const mockStripeSubscriptionAdminService = {
-      listSubscriptions: jest.fn(),
-      getSubscription: jest.fn(),
-      createSubscription: jest.fn(),
-      cancelSubscription: jest.fn(),
-      pauseSubscription: jest.fn(),
-      resumeSubscription: jest.fn(),
-      changePlan: jest.fn(),
-      previewProration: jest.fn(),
+      listSubscriptions: vi.fn(),
+      getSubscription: vi.fn(),
+      createSubscription: vi.fn(),
+      cancelSubscription: vi.fn(),
+      pauseSubscription: vi.fn(),
+      resumeSubscription: vi.fn(),
+      changePlan: vi.fn(),
+      previewProration: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -111,7 +112,7 @@ describe("StripeSubscriptionController", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("GET /subscriptions", () => {

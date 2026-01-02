@@ -1,22 +1,23 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the guards to avoid dependency resolution issues
-jest.mock("../../../../common/guards", () => ({
+vi.mock("../../../../common/guards", () => ({
   JwtAuthGuard: class MockJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
   AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
 }));
 
 // Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -38,8 +39,8 @@ import { AuthenticatedRequest } from "@carlonicora/nestjs-neo4jsonapi";
 
 describe("BillingController", () => {
   let controller: BillingController;
-  let billingService: jest.Mocked<BillingService>;
-  let mockReply: jest.Mocked<FastifyReply>;
+  let billingService: vi.Mocked<BillingService>;
+  let mockReply: vi.Mocked<FastifyReply>;
 
   // Test data constants
   const TEST_IDS = {
@@ -61,22 +62,22 @@ describe("BillingController", () => {
   };
 
   // Create a mock Fastify reply
-  const createMockReply = (): jest.Mocked<FastifyReply> => {
+  const createMockReply = (): vi.Mocked<FastifyReply> => {
     const reply = {
-      send: jest.fn().mockReturnThis(),
-      status: jest.fn().mockReturnThis(),
-      code: jest.fn().mockReturnThis(),
-    } as unknown as jest.Mocked<FastifyReply>;
+      send: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      code: vi.fn().mockReturnThis(),
+    } as unknown as vi.Mocked<FastifyReply>;
     return reply;
   };
 
   beforeEach(async () => {
     const mockBillingService = {
-      createSetupIntent: jest.fn(),
-      createPortalSession: jest.fn(),
-      listPaymentMethods: jest.fn(),
-      setDefaultPaymentMethod: jest.fn(),
-      removePaymentMethod: jest.fn(),
+      createSetupIntent: vi.fn(),
+      createPortalSession: vi.fn(),
+      listPaymentMethods: vi.fn(),
+      setDefaultPaymentMethod: vi.fn(),
+      removePaymentMethod: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -96,7 +97,7 @@ describe("BillingController", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ===================================================================

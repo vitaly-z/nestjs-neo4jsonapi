@@ -1,8 +1,9 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeService } from "./stripe.service";
 
 // Mock the base config before imports
-jest.mock("../../../config/base.config", () => ({
+vi.mock("../../../config/base.config", () => ({
   baseConfig: {
     stripe: {
       secretKey: "sk_test_mock_secret_key",
@@ -16,8 +17,8 @@ jest.mock("../../../config/base.config", () => ({
 }));
 
 // Mock Stripe SDK
-const mockStripeConstructor = jest.fn();
-jest.mock("stripe", () => ({
+const mockStripeConstructor = vi.fn();
+vi.mock("stripe", () => ({
   default: mockStripeConstructor,
 }));
 
@@ -25,7 +26,7 @@ describe("StripeService", () => {
   let service: StripeService;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [StripeService],
@@ -35,7 +36,7 @@ describe("StripeService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("isConfigured", () => {

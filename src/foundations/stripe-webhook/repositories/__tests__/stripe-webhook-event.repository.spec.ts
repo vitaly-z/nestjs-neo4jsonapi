@@ -1,8 +1,9 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../chunker/chunker.module", () => ({
+vi.mock("../../../chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { Neo4jService } from "../../../../core/neo4j";
@@ -13,7 +14,7 @@ import { StripeWebhookEvent, StripeWebhookEventStatus } from "../../entities/str
 
 describe("StripeWebhookEventRepository", () => {
   let repository: StripeWebhookEventRepository;
-  let neo4jService: jest.Mocked<Neo4jService>;
+  let neo4jService: vi.Mocked<Neo4jService>;
 
   // Test data constants
   const TEST_IDS = {
@@ -41,10 +42,10 @@ describe("StripeWebhookEventRepository", () => {
 
   beforeEach(async () => {
     const mockNeo4jService = {
-      writeOne: jest.fn(),
-      readOne: jest.fn(),
-      readMany: jest.fn(),
-      initQuery: jest.fn(),
+      writeOne: vi.fn(),
+      readOne: vi.fn(),
+      readMany: vi.fn(),
+      initQuery: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -58,13 +59,13 @@ describe("StripeWebhookEventRepository", () => {
     }).compile();
 
     repository = module.get<StripeWebhookEventRepository>(StripeWebhookEventRepository);
-    neo4jService = module.get<Neo4jService>(Neo4jService) as jest.Mocked<Neo4jService>;
+    neo4jService = module.get<Neo4jService>(Neo4jService) as vi.Mocked<Neo4jService>;
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("onModuleInit", () => {

@@ -1,8 +1,9 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { Neo4jService } from "../../../../core/neo4j";
@@ -18,7 +19,7 @@ import {
 
 describe("StripePriceRepository", () => {
   let repository: StripePriceRepository;
-  let neo4jService: jest.Mocked<Neo4jService>;
+  let neo4jService: vi.Mocked<Neo4jService>;
 
   // Test data constants
   const TEST_IDS = {
@@ -88,10 +89,10 @@ describe("StripePriceRepository", () => {
 
   beforeEach(async () => {
     const mockNeo4jService = {
-      writeOne: jest.fn(),
-      readOne: jest.fn(),
-      readMany: jest.fn(),
-      initQuery: jest.fn(),
+      writeOne: vi.fn(),
+      readOne: vi.fn(),
+      readMany: vi.fn(),
+      initQuery: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -105,14 +106,14 @@ describe("StripePriceRepository", () => {
     }).compile();
 
     repository = module.get<StripePriceRepository>(StripePriceRepository);
-    neo4jService = module.get<Neo4jService>(Neo4jService) as jest.Mocked<Neo4jService>;
+    neo4jService = module.get<Neo4jService>(Neo4jService) as vi.Mocked<Neo4jService>;
 
     // Reset mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("onModuleInit", () => {

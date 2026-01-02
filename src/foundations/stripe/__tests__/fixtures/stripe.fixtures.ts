@@ -1,3 +1,4 @@
+import { vi } from "vitest";
 /**
  * Test fixtures for Stripe objects
  *

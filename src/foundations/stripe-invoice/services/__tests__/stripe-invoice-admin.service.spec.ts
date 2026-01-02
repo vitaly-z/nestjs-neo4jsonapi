@@ -1,12 +1,13 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the barrel export to provide the imports that StripeInvoiceAdminService needs
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -18,9 +19,9 @@ jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
       labelName: "Company",
     },
     // Mock StripeInvoiceApiService to avoid dependency resolution issues
-    StripeInvoiceApiService: jest.fn().mockImplementation(() => ({
-      getInvoice: jest.fn(),
-      getUpcomingInvoice: jest.fn(),
+    StripeInvoiceApiService: vi.fn().mockImplementation(() => ({
+      getInvoice: vi.fn(),
+      getUpcomingInvoice: vi.fn(),
     })),
   };
 });
@@ -41,11 +42,11 @@ import { MOCK_INVOICE, TEST_IDS } from "../../../stripe/__tests__/fixtures/strip
 
 describe("StripeInvoiceAdminService", () => {
   let service: StripeInvoiceAdminService;
-  let invoiceRepository: jest.Mocked<StripeInvoiceRepository>;
-  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
-  let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
-  let stripeInvoiceApiService: jest.Mocked<StripeInvoiceApiService>;
-  let jsonApiService: jest.Mocked<JsonApiService>;
+  let invoiceRepository: vi.Mocked<StripeInvoiceRepository>;
+  let stripeCustomerRepository: vi.Mocked<StripeCustomerRepository>;
+  let subscriptionRepository: vi.Mocked<StripeSubscriptionRepository>;
+  let stripeInvoiceApiService: vi.Mocked<StripeInvoiceApiService>;
+  let jsonApiService: vi.Mocked<JsonApiService>;
 
   // Test data constants
   const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
@@ -127,31 +128,31 @@ describe("StripeInvoiceAdminService", () => {
 
   beforeEach(async () => {
     const mockStripeInvoiceRepository = {
-      findById: jest.fn(),
-      findByStripeCustomerId: jest.fn(),
-      findByStripeInvoiceId: jest.fn(),
-      create: jest.fn(),
-      updateByStripeInvoiceId: jest.fn(),
+      findById: vi.fn(),
+      findByStripeCustomerId: vi.fn(),
+      findByStripeInvoiceId: vi.fn(),
+      create: vi.fn(),
+      updateByStripeInvoiceId: vi.fn(),
     };
 
     const mockStripeCustomerRepository = {
-      findByCompanyId: jest.fn(),
-      findByStripeCustomerId: jest.fn(),
+      findByCompanyId: vi.fn(),
+      findByStripeCustomerId: vi.fn(),
     };
 
     const mockStripeSubscriptionRepository = {
-      findById: jest.fn(),
-      findByStripeSubscriptionId: jest.fn(),
+      findById: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(),
     };
 
     const mockStripeInvoiceApiService = {
-      getInvoice: jest.fn(),
-      getUpcomingInvoice: jest.fn(),
+      getInvoice: vi.fn(),
+      getUpcomingInvoice: vi.fn(),
     };
 
     const mockJsonApiService = {
-      buildSingle: jest.fn(),
-      buildList: jest.fn(),
+      buildSingle: vi.fn(),
+      buildList: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -189,7 +190,7 @@ describe("StripeInvoiceAdminService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("listInvoices", () => {

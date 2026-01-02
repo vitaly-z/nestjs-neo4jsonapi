@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripePortalService } from "./stripe.portal.service";
 import { StripeService } from "./stripe.service";
@@ -14,7 +15,7 @@ import {
 
 describe("StripePortalService", () => {
   let service: StripePortalService;
-  let stripeService: jest.Mocked<StripeService>;
+  let stripeService: vi.Mocked<StripeService>;
   let mockStripe: MockStripeClient;
 
   const mockPortalReturnUrl = "https://example.com/billing";
@@ -24,10 +25,10 @@ describe("StripePortalService", () => {
     mockStripe = createMockStripeClient();
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue(mockStripe),
-      isConfigured: jest.fn().mockReturnValue(true),
-      getPortalReturnUrl: jest.fn().mockReturnValue(mockPortalReturnUrl),
-      getPortalConfigurationId: jest.fn().mockReturnValue(mockConfigurationId),
+      getClient: vi.fn().mockReturnValue(mockStripe),
+      isConfigured: vi.fn().mockReturnValue(true),
+      getPortalReturnUrl: vi.fn().mockReturnValue(mockPortalReturnUrl),
+      getPortalConfigurationId: vi.fn().mockReturnValue(mockConfigurationId),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -45,7 +46,7 @@ describe("StripePortalService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("createPortalSession", () => {
@@ -84,7 +85,7 @@ describe("StripePortalService", () => {
     });
 
     it("should create portal session without configuration when not set", async () => {
-      stripeService.getPortalConfigurationId = jest.fn().mockReturnValue(undefined);
+      stripeService.getPortalConfigurationId = vi.fn().mockReturnValue(undefined);
       mockStripe.billingPortal.sessions.create.mockResolvedValue(MOCK_PORTAL_SESSION);
 
       await service.createPortalSession(TEST_IDS.customerId);
@@ -96,7 +97,7 @@ describe("StripePortalService", () => {
     });
 
     it("should create portal session without configuration when null", async () => {
-      stripeService.getPortalConfigurationId = jest.fn().mockReturnValue(null as any);
+      stripeService.getPortalConfigurationId = vi.fn().mockReturnValue(null as any);
       mockStripe.billingPortal.sessions.create.mockResolvedValue(MOCK_PORTAL_SESSION);
 
       await service.createPortalSession(TEST_IDS.customerId);
@@ -108,7 +109,7 @@ describe("StripePortalService", () => {
     });
 
     it("should create portal session without configuration when empty string", async () => {
-      stripeService.getPortalConfigurationId = jest.fn().mockReturnValue("");
+      stripeService.getPortalConfigurationId = vi.fn().mockReturnValue("");
       mockStripe.billingPortal.sessions.create.mockResolvedValue(MOCK_PORTAL_SESSION);
 
       await service.createPortalSession(TEST_IDS.customerId);
@@ -358,7 +359,7 @@ describe("StripePortalService", () => {
 
   describe("Parameter Validation", () => {
     it("should create session with minimum required parameters", async () => {
-      stripeService.getPortalConfigurationId = jest.fn().mockReturnValue(undefined);
+      stripeService.getPortalConfigurationId = vi.fn().mockReturnValue(undefined);
       mockStripe.billingPortal.sessions.create.mockResolvedValue(MOCK_PORTAL_SESSION);
 
       await service.createPortalSession(TEST_IDS.customerId);
@@ -386,7 +387,7 @@ describe("StripePortalService", () => {
       const configIds = ["bpc_test_123", "bpc_prod_456", "bpc_live_789"];
 
       for (const configId of configIds) {
-        stripeService.getPortalConfigurationId = jest.fn().mockReturnValue(configId);
+        stripeService.getPortalConfigurationId = vi.fn().mockReturnValue(configId);
         mockStripe.billingPortal.sessions.create.mockResolvedValue(MOCK_PORTAL_SESSION);
 
         await service.createPortalSession(TEST_IDS.customerId);

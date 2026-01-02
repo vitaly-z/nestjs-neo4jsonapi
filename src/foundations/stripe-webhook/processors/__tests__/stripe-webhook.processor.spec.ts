@@ -1,17 +1,18 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../chunker/chunker.module", () => ({
+vi.mock("../../../chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the stripe-webhook module to prevent the conditional provider loading issue
-jest.mock("../../stripe-webhook.module", () => ({
+vi.mock("../../stripe-webhook.module", () => ({
   StripeWebhookModule: class {},
 }));
 
 // Mock the barrel export to provide the imports needed
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -47,13 +48,13 @@ import {
 
 describe("StripeWebhookProcessor", () => {
   let processor: StripeWebhookProcessor;
-  let stripeWebhookEventRepository: jest.Mocked<StripeWebhookEventRepository>;
-  let subscriptionService: jest.Mocked<StripeSubscriptionAdminService>;
-  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
-  let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
-  let stripeInvoiceRepository: jest.Mocked<StripeInvoiceRepository>;
-  let notificationService: jest.Mocked<StripeWebhookNotificationService>;
-  let logger: jest.Mocked<AppLoggingService>;
+  let stripeWebhookEventRepository: vi.Mocked<StripeWebhookEventRepository>;
+  let subscriptionService: vi.Mocked<StripeSubscriptionAdminService>;
+  let stripeCustomerRepository: vi.Mocked<StripeCustomerRepository>;
+  let subscriptionRepository: vi.Mocked<StripeSubscriptionRepository>;
+  let stripeInvoiceRepository: vi.Mocked<StripeInvoiceRepository>;
+  let notificationService: vi.Mocked<StripeWebhookNotificationService>;
+  let logger: vi.Mocked<AppLoggingService>;
 
   const TEST_DATA = {
     webhookEventId: "550e8400-e29b-41d4-a716-446655440000",
@@ -78,43 +79,43 @@ describe("StripeWebhookProcessor", () => {
 
   beforeEach(async () => {
     const mockStripeWebhookEventRepository = {
-      updateStatus: jest.fn(),
+      updateStatus: vi.fn(),
     };
 
     const mockSubscriptionService = {
-      syncSubscriptionFromStripe: jest.fn(),
+      syncSubscriptionFromStripe: vi.fn(),
     };
 
     const mockStripeCustomerRepository = {
-      updateByStripeCustomerId: jest.fn(),
+      updateByStripeCustomerId: vi.fn(),
     };
 
     const mockSubscriptionRepository = {
-      cancelAllByStripeCustomerId: jest.fn(),
+      cancelAllByStripeCustomerId: vi.fn(),
     };
 
     const mockStripeInvoiceRepository = {
-      findByStripeInvoiceId: jest.fn(),
-      updateByStripeInvoiceId: jest.fn(),
+      findByStripeInvoiceId: vi.fn(),
+      updateByStripeInvoiceId: vi.fn(),
     };
 
     const mockNotificationService = {
-      sendPaymentFailedEmail: jest.fn(),
-      sendSubscriptionStatusChangeEmail: jest.fn(),
+      sendPaymentFailedEmail: vi.fn(),
+      sendSubscriptionStatusChangeEmail: vi.fn(),
     };
 
     const mockLogger = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
+      log: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+      verbose: vi.fn(),
     };
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue({
+      getClient: vi.fn().mockReturnValue({
         invoices: {
-          retrieve: jest.fn(),
+          retrieve: vi.fn(),
         },
       }),
     };
@@ -168,7 +169,7 @@ describe("StripeWebhookProcessor", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("process", () => {

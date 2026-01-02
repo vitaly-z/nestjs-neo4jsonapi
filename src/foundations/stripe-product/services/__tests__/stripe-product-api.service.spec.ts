@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeProductApiService } from "../stripe-product-api.service";
 import { StripeService } from "../../../stripe/services/stripe.service";
@@ -15,15 +16,15 @@ import {
 
 describe("StripeProductApiService", () => {
   let service: StripeProductApiService;
-  let stripeService: jest.Mocked<StripeService>;
+  let stripeService: vi.Mocked<StripeService>;
   let mockStripe: MockStripeClient;
 
   beforeEach(async () => {
     mockStripe = createMockStripeClient();
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue(mockStripe),
-      isConfigured: jest.fn().mockReturnValue(true),
+      getClient: vi.fn().mockReturnValue(mockStripe),
+      isConfigured: vi.fn().mockReturnValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -41,7 +42,7 @@ describe("StripeProductApiService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("createProduct", () => {

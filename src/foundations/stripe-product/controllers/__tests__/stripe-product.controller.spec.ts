@@ -1,10 +1,11 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock the guards to avoid dependency resolution issues
-jest.mock("../../../../common/guards", () => ({
+vi.mock("../../../../common/guards", () => ({
   JwtAuthGuard: class MockJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
   AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
 }));
 
@@ -27,12 +28,12 @@ describe("StripeProductController", () => {
   let mockReply: any;
 
   const mockStripeProductAdminService = {
-    listProducts: jest.fn(),
-    getProduct: jest.fn(),
-    createProduct: jest.fn(),
-    updateProduct: jest.fn(),
-    archiveProduct: jest.fn(),
-    reactivateProduct: jest.fn(),
+    listProducts: vi.fn(),
+    getProduct: vi.fn(),
+    createProduct: vi.fn(),
+    updateProduct: vi.fn(),
+    archiveProduct: vi.fn(),
+    reactivateProduct: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -50,11 +51,11 @@ describe("StripeProductController", () => {
     service = module.get<StripeProductAdminService>(StripeProductAdminService);
 
     mockReply = {
-      send: jest.fn(),
-      status: jest.fn().mockReturnThis(),
+      send: vi.fn(),
+      status: vi.fn().mockReturnThis(),
     };
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("archiveProduct", () => {

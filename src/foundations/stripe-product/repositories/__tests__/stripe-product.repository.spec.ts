@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeProductRepository } from "../stripe-product.repository";
 import { Neo4jService } from "../../../../core/neo4j";
@@ -6,7 +7,7 @@ import { stripeProductMeta } from "../../entities/stripe-product.meta";
 
 describe("StripeProductRepository", () => {
   let repository: StripeProductRepository;
-  let neo4jService: jest.Mocked<Neo4jService>;
+  let neo4jService: vi.Mocked<Neo4jService>;
 
   const mockProduct: StripeProduct = {
     id: "test-uuid-123",
@@ -21,14 +22,14 @@ describe("StripeProductRepository", () => {
 
   beforeEach(async () => {
     const mockNeo4jService = {
-      initQuery: jest.fn().mockReturnValue({
+      initQuery: vi.fn().mockReturnValue({
         query: "",
         queryParams: {},
         serialiser: undefined,
       }),
-      writeOne: jest.fn(),
-      readOne: jest.fn(),
-      readMany: jest.fn(),
+      writeOne: vi.fn(),
+      readOne: vi.fn(),
+      readMany: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -46,7 +47,7 @@ describe("StripeProductRepository", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("update - active status changes", () => {

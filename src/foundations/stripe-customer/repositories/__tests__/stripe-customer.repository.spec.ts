@@ -1,12 +1,13 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the barrel export to provide only what we need
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -25,12 +26,17 @@ import { StripeCustomerRepository } from "../stripe-customer.repository";
 import { stripeCustomerMeta } from "../../entities/stripe-customer.meta";
 import { StripeCustomer } from "../../entities/stripe-customer.entity";
 
-// Get companyMeta from the mocked module
-const { companyMeta } = jest.requireMock("@carlonicora/nestjs-neo4jsonapi");
+// companyMeta is defined in the vi.mock above
+const companyMeta = {
+  type: "companies",
+  endpoint: "companies",
+  nodeName: "company",
+  labelName: "Company",
+};
 
 describe("StripeCustomerRepository", () => {
   let repository: StripeCustomerRepository;
-  let neo4jService: jest.Mocked<Neo4jService>;
+  let neo4jService: vi.Mocked<Neo4jService>;
 
   // Test data constants
   const TEST_IDS = {
@@ -61,9 +67,9 @@ describe("StripeCustomerRepository", () => {
 
   beforeEach(async () => {
     const mockNeo4jService = {
-      writeOne: jest.fn(),
-      readOne: jest.fn(),
-      initQuery: jest.fn(),
+      writeOne: vi.fn(),
+      readOne: vi.fn(),
+      initQuery: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -77,14 +83,14 @@ describe("StripeCustomerRepository", () => {
     }).compile();
 
     repository = module.get<StripeCustomerRepository>(StripeCustomerRepository);
-    neo4jService = module.get<Neo4jService>(Neo4jService) as jest.Mocked<Neo4jService>;
+    neo4jService = module.get<Neo4jService>(Neo4jService) as vi.Mocked<Neo4jService>;
 
     // Reset mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("onModuleInit", () => {

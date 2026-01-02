@@ -1,12 +1,13 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the barrel export to provide the imports that StripeUsageAdminService needs
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
+  const actual = vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -35,11 +36,11 @@ import { TEST_IDS } from "../../../stripe/__tests__/fixtures/stripe.fixtures";
 
 describe("StripeUsageAdminService", () => {
   let service: StripeUsageAdminService;
-  let usageRecordRepository: jest.Mocked<StripeUsageRecordRepository>;
-  let subscriptionRepository: jest.Mocked<StripeSubscriptionRepository>;
-  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
-  let stripeUsageApiService: jest.Mocked<StripeUsageApiService>;
-  let jsonApiService: jest.Mocked<JsonApiService>;
+  let usageRecordRepository: vi.Mocked<StripeUsageRecordRepository>;
+  let subscriptionRepository: vi.Mocked<StripeSubscriptionRepository>;
+  let stripeCustomerRepository: vi.Mocked<StripeCustomerRepository>;
+  let stripeUsageApiService: vi.Mocked<StripeUsageApiService>;
+  let jsonApiService: vi.Mocked<JsonApiService>;
 
   // Test data constants
   const MOCK_STRIPE_CUSTOMER: StripeCustomer = {
@@ -115,28 +116,28 @@ describe("StripeUsageAdminService", () => {
 
   beforeEach(async () => {
     const mockUsageRecordRepository = {
-      create: jest.fn(),
-      findBySubscriptionId: jest.fn(),
-      getUsageSummary: jest.fn(),
+      create: vi.fn(),
+      findBySubscriptionId: vi.fn(),
+      getUsageSummary: vi.fn(),
     };
 
     const mockStripeSubscriptionRepository = {
-      findById: jest.fn(),
+      findById: vi.fn(),
     };
 
     const mockStripeCustomerRepository = {
-      findByCompanyId: jest.fn(),
+      findByCompanyId: vi.fn(),
     };
 
     const mockStripeUsageApiService = {
-      reportMeterEvent: jest.fn(),
-      getMeterEventSummaries: jest.fn(),
-      listMeters: jest.fn(),
+      reportMeterEvent: vi.fn(),
+      getMeterEventSummaries: vi.fn(),
+      listMeters: vi.fn(),
     };
 
     const mockJsonApiService = {
-      buildSingle: jest.fn(),
-      buildList: jest.fn(),
+      buildSingle: vi.fn(),
+      buildList: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -174,7 +175,7 @@ describe("StripeUsageAdminService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("reportUsage", () => {

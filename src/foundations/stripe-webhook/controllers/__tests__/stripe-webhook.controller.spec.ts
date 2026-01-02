@@ -1,8 +1,9 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../chunker/chunker.module", () => ({
+vi.mock("../../../chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { HttpStatus } from "@nestjs/common";
@@ -20,11 +21,11 @@ import Stripe from "stripe";
 
 describe("StripeWebhookController", () => {
   let controller: StripeWebhookController;
-  let stripeWebhookService: jest.Mocked<StripeWebhookService>;
-  let stripeWebhookEventRepository: jest.Mocked<StripeWebhookEventRepository>;
-  let webhookQueue: jest.Mocked<Queue<StripeWebhookJobData>>;
-  let logger: jest.Mocked<AppLoggingService>;
-  let mockReply: jest.Mocked<FastifyReply>;
+  let stripeWebhookService: vi.Mocked<StripeWebhookService>;
+  let stripeWebhookEventRepository: vi.Mocked<StripeWebhookEventRepository>;
+  let webhookQueue: vi.Mocked<Queue<StripeWebhookJobData>>;
+  let logger: vi.Mocked<AppLoggingService>;
+  let mockReply: vi.Mocked<FastifyReply>;
 
   const TEST_DATA = {
     signature: "t=1234567890,v1=signature_hash_abc123",
@@ -55,38 +56,38 @@ describe("StripeWebhookController", () => {
   };
 
   // Create a mock Fastify reply
-  const createMockReply = (): jest.Mocked<FastifyReply> => {
+  const createMockReply = (): vi.Mocked<FastifyReply> => {
     const reply = {
-      send: jest.fn().mockReturnThis(),
-      status: jest.fn().mockReturnThis(),
-      code: jest.fn().mockReturnThis(),
-      header: jest.fn().mockReturnThis(),
-    } as unknown as jest.Mocked<FastifyReply>;
+      send: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      code: vi.fn().mockReturnThis(),
+      header: vi.fn().mockReturnThis(),
+    } as unknown as vi.Mocked<FastifyReply>;
     return reply;
   };
 
   beforeEach(async () => {
     const mockStripeWebhookService = {
-      constructEvent: jest.fn(),
-      parseEvent: jest.fn(),
+      constructEvent: vi.fn(),
+      parseEvent: vi.fn(),
     };
 
     const mockStripeWebhookEventRepository = {
-      findByStripeEventId: jest.fn(),
-      create: jest.fn(),
-      updateStatus: jest.fn(),
+      findByStripeEventId: vi.fn(),
+      create: vi.fn(),
+      updateStatus: vi.fn(),
     };
 
     const mockQueue = {
-      add: jest.fn(),
+      add: vi.fn(),
     };
 
     const mockLogger = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
+      log: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+      verbose: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -121,7 +122,7 @@ describe("StripeWebhookController", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("handleStripeWebhook", () => {

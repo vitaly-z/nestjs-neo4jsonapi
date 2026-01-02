@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeUsageApiService } from "../stripe-usage-api.service";
 import { StripeService } from "../../../stripe/services/stripe.service";
@@ -13,7 +14,7 @@ import Stripe from "stripe";
 
 describe("StripeUsageApiService", () => {
   let service: StripeUsageApiService;
-  let stripeService: jest.Mocked<StripeService>;
+  let stripeService: vi.Mocked<StripeService>;
   let mockStripe: MockStripeClient;
 
   const MOCK_METER_EVENT: Stripe.V2.Billing.MeterEvent = {
@@ -106,8 +107,8 @@ describe("StripeUsageApiService", () => {
     mockStripe = createMockStripeClient();
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue(mockStripe),
-      isConfigured: jest.fn().mockReturnValue(true),
+      getClient: vi.fn().mockReturnValue(mockStripe),
+      isConfigured: vi.fn().mockReturnValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -125,7 +126,7 @@ describe("StripeUsageApiService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("reportMeterEvent", () => {

@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import "reflect-metadata";

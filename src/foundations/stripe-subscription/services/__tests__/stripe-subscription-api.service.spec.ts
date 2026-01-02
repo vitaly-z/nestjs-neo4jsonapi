@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeSubscriptionApiService } from "../stripe-subscription-api.service";
 import { StripeService } from "../../../stripe/services/stripe.service";
@@ -16,15 +17,15 @@ import Stripe from "stripe";
 
 describe("StripeSubscriptionApiService", () => {
   let service: StripeSubscriptionApiService;
-  let stripeService: jest.Mocked<StripeService>;
+  let stripeService: vi.Mocked<StripeService>;
   let mockStripe: MockStripeClient;
 
   beforeEach(async () => {
     mockStripe = createMockStripeClient();
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue(mockStripe),
-      isConfigured: jest.fn().mockReturnValue(true),
+      getClient: vi.fn().mockReturnValue(mockStripe),
+      isConfigured: vi.fn().mockReturnValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -42,7 +43,7 @@ describe("StripeSubscriptionApiService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("createSubscription", () => {
@@ -449,7 +450,7 @@ describe("StripeSubscriptionApiService", () => {
         items: { ...MOCK_SUBSCRIPTION.items, data: [{ ...MOCK_SUBSCRIPTION.items.data[0], id: "si_test_123" }] },
       };
       mockStripe.subscriptions.retrieve.mockResolvedValue(subscription as Stripe.Subscription);
-      mockStripe.invoices.createPreview = jest.fn().mockResolvedValue(MOCK_INVOICE);
+      mockStripe.invoices.createPreview = vi.fn().mockResolvedValue(MOCK_INVOICE);
 
       const result = await service.previewProration(TEST_IDS.subscriptionId, "price_new_123");
 
@@ -471,7 +472,7 @@ describe("StripeSubscriptionApiService", () => {
         items: { ...MOCK_SUBSCRIPTION.items, data: [] },
       };
       mockStripe.subscriptions.retrieve.mockResolvedValue(subWithoutItems as Stripe.Subscription);
-      mockStripe.invoices.createPreview = jest.fn().mockResolvedValue(MOCK_INVOICE);
+      mockStripe.invoices.createPreview = vi.fn().mockResolvedValue(MOCK_INVOICE);
 
       await service.previewProration(TEST_IDS.subscriptionId, "price_new_123");
 
@@ -492,7 +493,7 @@ describe("StripeSubscriptionApiService", () => {
 
     it("should handle invoice preview errors", async () => {
       mockStripe.subscriptions.retrieve.mockResolvedValue(MOCK_SUBSCRIPTION);
-      mockStripe.invoices.createPreview = jest.fn().mockRejectedValue(STRIPE_API_ERROR);
+      mockStripe.invoices.createPreview = vi.fn().mockRejectedValue(STRIPE_API_ERROR);
 
       await expect(service.previewProration(TEST_IDS.subscriptionId, "price_new_123")).rejects.toThrow(StripeError);
     });

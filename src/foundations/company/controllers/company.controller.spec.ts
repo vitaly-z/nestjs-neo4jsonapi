@@ -1,12 +1,13 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../foundations/chunker/chunker.module", () => ({
+vi.mock("../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 // Mock the barrel export to provide companyMeta
-jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
-  const actual = jest.requireActual("@carlonicora/nestjs-neo4jsonapi");
+vi.mock("@carlonicora/nestjs-neo4jsonapi", async () => {
+  const actual = await vi.importActual("@carlonicora/nestjs-neo4jsonapi");
 
   return {
     ...actual,
@@ -21,8 +22,7 @@ jest.mock("@carlonicora/nestjs-neo4jsonapi", () => {
 
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { SystemRoles } from "../../../common/constants/system.roles";
-import { RoleId } from "@carlonicora/nestjs-neo4jsonapi";
+import { SystemRoles, RoleId } from "../../../common/constants/system.roles";
 // TODO: App must define its own RoleId extending SystemRoles
 import { FastifyReply } from "fastify";
 import { AdminJwtAuthGuard } from "../../../common/guards/jwt.auth.admin.guard";
@@ -39,9 +39,9 @@ import { CompanyController } from "./company.controller";
 
 describe("CompanyController", () => {
   let controller: CompanyController;
-  let companyService: jest.Mocked<CompanyService>;
-  let cacheService: jest.Mocked<CacheService>;
-  let mockReply: jest.Mocked<FastifyReply>;
+  let companyService: vi.Mocked<CompanyService>;
+  let cacheService: vi.Mocked<CacheService>;
+  let mockReply: vi.Mocked<FastifyReply>;
 
   // Test data constants
   const MOCK_COMPANY_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -80,17 +80,17 @@ describe("CompanyController", () => {
 
   beforeEach(async () => {
     const mockCompanyService = {
-      find: jest.fn(),
-      findOne: jest.fn(),
-      createForController: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      activateLicense: jest.fn(),
+      find: vi.fn(),
+      findOne: vi.fn(),
+      createForController: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      activateLicense: vi.fn(),
     };
 
     const mockCacheService = {
-      invalidateByType: jest.fn(),
-      invalidateByElement: jest.fn(),
+      invalidateByType: vi.fn(),
+      invalidateByElement: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -118,12 +118,12 @@ describe("CompanyController", () => {
 
     // Mock FastifyReply
     mockReply = {
-      send: jest.fn(),
+      send: vi.fn(),
     } as any;
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("fetchAllCompanies", () => {

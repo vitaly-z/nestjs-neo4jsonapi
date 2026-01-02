@@ -1,10 +1,11 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock the guards to avoid dependency resolution issues
-jest.mock("../../../../common/guards", () => ({
+vi.mock("../../../../common/guards", () => ({
   JwtAuthGuard: class MockJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
   AdminJwtAuthGuard: class MockAdminJwtAuthGuard {
-    canActivate = jest.fn().mockReturnValue(true);
+    canActivate = vi.fn().mockReturnValue(true);
   },
 }));
 
@@ -28,12 +29,12 @@ describe("StripePriceController", () => {
   let mockReply: any;
 
   const mockStripePriceAdminService = {
-    listPrices: jest.fn(),
-    getPrice: jest.fn(),
-    createPrice: jest.fn(),
-    updatePrice: jest.fn(),
-    archivePrice: jest.fn(),
-    reactivatePrice: jest.fn(),
+    listPrices: vi.fn(),
+    getPrice: vi.fn(),
+    createPrice: vi.fn(),
+    updatePrice: vi.fn(),
+    archivePrice: vi.fn(),
+    reactivatePrice: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -51,11 +52,11 @@ describe("StripePriceController", () => {
     service = module.get<StripePriceAdminService>(StripePriceAdminService);
 
     mockReply = {
-      send: jest.fn(),
-      status: jest.fn().mockReturnThis(),
+      send: vi.fn(),
+      status: vi.fn().mockReturnThis(),
     };
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getPrice", () => {

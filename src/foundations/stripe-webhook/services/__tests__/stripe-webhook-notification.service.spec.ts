@@ -1,8 +1,9 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 // Mock problematic modules before any imports
-jest.mock("../../../chunker/chunker.module", () => ({
+vi.mock("../../../chunker/chunker.module", () => ({
   ChunkerModule: class {},
 }));
-jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({}));
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { getQueueToken } from "@nestjs/bullmq";
@@ -19,10 +20,10 @@ import { TEST_IDS } from "../../../stripe/__tests__/fixtures/stripe.fixtures";
 
 describe("StripeWebhookNotificationService", () => {
   let service: StripeWebhookNotificationService;
-  let emailQueue: jest.Mocked<Queue>;
-  let stripeCustomerRepository: jest.Mocked<StripeCustomerRepository>;
-  let stripeInvoiceRepository: jest.Mocked<StripeInvoiceRepository>;
-  let logger: jest.Mocked<AppLoggingService>;
+  let emailQueue: vi.Mocked<Queue>;
+  let stripeCustomerRepository: vi.Mocked<StripeCustomerRepository>;
+  let stripeInvoiceRepository: vi.Mocked<StripeInvoiceRepository>;
+  let logger: vi.Mocked<AppLoggingService>;
 
   const MOCK_STRIPE_CUSTOMER = {
     id: "internal_customer_id",
@@ -50,23 +51,23 @@ describe("StripeWebhookNotificationService", () => {
 
   beforeEach(async () => {
     const mockQueue = {
-      add: jest.fn(),
+      add: vi.fn(),
     };
 
     const mockStripeCustomerRepository = {
-      findByStripeCustomerId: jest.fn(),
+      findByStripeCustomerId: vi.fn(),
     };
 
     const mockStripeInvoiceRepository = {
-      findByStripeInvoiceId: jest.fn(),
+      findByStripeInvoiceId: vi.fn(),
     };
 
     const mockLogger = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
+      log: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+      verbose: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -99,7 +100,7 @@ describe("StripeWebhookNotificationService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("sendPaymentFailedEmail", () => {
@@ -476,7 +477,7 @@ describe("StripeWebhookNotificationService", () => {
       const statuses = ["active", "canceled", "past_due", "unpaid", "trialing", "paused"];
 
       for (const status of statuses) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(MOCK_STRIPE_CUSTOMER as any);
 
         await service.sendSubscriptionStatusChangeEmail(

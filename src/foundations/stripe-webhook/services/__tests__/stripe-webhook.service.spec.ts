@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { StripeWebhookService, WebhookEventData } from "../stripe-webhook.service";
 import { StripeService } from "../../../stripe/services/stripe.service";
@@ -18,8 +19,8 @@ import Stripe from "stripe";
 
 describe("StripeWebhookService", () => {
   let service: StripeWebhookService;
-  let stripeService: jest.Mocked<StripeService>;
-  let logger: jest.Mocked<AppLoggingService>;
+  let stripeService: vi.Mocked<StripeService>;
+  let logger: vi.Mocked<AppLoggingService>;
   let mockStripe: MockStripeClient;
 
   const mockWebhookSecret = "whsec_test_secret_123";
@@ -30,17 +31,17 @@ describe("StripeWebhookService", () => {
     mockStripe = createMockStripeClient();
 
     const mockStripeService = {
-      getClient: jest.fn().mockReturnValue(mockStripe),
-      isConfigured: jest.fn().mockReturnValue(true),
-      getWebhookSecret: jest.fn().mockReturnValue(mockWebhookSecret),
+      getClient: vi.fn().mockReturnValue(mockStripe),
+      isConfigured: vi.fn().mockReturnValue(true),
+      getWebhookSecret: vi.fn().mockReturnValue(mockWebhookSecret),
     };
 
     const mockLogger = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
+      log: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+      verbose: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,7 +64,7 @@ describe("StripeWebhookService", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("constructEvent", () => {
@@ -79,19 +80,19 @@ describe("StripeWebhookService", () => {
     });
 
     it("should throw error when webhook secret is not configured", () => {
-      stripeService.getWebhookSecret = jest.fn().mockReturnValue(null);
+      stripeService.getWebhookSecret = vi.fn().mockReturnValue(null);
 
       expect(() => service.constructEvent(mockPayload, mockSignature)).toThrow("Webhook secret not configured");
     });
 
     it("should throw error when webhook secret is undefined", () => {
-      stripeService.getWebhookSecret = jest.fn().mockReturnValue(undefined as any);
+      stripeService.getWebhookSecret = vi.fn().mockReturnValue(undefined as any);
 
       expect(() => service.constructEvent(mockPayload, mockSignature)).toThrow("Webhook secret not configured");
     });
 
     it("should throw error when webhook secret is empty string", () => {
-      stripeService.getWebhookSecret = jest.fn().mockReturnValue("");
+      stripeService.getWebhookSecret = vi.fn().mockReturnValue("");
 
       expect(() => service.constructEvent(mockPayload, mockSignature)).toThrow("Webhook secret not configured");
     });
@@ -591,11 +592,11 @@ describe("StripeWebhookService", () => {
 
     it("should call services in correct order", () => {
       const callOrder: string[] = [];
-      stripeService.getClient = jest.fn(() => {
+      stripeService.getClient = vi.fn(() => {
         callOrder.push("getClient");
         return mockStripe;
       });
-      stripeService.getWebhookSecret = jest.fn(() => {
+      stripeService.getWebhookSecret = vi.fn(() => {
         callOrder.push("getWebhookSecret");
         return mockWebhookSecret;
       });

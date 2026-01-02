@@ -1,99 +1,100 @@
+import { vi } from "vitest";
 /**
  * Comprehensive Stripe SDK mock for testing
  *
- * This mock provides jest.fn() implementations for all Stripe SDK methods
+ * This mock provides vi.fn() implementations for all Stripe SDK methods
  * used across the Stripe services in this module.
  */
 
 export const createMockStripeClient = () => ({
   // Customer methods
   customers: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    del: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    del: vi.fn(),
+    list: vi.fn(),
   },
 
   // Subscription methods
   subscriptions: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    cancel: jest.fn(),
-    pause: jest.fn(),
-    resume: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+    list: vi.fn(),
   },
 
   // Product methods
   products: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    list: vi.fn(),
   },
 
   // Price methods
   prices: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    list: vi.fn(),
   },
 
   // Payment Intent methods
   paymentIntents: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    confirm: jest.fn(),
-    cancel: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    confirm: vi.fn(),
+    cancel: vi.fn(),
   },
 
   // Setup Intent methods
   setupIntents: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
   },
 
   // Payment Method methods
   paymentMethods: {
-    retrieve: jest.fn(),
-    list: jest.fn(),
-    attach: jest.fn(),
-    detach: jest.fn(),
+    retrieve: vi.fn(),
+    list: vi.fn(),
+    attach: vi.fn(),
+    detach: vi.fn(),
   },
 
   // Invoice methods
   invoices: {
-    retrieve: jest.fn(),
-    list: jest.fn(),
-    pay: jest.fn(),
-    voidInvoice: jest.fn(),
-    retrieveUpcoming: jest.fn(),
-    createPreview: jest.fn(),
+    retrieve: vi.fn(),
+    list: vi.fn(),
+    pay: vi.fn(),
+    voidInvoice: vi.fn(),
+    retrieveUpcoming: vi.fn(),
+    createPreview: vi.fn(),
   },
 
   // Billing Portal methods
   billingPortal: {
     sessions: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
   },
 
   // Webhook methods
   webhooks: {
-    constructEvent: jest.fn(),
+    constructEvent: vi.fn(),
   },
 
   // Billing Meters (v2 API) methods
   v2: {
     billing: {
       meterEvents: {
-        create: jest.fn(),
+        create: vi.fn(),
       },
       meterEventSummaries: {
-        list: jest.fn(),
+        list: vi.fn(),
       },
     },
   },
@@ -101,51 +102,51 @@ export const createMockStripeClient = () => ({
   // Billing Meters (v1 API) methods
   billing: {
     meters: {
-      list: jest.fn(),
-      retrieve: jest.fn(),
-      listEventSummaries: jest.fn(),
+      list: vi.fn(),
+      retrieve: vi.fn(),
+      listEventSummaries: vi.fn(),
     },
   },
 
   // Coupon methods
   coupons: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    del: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    del: vi.fn(),
+    list: vi.fn(),
   },
 
   // Refund methods
   refunds: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    list: jest.fn(),
-    cancel: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    list: vi.fn(),
+    cancel: vi.fn(),
   },
 
   // Tax Rate methods
   taxRates: {
-    create: jest.fn(),
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    list: jest.fn(),
+    create: vi.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    list: vi.fn(),
   },
 
   // Tax Calculation methods (Tax v2 API)
   tax: {
     calculations: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
   },
 
   // Dispute methods
   disputes: {
-    retrieve: jest.fn(),
-    update: jest.fn(),
-    close: jest.fn(),
-    list: jest.fn(),
+    retrieve: vi.fn(),
+    update: vi.fn(),
+    close: vi.fn(),
+    list: vi.fn(),
   },
 });
 

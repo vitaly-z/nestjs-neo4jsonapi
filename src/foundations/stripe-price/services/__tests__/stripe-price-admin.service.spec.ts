@@ -1,3 +1,4 @@
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { StripePriceAdminService } from "../stripe-price-admin.service";
@@ -11,8 +12,8 @@ import Stripe from "stripe";
 
 describe("StripePriceAdminService - Archive/Reactivate", () => {
   let service: StripePriceAdminService;
-  let repository: jest.Mocked<StripePriceRepository>;
-  let apiService: jest.Mocked<StripeProductApiService>;
+  let repository: vi.Mocked<StripePriceRepository>;
+  let apiService: vi.Mocked<StripeProductApiService>;
 
   const mockPrice: StripePrice = {
     id: "test-uuid-price-123",
@@ -63,41 +64,41 @@ describe("StripePriceAdminService - Archive/Reactivate", () => {
 
   beforeEach(async () => {
     const mockStripePriceRepository = {
-      findById: jest.fn(),
-      findAll: jest.fn(),
-      findByStripePriceId: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      updateByStripePriceId: jest.fn(),
+      findById: vi.fn(),
+      findAll: vi.fn(),
+      findByStripePriceId: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateByStripePriceId: vi.fn(),
     };
 
     const mockStripeProductApiService = {
-      createProduct: jest.fn(),
-      retrieveProduct: jest.fn(),
-      updateProduct: jest.fn(),
-      archiveProduct: jest.fn(),
-      reactivateProduct: jest.fn(),
-      listProducts: jest.fn(),
-      createPrice: jest.fn(),
-      retrievePrice: jest.fn(),
-      updatePrice: jest.fn(),
-      archivePrice: jest.fn(),
-      reactivatePrice: jest.fn(),
-      listPrices: jest.fn(),
+      createProduct: vi.fn(),
+      retrieveProduct: vi.fn(),
+      updateProduct: vi.fn(),
+      archiveProduct: vi.fn(),
+      reactivateProduct: vi.fn(),
+      listProducts: vi.fn(),
+      createPrice: vi.fn(),
+      retrievePrice: vi.fn(),
+      updatePrice: vi.fn(),
+      archivePrice: vi.fn(),
+      reactivatePrice: vi.fn(),
+      listPrices: vi.fn(),
     };
 
     const mockStripeProductRepository = {
-      findById: jest.fn(),
-      findByStripeProductId: jest.fn(),
+      findById: vi.fn(),
+      findByStripeProductId: vi.fn(),
     };
 
     const mockStripeProductAdminService = {
-      syncProductFromStripe: jest.fn(),
+      syncProductFromStripe: vi.fn(),
     };
 
     const mockJsonApiService = {
-      buildSingle: jest.fn(),
-      buildList: jest.fn(),
+      buildSingle: vi.fn(),
+      buildList: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -132,7 +133,7 @@ describe("StripePriceAdminService - Archive/Reactivate", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("archivePrice", () => {

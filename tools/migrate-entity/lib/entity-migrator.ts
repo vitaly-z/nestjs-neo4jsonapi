@@ -7,7 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { detectCypherServiceWarnings, parseOldFiles } from "./ast-parser";
-import { generateEntityFile } from "./descriptor-generator";
+import { generateEntityFile, generateMetaFile } from "./descriptor-generator";
 import { discoverAllModulePaths, discoverOldFiles, isAlreadyMigrated } from "./file-discovery";
 import { findModuleFile, formatModuleContent, updateModule } from "./module-updater";
 import { findExternalReferences, summarizeReferences, updateFileReferences } from "./reference-updater";
@@ -94,31 +94,67 @@ export class EntityMigrator {
     this.log(`    Parsing old files...`);
     const parsed = parseOldFiles(oldFiles);
 
-    // 2. Generate new descriptor file (with Cypher relationship extraction)
+    // 2. Determine target file paths
+    const targetPath = this.getTargetFilePath(oldFiles);
+    const metaTargetPath = this.getMetaFilePath(oldFiles);
+
+    // 3. Generate meta file content
+    this.log(`    Generating meta file...`);
+    const metaContent = generateMetaFile(parsed.meta);
+
+    // 4. Generate new descriptor file (with Cypher relationship extraction)
     this.log(`    Generating new descriptor...`);
     const newContent = generateEntityFile(parsed, oldFiles.entityDir, {
       modulePath,
       useCypherRelationships: true,
       verbose: this.options.verbose,
+      entityName: oldFiles.entityName,
     });
 
-    // 3. Determine target file path
-    const targetPath = this.getTargetFilePath(oldFiles);
-
-    // 4. Create backup if needed
-    if (!this.options.skipBackup && fs.existsSync(targetPath)) {
-      const backupPath = `${targetPath}.bak`;
-      if (!this.options.dryRun) {
-        fs.copyFileSync(targetPath, backupPath);
+    // 5. Create backups if needed
+    if (!this.options.skipBackup) {
+      // Backup meta file if it exists
+      if (fs.existsSync(metaTargetPath)) {
+        const metaBackupPath = `${metaTargetPath}.bak`;
+        if (!this.options.dryRun) {
+          fs.copyFileSync(metaTargetPath, metaBackupPath);
+        }
+        changes.push({
+          type: "create",
+          path: metaBackupPath,
+          content: fs.readFileSync(metaTargetPath, "utf-8"),
+        });
       }
-      changes.push({
-        type: "create",
-        path: backupPath,
-        content: fs.readFileSync(targetPath, "utf-8"),
-      });
+
+      // Backup descriptor file if it exists
+      if (fs.existsSync(targetPath)) {
+        const backupPath = `${targetPath}.bak`;
+        if (!this.options.dryRun) {
+          fs.copyFileSync(targetPath, backupPath);
+        }
+        changes.push({
+          type: "create",
+          path: backupPath,
+          content: fs.readFileSync(targetPath, "utf-8"),
+        });
+      }
     }
 
-    // 5. Write new entity file
+    // 6. Write meta file first
+    changes.push({
+      type: fs.existsSync(metaTargetPath) ? "update" : "create",
+      path: metaTargetPath,
+      content: metaContent,
+    });
+
+    if (!this.options.dryRun) {
+      fs.writeFileSync(metaTargetPath, metaContent);
+      this.log(`    Created: ${path.relative(process.cwd(), metaTargetPath)}`);
+    } else {
+      this.log(`    Would create: ${path.relative(process.cwd(), metaTargetPath)}`);
+    }
+
+    // 7. Write new entity descriptor file
     changes.push({
       type: oldFiles.entity ? "update" : "create",
       path: targetPath,
@@ -132,7 +168,7 @@ export class EntityMigrator {
       this.log(`    Would create: ${path.relative(process.cwd(), targetPath)}`);
     }
 
-    // 6. Find and update external references
+    // 8. Find and update external references
     this.log(`    Finding external references...`);
     const references = await findExternalReferences(
       oldFiles.entityName,
@@ -160,7 +196,7 @@ export class EntityMigrator {
       }
     }
 
-    // 7. Update module file
+    // 9. Update module file
     const moduleFile = await findModuleFile(modulePath);
     if (moduleFile) {
       const moduleUpdate = updateModule(moduleFile, oldFiles.entityName, parsed.meta.labelName);
@@ -184,10 +220,15 @@ export class EntityMigrator {
       }
     }
 
-    // 8. Delete old files
-    const filesToDelete = [oldFiles.meta, oldFiles.model, oldFiles.map, oldFiles.serialiser].filter(
+    // 10. Delete old files (model, map, serialiser - not meta since we're using the same path)
+    const filesToDelete = [oldFiles.model, oldFiles.map, oldFiles.serialiser].filter(
       (f): f is string => f !== null
     );
+
+    // Don't delete the old meta file if it's the same as our target meta file
+    if (oldFiles.meta && oldFiles.meta !== metaTargetPath) {
+      filesToDelete.push(oldFiles.meta);
+    }
 
     // Don't delete the entity file if it's the target
     const entityFileToDelete = oldFiles.entity && oldFiles.entity !== targetPath ? oldFiles.entity : null;
@@ -211,10 +252,10 @@ export class EntityMigrator {
       }
     }
 
-    // 9. Clean up empty directories
+    // 11. Clean up empty directories
     await this.cleanupEmptyDirectories(modulePath);
 
-    // 10. Detect and warn about custom cypher.service.ts logic
+    // 12. Detect and warn about custom cypher.service.ts logic
     const cypherWarnings = detectCypherServiceWarnings(modulePath);
     if (cypherWarnings.length > 0) {
       this.log(`\n    ⚠️  PHASE 2 WARNING: Custom cypher.service.ts logic detected:`);
@@ -239,6 +280,14 @@ export class EntityMigrator {
     // If the old entity file was entity.entity.ts, we use entity.ts instead
     const baseName = oldFiles.entityName;
     return path.join(oldFiles.entityDir, `${baseName}.ts`);
+  }
+
+  /**
+   * Determines the target file path for the entity meta file.
+   */
+  private getMetaFilePath(oldFiles: OldEntityFiles): string {
+    const baseName = oldFiles.entityName;
+    return path.join(oldFiles.entityDir, `${baseName}.meta.ts`);
   }
 
   /**

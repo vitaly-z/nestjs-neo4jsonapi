@@ -21,6 +21,8 @@ export interface GeneratorOptions {
   useCypherRelationships?: boolean;
   /** Enable verbose logging */
   verbose?: boolean;
+  /** Entity name for file naming (e.g., "key.concept") */
+  entityName?: string;
 }
 
 /**
@@ -56,8 +58,8 @@ export function generateDescriptor(
   // Build relationship configs using Cypher relationships when available
   const relationships = buildRelationshipConfigs(serialiser, cypherRelationships, options.verbose);
 
-  // Generate imports
-  const imports = generateImports(parsed, relationships, entityDir);
+  // Generate imports (pass entityName for correct file path in self-meta import)
+  const imports = generateImports(parsed, relationships, entityDir, options.entityName);
 
   // Generate the descriptor code
   const code = generateDescriptorCode(meta, entityType.name, fields, computed, relationships);
@@ -274,42 +276,97 @@ function inferRelationshipDetails(relName: string): {
 
 /**
  * Generates import statements for the descriptor.
+ *
+ * Import grouping:
+ * - Group 1: Framework imports (single line from @carlonicora/nestjs-neo4jsonapi)
+ * - Group 2: External type imports (@only35/shared, etc.)
+ * - Group 3: Entity-specific imports (src/features/...)
+ * - Group 4: Self-meta import (relative path)
  */
-function generateImports(parsed: ParsedEntity, relationships: RelationshipConfig[], entityDir: string): string[] {
-  const imports: string[] = [];
+function generateImports(
+  parsed: ParsedEntity,
+  relationships: RelationshipConfig[],
+  entityDir: string,
+  entityName?: string,
+): string[] {
+  const { meta } = parsed;
 
-  // Always needed imports - use package imports
-  imports.push(`import { Entity } from "@carlonicora/nestjs-neo4jsonapi/common";`);
-  imports.push(`import { defineEntity } from "@carlonicora/nestjs-neo4jsonapi/common";`);
+  // Collect all framework imports into a single barrel import
+  const frameworkImports = new Set<string>(["defineEntity", "Entity"]);
 
   // Check if AiStatus is needed
   const hasAiStatus = parsed.entityType.fields.some((f) => f.name === "aiStatus");
   if (hasAiStatus) {
-    imports.push(`import { AiStatus } from "@carlonicora/nestjs-neo4jsonapi";`);
+    frameworkImports.add("AiStatus");
   }
 
-  // Add relationship model imports (keep original imports for related entity types)
-  const relatedEntities = new Set<string>();
+  // Collect relationship metas that come from the framework package
+  const externalImports: string[] = [];
+  const featureImports: string[] = [];
+
   for (const rel of relationships) {
-    // Extract the meta import path from original serialiser imports
-    const metaImport = findMetaImport(parsed, rel.model);
-    if (metaImport) {
-      imports.push(metaImport);
+    const metaName = rel.model;
+    const baseName = metaName.replace("Meta", "");
+
+    // Framework-provided metas (user, author, owner, company)
+    if (["user", "author", "owner", "company"].includes(baseName)) {
+      frameworkImports.add(metaName);
+      // Also add the type if it's a relationship field type
+      const typeName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+      if (parsed.entityType.relationshipFields.some((f) => f.type.includes(typeName))) {
+        frameworkImports.add(typeName);
+      }
+    } else {
+      // Feature-specific metas need separate imports
+      const metaImport = findMetaImport(parsed, metaName);
+      if (metaImport) {
+        featureImports.push(metaImport);
+      }
     }
   }
 
-  // Add entity type imports from original entity file (for relationship types like Company, User, Topic, etc.)
+  // Add relationship type imports from entity type definition
+  for (const field of parsed.entityType.relationshipFields) {
+    const typeName = field.type.replace("[]", "");
+    // Add framework types (Company, User)
+    if (["Company", "User"].includes(typeName)) {
+      frameworkImports.add(typeName);
+    }
+  }
+
+  // Build the imports array
+  const imports: string[] = [];
+
+  // Group 1: Single barrel import from framework
+  const frameworkImportList = Array.from(frameworkImports).sort();
+  imports.push(`import {\n  ${frameworkImportList.join(",\n  ")},\n} from "@carlonicora/nestjs-neo4jsonapi";`);
+
+  // Group 2: External type imports (from original entity imports that aren't framework)
   for (const imp of parsed.entityType.imports) {
-    // Include imports that reference entity types used in the type definition
-    if (
-      imp.includes("/entities/") &&
-      (imp.includes(".entity") || (!imp.includes(".meta") && !imp.includes(".model") && !imp.includes(".map")))
-    ) {
-      imports.push(imp);
+    if (imp.includes("@only35/shared") || (imp.includes("@") && !imp.includes("@carlonicora/nestjs-neo4jsonapi"))) {
+      externalImports.push(imp);
     }
   }
+  if (externalImports.length > 0) {
+    imports.push(...[...new Set(externalImports)]);
+  }
 
-  return [...new Set(imports)]; // Remove duplicates
+  // Group 3: Entity-specific imports (src/features/...)
+  for (const imp of parsed.entityType.imports) {
+    if (imp.includes("src/features/") && !imp.includes(".meta")) {
+      featureImports.push(imp);
+    }
+  }
+  if (featureImports.length > 0) {
+    imports.push(...[...new Set(featureImports)]);
+  }
+
+  // Group 4: Self-meta import (use entityName for file path, nodeName for variable name)
+  const metaName = `${meta.nodeName}Meta`;
+  const metaFilePath = entityName || meta.nodeName;
+  imports.push(`import { ${metaName} } from "./${metaFilePath}.meta";`);
+
+  return imports;
 }
 
 /**
@@ -362,6 +419,7 @@ function generateDescriptorCode(
   relationships: RelationshipConfig[],
 ): string {
   const descriptorName = `${meta.labelName}Descriptor`;
+  const metaName = `${meta.nodeName}Meta`;
 
   let code = `
 /**
@@ -371,11 +429,7 @@ function generateDescriptorCode(
  * Generates mapper, childrenTokens, and DataModelInterface automatically.
  */
 export const ${descriptorName} = defineEntity<${entityName}>()({
-  // Meta properties
-  type: "${meta.type}",
-  endpoint: "${meta.endpoint}",
-  nodeName: "${meta.nodeName}",
-  labelName: "${meta.labelName}",
+  ...${metaName},
 `;
 
   // Add fields
@@ -438,6 +492,29 @@ export type ${descriptorName}Type = typeof ${descriptorName};
 `;
 
   return code;
+}
+
+/**
+ * Generates the meta file content for an entity.
+ *
+ * Creates a standalone meta file matching the pattern:
+ * ```typescript
+ * import { DataMeta } from "@carlonicora/nestjs-neo4jsonapi";
+ * export const {entity}Meta: DataMeta = { type, endpoint, nodeName, labelName };
+ * ```
+ */
+export function generateMetaFile(meta: ParsedEntity["meta"]): string {
+  const metaName = `${meta.nodeName}Meta`;
+
+  return `import { DataMeta } from "@carlonicora/nestjs-neo4jsonapi";
+
+export const ${metaName}: DataMeta = {
+  type: "${meta.type}",
+  endpoint: "${meta.endpoint}",
+  nodeName: "${meta.nodeName}",
+  labelName: "${meta.labelName}",
+};
+`;
 }
 
 /**

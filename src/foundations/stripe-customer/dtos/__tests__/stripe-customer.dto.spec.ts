@@ -1,15 +1,8 @@
-import "reflect-metadata";
-import { validate } from "class-validator";
 import { plainToInstance } from "class-transformer";
-import {
-  StripeCustomerPostDTO,
-  StripeCustomerPostDataDTO,
-  StripeCustomerPostAttributesDTO,
-  StripeCustomerPutDTO,
-  StripeCustomerPutDataDTO,
-  StripeCustomerPutAttributesDTO,
-} from "../stripe-customer.dto";
+import { validate } from "class-validator";
+import "reflect-metadata";
 import { stripeCustomerMeta } from "../../entities/stripe-customer.meta";
+import { StripeCustomerPostDTO, StripeCustomerPutDTO } from "../stripe-customer.dto";
 
 describe("StripeCustomerPostDTO", () => {
   const validId = "550e8400-e29b-41d4-a716-446655440000";

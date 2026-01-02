@@ -1,3 +1,10 @@
+## [1.19.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.18.0...v1.19.0) (2026-01-02)
+
+### 🚀 Features
+
+* centralised tests with vite ([68b6001](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/68b60017429d3a921ab31437e526924627be4376))
+* centralised tests with vite ([1ab5faa](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/1ab5faafec6e7bfe98a7da1cc1cf2915c4e738e4))
+
 ## [1.18.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.17.0...v1.18.0) (2026-01-02)
 
 ### 🚀 Features

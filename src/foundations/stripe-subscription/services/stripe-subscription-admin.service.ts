@@ -11,6 +11,13 @@ import { StripeSubscriptionRepository } from "../repositories/stripe-subscriptio
 import { StripeSubscriptionModel } from "../entities/stripe-subscription.model";
 import { StripeSubscriptionStatus } from "../entities/stripe-subscription.entity";
 
+export interface CreateSubscriptionResult {
+  data: JsonApiDataInterface;
+  clientSecret: string | null;
+  paymentIntentId: string | null;
+  requiresAction: boolean;
+}
+
 /**
  * StripeSubscriptionAdminService
  *
@@ -133,7 +140,7 @@ export class StripeSubscriptionAdminService {
     paymentMethodId?: string;
     trialPeriodDays?: number;
     quantity?: number;
-  }): Promise<JsonApiDataInterface> {
+  }): Promise<CreateSubscriptionResult> {
     const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
       throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
@@ -168,6 +175,21 @@ export class StripeSubscriptionAdminService {
       },
     });
 
+    // Extract payment intent details for SCA confirmation
+    let clientSecret: string | null = null;
+    let paymentIntentId: string | null = null;
+    const latestInvoice = stripeSubscription.latest_invoice;
+    if (latestInvoice && typeof latestInvoice !== "string") {
+      const invoice = latestInvoice as Stripe.Invoice & { payment_intent?: string | Stripe.PaymentIntent | null };
+      const paymentIntent = invoice.payment_intent;
+      if (paymentIntent && typeof paymentIntent !== "string") {
+        clientSecret = paymentIntent.client_secret;
+        paymentIntentId = paymentIntent.id;
+      }
+    }
+
+    const requiresAction = stripeSubscription.status === "incomplete" && clientSecret !== null;
+
     const subscriptionItem = stripeSubscription.items.data[0];
     const subscription = await this.subscriptionRepository.create({
       stripeCustomerId: customer.id,
@@ -183,7 +205,14 @@ export class StripeSubscriptionAdminService {
       quantity: params.quantity ?? 1,
     });
 
-    return this.jsonApiService.buildSingle(StripeSubscriptionModel, subscription);
+    const data = await this.jsonApiService.buildSingle(StripeSubscriptionModel, subscription);
+
+    return {
+      data,
+      clientSecret,
+      paymentIntentId,
+      requiresAction,
+    };
   }
 
   /**

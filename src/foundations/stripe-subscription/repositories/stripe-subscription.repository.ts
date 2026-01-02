@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j";
+import { companyMeta } from "../../company";
 import { stripeCustomerMeta } from "../../stripe-customer/entities/stripe-customer.meta";
 import { stripePriceMeta } from "../../stripe-price/entities/stripe-price.meta";
 import { stripeProductMeta } from "../../stripe-product/entities/stripe-product.meta";
@@ -175,7 +176,8 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     const id = randomUUID();
 
     query.queryParams = {
-      id,
+      ...query.queryParams,
+      id: id,
       stripeCustomerId: params.stripeCustomerId,
       priceId: params.priceId,
       stripeSubscriptionId: params.stripeSubscriptionId,
@@ -189,7 +191,7 @@ export class StripeSubscriptionRepository implements OnModuleInit {
       quantity: params.quantity,
     };
 
-    query.query = `
+    query.query += `
       MATCH (${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {id: $stripeCustomerId})
       MATCH (${stripePriceMeta.nodeName}:${stripePriceMeta.labelName} {id: $priceId})-[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
       CREATE (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {
@@ -208,6 +210,8 @@ export class StripeSubscriptionRepository implements OnModuleInit {
       })
       CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName})
       CREATE (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripePriceMeta.nodeName})
+      CREATE (${stripeSubscriptionMeta.nodeName})-[:BELONGS_TO]->(${companyMeta.nodeName})
+      CREATE (${stripeSubscriptionMeta.nodeName})-[:CREATED_BY]->(currentUser)
       RETURN ${stripeSubscriptionMeta.nodeName}, ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}
     `;
 

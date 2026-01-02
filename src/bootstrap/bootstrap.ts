@@ -18,6 +18,7 @@ import { tracingSetup } from "../core/tracing/tracing.setup";
 import { createAppModule } from "./app.module.factory";
 import { BootstrapOptions } from "./bootstrap.options";
 import { defaultFastifyOptions, defaultMultipartOptions, getAppMode, getAppModeConfig } from "./defaults";
+import { setupRawBodyCapture } from "./raw-body.config";
 
 /**
  * Bootstrap the application with minimal configuration.
@@ -82,6 +83,9 @@ async function bootstrapAPI(AppModule: any, modeConfig: AppModeConfig): Promise<
 
   const configService = app.get(ConfigService<BaseConfigInterface>);
   const loggingService = app.get(AppLoggingService);
+
+  // Setup raw body capture for webhook routes (MUST be before route registration)
+  await setupRawBodyCapture(app);
 
   // Register multipart for file uploads
   await app.register(require("@fastify/multipart"), defaultMultipartOptions);

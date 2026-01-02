@@ -57,13 +57,22 @@ export class StripeSubscriptionController {
     @Res() reply: FastifyReply,
     @Body() body: StripeSubscriptionPostDTO,
   ) {
-    const response = await this.subscriptionService.createSubscription({
+    const result = await this.subscriptionService.createSubscription({
       companyId: req.user.companyId,
       priceId: body.data.relationships.stripePrice.data.id,
       paymentMethodId: body.data.attributes?.paymentMethodId,
       trialPeriodDays: body.data.attributes?.trialPeriodDays,
       quantity: body.data.attributes?.quantity,
     });
+
+    const response = {
+      ...result.data,
+      meta: {
+        clientSecret: result.clientSecret,
+        paymentIntentId: result.paymentIntentId,
+        requiresAction: result.requiresAction,
+      },
+    };
 
     reply.status(HttpStatus.CREATED).send(response);
   }
@@ -162,5 +171,39 @@ export class StripeSubscriptionController {
     });
 
     reply.send(response);
+  }
+
+  @Post(`${stripeSubscriptionMeta.endpoint}/:subscriptionId/sync`)
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
+  async syncSubscription(
+    @Req() req: AuthenticatedRequest,
+    @Res() reply: FastifyReply,
+    @Param("subscriptionId") subscriptionId: string,
+  ) {
+    // First get the subscription to verify ownership and get stripe ID
+    const subscription = await this.subscriptionService.getSubscription({
+      id: subscriptionId,
+      companyId: req.user.companyId,
+    });
+
+    // Extract stripeSubscriptionId from the response
+    const stripeSubscriptionId = (subscription as any).data?.attributes?.stripeSubscriptionId;
+    if (!stripeSubscriptionId) {
+      reply.status(HttpStatus.BAD_REQUEST).send({ error: "Subscription has no Stripe ID" });
+      return;
+    }
+
+    await this.subscriptionService.syncSubscriptionFromStripe({
+      stripeSubscriptionId,
+    });
+
+    // Return the updated subscription
+    const updatedSubscription = await this.subscriptionService.getSubscription({
+      id: subscriptionId,
+      companyId: req.user.companyId,
+    });
+
+    reply.send(updatedSubscription);
   }
 }

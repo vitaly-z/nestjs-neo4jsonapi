@@ -1,12 +1,14 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import Stripe from "stripe";
+import { QueueId } from "../../../config/enums/queue.id";
 import { AppLoggingService } from "../../../core/logging";
-import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
-import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
-import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
+import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
+import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
+import { StripeService } from "../../stripe/services/stripe.service";
+import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
 
 export interface StripeWebhookJobData {
@@ -16,7 +18,7 @@ export interface StripeWebhookJobData {
   payload: Record<string, any>;
 }
 
-@Processor(`${process.env.QUEUE}_billing_webhook`, { concurrency: 5, lockDuration: 1000 * 60 })
+@Processor(QueueId.BILLING_WEBHOOK, { concurrency: 5, lockDuration: 1000 * 60 })
 export class StripeWebhookProcessor extends WorkerHost {
   constructor(
     private readonly stripeWebhookEventRepository: StripeWebhookEventRepository,
@@ -25,6 +27,7 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly subscriptionRepository: StripeSubscriptionRepository,
     private readonly stripeInvoiceRepository: StripeInvoiceRepository,
     private readonly notificationService: StripeWebhookNotificationService,
+    private readonly stripeService: StripeService,
     private readonly logger: AppLoggingService,
   ) {
     super();
@@ -49,6 +52,8 @@ export class StripeWebhookProcessor extends WorkerHost {
 
   async process(job: Job<StripeWebhookJobData>): Promise<void> {
     const { webhookEventId, eventType, payload } = job.data;
+
+    console.log("Processing webhook event:", eventType, "with payload:", payload, "webhookEventId:", webhookEventId);
 
     try {
       await this.stripeWebhookEventRepository.updateStatus({
@@ -198,6 +203,42 @@ export class StripeWebhookProcessor extends WorkerHost {
   }
 
   private async handlePaymentIntentEvent(eventType: string, paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    if (eventType === "payment_intent.succeeded") {
+      // When payment succeeds, sync any related subscription to update its status
+      // PaymentIntent metadata or invoice relationship can tell us which subscription
+      const paymentIntentData = paymentIntent as unknown as Record<string, unknown>;
+      const invoiceId =
+        typeof paymentIntentData.invoice === "string"
+          ? paymentIntentData.invoice
+          : (paymentIntentData.invoice as { id?: string })?.id;
+
+      if (invoiceId) {
+        // Fetch the invoice from Stripe to get the subscription ID
+        try {
+          const stripe = this.stripeService.getClient();
+          const stripeInvoice = await stripe.invoices.retrieve(invoiceId);
+          // In Stripe v20, subscription is nested under parent.subscription_details
+          const subscriptionDetails = stripeInvoice.parent?.subscription_details;
+          if (subscriptionDetails?.subscription) {
+            const subscriptionId =
+              typeof subscriptionDetails.subscription === "string"
+                ? subscriptionDetails.subscription
+                : subscriptionDetails.subscription.id;
+
+            this.logger.debug(`Payment succeeded for subscription ${subscriptionId} - syncing from Stripe`);
+            await this.subscriptionService.syncSubscriptionFromStripe({
+              stripeSubscriptionId: subscriptionId,
+            });
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch invoice ${invoiceId} from Stripe: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+        }
+      }
+      return;
+    }
+
     if (eventType === "payment_intent.payment_failed") {
       this.logger.warn(`Payment intent ${paymentIntent.id} failed: ${paymentIntent.last_payment_error?.message}`);
 

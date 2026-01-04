@@ -2,50 +2,48 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Update features.modules.ts to register the new module
- *
- * @param params - Module information
+ * Convert kebab-case to PascalCase
  */
-export function registerModule(params: {
-  moduleName: string;
-  targetDir: string;
-  kebabName: string;
-  dryRun?: boolean;
+function toPascalCase(str: string): string {
+  return str
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+}
+
+/**
+ * Register an import and add to @Module imports array in a module file
+ */
+function addToModuleFile(params: {
+  moduleFilePath: string;
+  moduleClassName: string;
+  importPath: string;
+  dryRun: boolean;
 }): void {
-  const { moduleName, targetDir, kebabName, dryRun = false } = params;
+  const { moduleFilePath, moduleClassName, importPath, dryRun } = params;
 
-  // Determine the parent module file based on targetDir
-  let parentModulePath: string;
-  if (targetDir === "features") {
-    parentModulePath = path.resolve(process.cwd(), "apps/api/src/features/features.modules.ts");
-  } else if (targetDir === "foundations") {
-    parentModulePath = path.resolve(process.cwd(), "apps/api/src/foundations/foundations.modules.ts");
-  } else {
-    throw new Error(`Unknown target directory: ${targetDir}`);
-  }
+  const fullPath = path.resolve(process.cwd(), moduleFilePath);
 
-  // Check if parent module file exists
-  if (!fs.existsSync(parentModulePath)) {
-    console.warn(`⚠️  Warning: Parent module file not found: ${parentModulePath}`);
-    console.warn(`   You will need to manually register ${moduleName}Module`);
+  // Check if module file exists
+  if (!fs.existsSync(fullPath)) {
+    console.warn(`⚠️  Warning: Module file not found: ${fullPath}`);
+    console.warn(`   You will need to manually register ${moduleClassName}`);
     return;
   }
 
-  let content = fs.readFileSync(parentModulePath, "utf-8");
+  let content = fs.readFileSync(fullPath, "utf-8");
 
   // Build import statement
-  const moduleClassName = `${moduleName}Module`;
-  const importPath = `src/${targetDir}/${kebabName}/${kebabName}.module`;
   const newImport = `import { ${moduleClassName} } from "${importPath}";\n`;
 
   // Check if already imported
   if (content.includes(`import { ${moduleClassName} }`)) {
-    console.log(`ℹ️  ${moduleClassName} is already imported in ${parentModulePath}`);
+    console.log(`ℹ️  ${moduleClassName} is already imported in ${fullPath}`);
     return;
   }
 
   if (dryRun) {
-    console.log(`[DRY RUN] Would add import to ${parentModulePath}:`);
+    console.log(`[DRY RUN] Would add import to ${fullPath}:`);
     console.log(`  ${newImport.trim()}`);
     console.log(`[DRY RUN] Would add ${moduleClassName} to imports array`);
     return;
@@ -56,7 +54,7 @@ export function registerModule(params: {
   const imports = [...content.matchAll(importRegex)];
 
   if (imports.length === 0) {
-    throw new Error("Could not find any import statements in parent module file");
+    throw new Error(`Could not find any import statements in ${fullPath}`);
   }
 
   const lastImport = imports[imports.length - 1];
@@ -79,7 +77,7 @@ export function registerModule(params: {
   const match = content.match(moduleImportsRegex);
 
   if (!match) {
-    throw new Error("Could not find @Module imports array");
+    throw new Error(`Could not find @Module imports array in ${fullPath}`);
   }
 
   // Parse existing modules
@@ -98,6 +96,109 @@ export function registerModule(params: {
   content = content.replace(moduleImportsRegex, newImportsArray);
 
   // Write back
-  fs.writeFileSync(parentModulePath, content, "utf-8");
-  console.log(`✓ Registered ${moduleClassName} in ${parentModulePath}`);
+  fs.writeFileSync(fullPath, content, "utf-8");
+  console.log(`✓ Registered ${moduleClassName} in ${fullPath}`);
+}
+
+/**
+ * Create a new subfolder modules file
+ */
+function createSubfolderModulesFile(params: {
+  subfolderName: string;
+  targetDir: string;
+  dryRun: boolean;
+}): void {
+  const { subfolderName, targetDir, dryRun } = params;
+  const pascalName = toPascalCase(subfolderName);
+
+  const content = `import { Module } from "@nestjs/common";
+
+@Module({
+  imports: [],
+})
+export class ${pascalName}Modules {}
+`;
+
+  const filePath = path.resolve(process.cwd(), `apps/api/src/${targetDir}/${subfolderName}.modules.ts`);
+
+  if (dryRun) {
+    console.log(`[DRY RUN] Would create ${filePath}`);
+    return;
+  }
+
+  // Ensure the directory exists
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  fs.writeFileSync(filePath, content, "utf-8");
+  console.log(`✓ Created ${filePath}`);
+}
+
+/**
+ * Update parent modules.ts to register the new module
+ *
+ * @param params - Module information
+ */
+export function registerModule(params: {
+  moduleName: string;
+  targetDir: string;
+  kebabName: string;
+  dryRun?: boolean;
+}): void {
+  const { moduleName, targetDir, kebabName, dryRun = false } = params;
+
+  const segments = targetDir.split("/");
+  const baseDir = segments[0]; // "features" or "foundations"
+
+  if (!["features", "foundations"].includes(baseDir)) {
+    throw new Error(`Unknown target directory: ${targetDir}. Must start with "features" or "foundations"`);
+  }
+
+  const moduleClassName = `${moduleName}Module`;
+  const importPath = `src/${targetDir}/${kebabName}/${kebabName}.module`;
+
+  if (segments.length === 1) {
+    // Simple case: "features" or "foundations" → register in top-level
+    addToModuleFile({
+      moduleFilePath: `apps/api/src/${baseDir}/${baseDir}.modules.ts`,
+      moduleClassName,
+      importPath,
+      dryRun,
+    });
+  } else {
+    // Subdirectory case: "features/customer-management" → register in subfolder
+    const subfolderName = segments[1]; // e.g., "customer-management"
+    const subfolderModulePath = `apps/api/src/${targetDir}/${subfolderName}.modules.ts`;
+    const fullSubfolderPath = path.resolve(process.cwd(), subfolderModulePath);
+
+    // Check if subfolder's .modules.ts exists
+    if (!fs.existsSync(fullSubfolderPath)) {
+      // Create the subfolder's .modules.ts file
+      createSubfolderModulesFile({
+        subfolderName,
+        targetDir,
+        dryRun,
+      });
+
+      // Register the new subfolder modules in the parent
+      const parentModulePath = `apps/api/src/${baseDir}/${baseDir}.modules.ts`;
+      const pascalSubfolderName = toPascalCase(subfolderName);
+      addToModuleFile({
+        moduleFilePath: parentModulePath,
+        moduleClassName: `${pascalSubfolderName}Modules`,
+        importPath: `src/${targetDir}/${subfolderName}.modules`,
+        dryRun,
+      });
+    }
+
+    // Register the new module in the subfolder's .modules.ts
+    addToModuleFile({
+      moduleFilePath: subfolderModulePath,
+      moduleClassName,
+      importPath,
+      dryRun,
+    });
+  }
 }

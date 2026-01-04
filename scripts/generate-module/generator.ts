@@ -94,7 +94,7 @@ export async function generateModule(options: GenerateModuleOptions): Promise<vo
     labelName: names.pascalCase,
     nodeName: names.camelCase,
     isCompanyScoped: true, // Default: true
-    targetDir: jsonSchema.targetDir as "features" | "foundations",
+    targetDir: jsonSchema.targetDir,
     fields,
     relationships,
     libraryImports: [],

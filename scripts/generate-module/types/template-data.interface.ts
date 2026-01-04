@@ -109,7 +109,7 @@ export interface TemplateData {
 
   // Configuration
   isCompanyScoped: boolean;
-  targetDir: "features" | "foundations";
+  targetDir: string;
 
   // Fields
   fields: TemplateField[];

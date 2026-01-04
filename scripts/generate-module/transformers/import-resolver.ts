@@ -103,8 +103,10 @@ export function resolveImportPath(params: {
 
   // Different directories: go up to src, then down to target
   // From: src/features/comment → need to go up 2 levels to reach src
+  // From: src/features/customer-management/moodboard → need to go up 3 levels to reach src
   // To: src/foundations/user → then go down into foundations/user
-  const upLevels = 2; // Always 2: one for module folder, one for directory folder
+  // upLevels = 1 (module folder) + number of segments in fromDir
+  const upLevels = 1 + fromDir.split("/").length;
   const up = "../".repeat(upLevels);
   const down = `${toDir}/${toModule}`;
 

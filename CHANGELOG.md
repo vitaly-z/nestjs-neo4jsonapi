@@ -1,3 +1,9 @@
+## [1.22.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.21.0...v1.22.0) (2026-01-06)
+
+### 🚀 Features
+
+* add error logging improvements ([83cf67e](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/83cf67e1522afdd6674625c5d666bef385e9f17b))
+
 ## [1.21.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.20.0...v1.21.0) (2026-01-06)
 
 ### 🚀 Features

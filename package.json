@@ -182,6 +182,7 @@
     "@nestjs/platform-fastify": "^11.1.9",
     "@nestjs/platform-socket.io": "^11.1.9",
     "@nestjs/schedule": "^6.0.1",
+    "@nestjs/terminus": "^11.0.0",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.9",
     "nestjs-cls": "^6.1.0",

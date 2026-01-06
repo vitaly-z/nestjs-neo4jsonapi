@@ -35,5 +35,8 @@ export * from "./jsonapi";
 // Tracing module (exports TracingContext)
 export * from "./tracing";
 
+// Health module for liveness/readiness probes
+export * from "./health";
+
 // Logging module (exports TracingServiceInterface but not TracingContext to avoid duplicates)
 export * from "./logging";

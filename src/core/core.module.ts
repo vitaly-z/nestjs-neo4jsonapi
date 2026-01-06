@@ -7,6 +7,7 @@ import { BaseConfigInterface, ConfigJwtInterface } from "../config/interfaces";
 // Import all core modules
 import { BlockNoteModule } from "./blocknote/blocknote.module";
 import { CacheModule } from "./cache/cache.module";
+import { HealthModule } from "./health/health.module";
 import { CorsModule } from "./cors/cors.module";
 import { DebugModule } from "./debug/debug.module";
 import { EmailModule } from "./email/email.module";
@@ -64,9 +65,11 @@ function getCoreModules(queueIds: string[] = []) {
     Neo4JModule,
     RedisModule,
     CacheModule,
-    // 3. Queue module - uses ConfigService for Redis, explicit queue IDs for registration
+    // 3. Health module - needs Neo4j and Redis for health checks
+    HealthModule,
+    // 4. Queue module - uses ConfigService for Redis, explicit queue IDs for registration
     QueueModule.forRootWithQueues(queueIds),
-    // 4. Services using external connections
+    // 5. Services using external connections
     EmailModule.forRoot(),
     WebsocketModule,
     LLMModule,
@@ -91,6 +94,7 @@ function getCoreModuleExports() {
     EmailModule,
     CorsModule,
     VersionModule,
+    HealthModule,
     WebsocketModule,
     LLMModule,
     BlockNoteModule,

@@ -13,6 +13,7 @@ A comprehensive NestJS foundation package providing JSON:API compliant APIs, Neo
 - [Company-User Model (B2B & B2C)](#company-user-model-b2b--b2c)
 - [Required Configuration Files](#required-configuration-files)
 - [Core Modules](#core-modules)
+- [Health Check Endpoints](#health-check-endpoints)
 - [Foundation Modules](#foundation-modules)
 - [AI Agents](#ai-agents)
 - [Security & Authentication](#security--authentication)
@@ -902,6 +903,120 @@ The library includes 18 core infrastructure modules:
 | `MigratorModule`  | Database migrations                              |
 | `AppModeModule`   | Application mode (API/Worker)                    |
 | `DebugModule`     | Debugging utilities                              |
+| `HealthModule`    | Health check endpoints for liveness/readiness    |
+
+## Health Check Endpoints
+
+The package includes built-in health check endpoints using `@nestjs/terminus` for container orchestration and load balancer integration. Rate limiting is automatically disabled for all health endpoints.
+
+### Endpoints
+
+| Endpoint | Purpose | Checks |
+|----------|---------|--------|
+| `GET /health` | Full health status | Neo4j, Redis, S3, Disk |
+| `GET /health/live` | Liveness probe | None (process running) |
+| `GET /health/ready` | Readiness probe | Neo4j, Redis |
+
+### Full Health Check: GET /health
+
+Returns detailed status of all dependencies. Use for monitoring dashboards.
+
+**Response when healthy (200 OK):**
+```json
+{
+  "status": "ok",
+  "info": {
+    "neo4j": { "status": "up", "message": "Neo4j connection healthy" },
+    "redis": { "status": "up", "message": "Redis connection healthy" },
+    "storage": { "status": "up", "message": "aws storage connection healthy" },
+    "disk": { "status": "up", "message": "Disk space healthy", "free": "50.00 GB" }
+  },
+  "error": {},
+  "details": { ... }
+}
+```
+
+### Liveness Probe: GET /health/live
+
+Indicates if the application process is running. Does NOT check external dependencies.
+
+**Use for Kubernetes livenessProbe:** If this fails, the container should be restarted.
+
+**Response (200 OK):**
+```json
+{
+  "status": "ok",
+  "info": {},
+  "error": {},
+  "details": {}
+}
+```
+
+### Readiness Probe: GET /health/ready
+
+Indicates if the application can accept traffic. Checks critical dependencies (Neo4j, Redis).
+
+**Use for Kubernetes readinessProbe:** If this fails, traffic should be routed elsewhere.
+
+**Response when healthy (200 OK):**
+```json
+{
+  "status": "ok",
+  "info": {
+    "neo4j": { "status": "up", "message": "Neo4j connection healthy" },
+    "redis": { "status": "up", "message": "Redis connection healthy" }
+  },
+  "error": {},
+  "details": { ... }
+}
+```
+
+**Response when unhealthy (503 Service Unavailable):**
+```json
+{
+  "status": "error",
+  "info": {
+    "redis": { "status": "up", "message": "Redis connection healthy" }
+  },
+  "error": {
+    "neo4j": { "status": "down", "message": "Connection refused" }
+  },
+  "details": { ... }
+}
+```
+
+### Kubernetes Configuration Example
+
+```yaml
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: api
+    livenessProbe:
+      httpGet:
+        path: /health/live
+        port: 3000
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /health/ready
+        port: 3000
+      initialDelaySeconds: 5
+      periodSeconds: 5
+```
+
+### Health Indicators
+
+The module includes four health indicators:
+
+| Indicator | Timeout | What it checks |
+|-----------|---------|----------------|
+| `Neo4jHealthIndicator` | 3s | Executes `RETURN 1` query |
+| `RedisHealthIndicator` | 3s | Connection status + PING |
+| `S3HealthIndicator` | 5s | Bucket access (HeadBucket) |
+| `DiskHealthIndicator` | - | Free space ≥ 1GB or 10% |
 
 ## Foundation Modules
 

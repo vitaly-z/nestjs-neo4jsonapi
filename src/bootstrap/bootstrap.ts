@@ -2,9 +2,11 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory, Reflector } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { EventEmitter } from "stream";
 
 import { HttpExceptionFilter } from "../common/filters/http-exception.filter";
+import { OpenApiService } from "../openapi/module/openapi.service";
 import { BaseConfigInterface, ConfigApiInterface, ConfigRateLimitInterface } from "../config";
 import { AppMode, AppModeConfig } from "../core/appmode/constants/app.mode.constant";
 import { CacheInterceptor } from "../core/cache/interceptors/cache.interceptor";
@@ -63,7 +65,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
     if (mode === AppMode.WORKER) {
       await bootstrapWorker(AppModule, modeConfig);
     } else {
-      await bootstrapAPI(AppModule, modeConfig);
+      await bootstrapAPI(AppModule, modeConfig, options);
     }
   } catch (error) {
     console.error("Failed to start application:", error);
@@ -74,7 +76,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
 /**
  * Bootstrap the application in API mode with Fastify
  */
-async function bootstrapAPI(AppModule: any, modeConfig: AppModeConfig): Promise<void> {
+async function bootstrapAPI(AppModule: any, modeConfig: AppModeConfig, options: BootstrapOptions): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot(modeConfig),
     new FastifyAdapter(defaultFastifyOptions),
@@ -123,6 +125,9 @@ async function bootstrapAPI(AppModule: any, modeConfig: AppModeConfig): Promise<
   const corsService = app.get(CorsService);
   corsService.validateConfiguration();
   app.enableCors(corsService.getCorsConfiguration());
+
+  // Setup OpenAPI documentation
+  await setupOpenApiDocs(app, options, loggingService);
 
   // Start server
   const port = configService.get<ConfigApiInterface>("api").port;
@@ -185,6 +190,114 @@ function setupFastifyLoggingHook(app: NestFastifyApplication, loggingService: Ap
       }
       return payload;
     });
+}
+
+/**
+ * Setup OpenAPI documentation (Swagger UI and/or Redoc)
+ */
+async function setupOpenApiDocs(
+  app: NestFastifyApplication,
+  options: BootstrapOptions,
+  loggingService: AppLoggingService,
+): Promise<void> {
+  const openApiConfig = options.openApi;
+  if (!openApiConfig?.enableSwagger && !openApiConfig?.enableRedoc) {
+    return;
+  }
+
+  const {
+    title = "API Documentation",
+    description = "Auto-generated API documentation",
+    version = "1.0.0",
+    bearerAuth = true,
+    contactEmail,
+    license,
+    licenseUrl,
+    swaggerPath = "/api-docs",
+    redocPath = "/docs",
+  } = openApiConfig;
+
+  // Build OpenAPI document
+  const documentBuilder = new DocumentBuilder().setTitle(title).setDescription(description).setVersion(version);
+
+  if (bearerAuth) {
+    documentBuilder.addBearerAuth(
+      {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Enter your JWT token",
+      },
+      "JWT-auth",
+    );
+  }
+
+  if (contactEmail) {
+    documentBuilder.setContact("API Support", "", contactEmail);
+  }
+
+  if (license) {
+    documentBuilder.setLicense(license, licenseUrl || "");
+  }
+
+  const config = documentBuilder.build();
+
+  // Get schemas from OpenApiService
+  let extraSchemas: Record<string, any> = {};
+  try {
+    const openApiService = app.get(OpenApiService);
+
+    // Register entity descriptors if provided
+    if (openApiConfig.entityDescriptors && openApiConfig.entityDescriptors.length > 0) {
+      openApiService.registerEntities(openApiConfig.entityDescriptors);
+      loggingService.log(`Registered ${openApiConfig.entityDescriptors.length} entities with OpenAPI`);
+    }
+
+    extraSchemas = openApiService.getAllSchemas();
+  } catch {
+    loggingService.warn("OpenApiService not available, using base schemas only");
+  }
+
+  // Create document with extra schemas
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [],
+  });
+
+  // Merge extra schemas into components
+  document.components = document.components || {};
+  document.components.schemas = {
+    ...document.components.schemas,
+    ...extraSchemas,
+  };
+
+  // Setup Swagger UI
+  if (openApiConfig.enableSwagger) {
+    SwaggerModule.setup(swaggerPath, app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        docExpansion: "none",
+        filter: true,
+        showRequestDuration: true,
+      },
+    });
+    loggingService.log(`Swagger UI available at ${swaggerPath}`);
+  }
+
+  // Setup Redoc
+  if (openApiConfig.enableRedoc) {
+    try {
+      const { RedocModule } = await import("nestjs-redoc");
+      await RedocModule.setup(redocPath, app as any, document, {
+        title: title,
+        sortPropsAlphabetically: true,
+        hideDownloadButton: false,
+        hideHostname: false,
+      });
+      loggingService.log(`Redoc available at ${redocPath}`);
+    } catch {
+      loggingService.warn("Failed to setup Redoc. Make sure nestjs-redoc is installed.");
+    }
+  }
 }
 
 /**

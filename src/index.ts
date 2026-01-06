@@ -21,3 +21,6 @@ export * from "./agents";
 
 // Bootstrap utilities
 export * from "./bootstrap";
+
+// OpenAPI module exports
+export * from "./openapi";

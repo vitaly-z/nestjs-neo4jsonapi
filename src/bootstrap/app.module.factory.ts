@@ -16,6 +16,7 @@ import { AppModeModule } from "../core/appmode/app.mode.module";
 import { AppModeConfig } from "../core/appmode/constants/app.mode.constant";
 import { CoreModule } from "../core/core.module";
 import { FoundationsModule } from "../foundations/foundations.modules";
+import { OpenApiModule } from "../openapi/module/openapi.module";
 import { BootstrapOptions } from "./bootstrap.options";
 
 /**
@@ -119,6 +120,9 @@ export function createAppModule(options: BootstrapOptions): Type<any> {
 
           // Library's AI agents (prompts configured via baseConfig.prompts)
           AgentsModule,
+
+          // OpenAPI module for Swagger/Redoc documentation
+          OpenApiModule,
 
           // User's app-specific modules (MUST be before NecordModule so Necord can discover handlers)
           ...options.appModules,

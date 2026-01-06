@@ -46,7 +46,7 @@ export { AppMode, AppModeConfig };
 // Bootstrap function and options
 export { createAppModule } from "./app.module.factory";
 export { bootstrap } from "./bootstrap";
-export { BootstrapOptions, I18nOptions } from "./bootstrap.options";
+export { BootstrapOptions, I18nOptions, OpenApiOptions } from "./bootstrap.options";
 
 // Re-export defaults (functions and constants)
 export { defaultFastifyOptions, defaultMultipartOptions, getAppMode, getAppModeConfig } from "./defaults";

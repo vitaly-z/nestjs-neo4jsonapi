@@ -1,4 +1,5 @@
 import { DynamicModule, Type } from "@nestjs/common";
+import { EntityDescriptor, RelationshipDef } from "../common/interfaces/entity.schema.interface";
 import { ContentExtensionConfig } from "../foundations/content/interfaces/content.extension.interface";
 
 /**
@@ -58,4 +59,52 @@ export interface BootstrapOptions {
    * ```
    */
   contentExtension?: ContentExtensionConfig;
+
+  /**
+   * OpenAPI documentation configuration.
+   * When provided, sets up Swagger UI and/or Redoc documentation endpoints.
+   *
+   * @example
+   * ```typescript
+   * openApi: {
+   *   enableSwagger: true,
+   *   swaggerPath: '/api-docs',
+   *   enableRedoc: true,
+   *   redocPath: '/docs',
+   *   title: 'My API',
+   *   version: '1.0.0',
+   * }
+   * ```
+   */
+  openApi?: OpenApiOptions;
+}
+
+/**
+ * OpenAPI documentation options
+ */
+export interface OpenApiOptions {
+  /** Enable Swagger UI endpoint (default: false) */
+  enableSwagger?: boolean;
+  /** Path for Swagger UI (default: '/api-docs') */
+  swaggerPath?: string;
+  /** Enable Redoc endpoint (default: false) */
+  enableRedoc?: boolean;
+  /** Path for Redoc (default: '/docs') */
+  redocPath?: string;
+  /** API documentation title */
+  title?: string;
+  /** API documentation description */
+  description?: string;
+  /** API version */
+  version?: string;
+  /** Enable JWT Bearer authentication in docs (default: true) */
+  bearerAuth?: boolean;
+  /** Contact email for API */
+  contactEmail?: string;
+  /** License name */
+  license?: string;
+  /** License URL */
+  licenseUrl?: string;
+  /** Entity descriptors to register for OpenAPI schema generation */
+  entityDescriptors?: EntityDescriptor<any, Record<string, RelationshipDef>>[];
 }

@@ -94,8 +94,8 @@ export class PptxService {
 
   async extractPptxContent(pptxPath: string): Promise<string> {
     try {
-      const data = await officeParser.parseOfficeAsync(pptxPath, { ignoreNotes: false });
-      return data || "";
+      const ast = await officeParser.parseOffice(pptxPath, { ignoreNotes: false });
+      return ast?.toText() || "";
     } catch (error) {
       console.error("💥 PPTX SERVICE - Error extracting PPTX content:", error);
       return "";

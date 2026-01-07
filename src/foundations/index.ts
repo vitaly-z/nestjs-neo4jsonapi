@@ -19,6 +19,7 @@ export * from "./feature";
 export * from "./keyconcept";
 export * from "./module";
 export * from "./notification";
+export * from "./oauth";
 export * from "./push";
 export * from "./relevancy";
 export * from "./role";

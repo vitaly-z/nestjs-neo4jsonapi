@@ -12,6 +12,7 @@ import { FeatureModule } from "./feature/feature.module";
 import { KeyConceptModule } from "./keyconcept/keyconcept.module";
 import { ModuleModule } from "./module/module.module";
 import { NotificationModule } from "./notification/notification.module";
+import { OAuthModule } from "./oauth/oauth.module";
 import { PushModule } from "./push/push.module";
 import { RelevancyModule } from "./relevancy/relevancy.module";
 import { RoleModule } from "./role/role.module";
@@ -50,6 +51,7 @@ const STATIC_FOUNDATION_MODULES = [
   KeyConceptModule,
   ModuleModule,
   NotificationModule,
+  OAuthModule,
   PushModule,
   RelevancyModule,
   RoleModule,

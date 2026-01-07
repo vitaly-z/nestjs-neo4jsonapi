@@ -227,6 +227,14 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       token: process.env.DISCORD_TOKEN || "",
       devGuildId: process.env.DISCORD_DEV_GUILD_ID || "",
     },
+    oauth: {
+      enabled: process.env.OAUTH_ENABLED === "true",
+      authorizationCodeLifetime: parseInt(process.env.OAUTH_AUTHORIZATION_CODE_LIFETIME || "600"),
+      accessTokenLifetime: parseInt(process.env.OAUTH_ACCESS_TOKEN_LIFETIME || "3600"),
+      refreshTokenLifetime: parseInt(process.env.OAUTH_REFRESH_TOKEN_LIFETIME || "604800"),
+      requirePkceForPublicClients: process.env.OAUTH_REQUIRE_PKCE_FOR_PUBLIC_CLIENTS !== "false",
+      rotateRefreshTokens: process.env.OAUTH_ROTATE_REFRESH_TOKENS !== "false",
+    },
     auth: {
       allowRegistration: process.env.ALLOW_REGISTRATION !== "false",
     },

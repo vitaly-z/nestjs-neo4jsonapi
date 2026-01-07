@@ -14,6 +14,7 @@ import { ConfigJobNamesInterface } from "./config.job.names.interface";
 import { ConfigJwtInterface } from "./config.jwt.interface";
 import { ConfigLoggingInterface } from "./config.logging.interface";
 import { ConfigNeo4jInterface } from "./config.neo4j.interface";
+import { ConfigOAuthInterface } from "./config.oauth.interface";
 import { ConfigPromptsInterface } from "./config.prompts.interface";
 import { ConfigRateLimitInterface } from "./config.ratelimit.interface";
 import { ConfigRedisInterface } from "./config.redis.interface";
@@ -46,4 +47,5 @@ export interface BaseConfigInterface {
   contentTypes: ConfigContentTypesInterface;
   jobNames: ConfigJobNamesInterface;
   discord: ConfigDiscordInterface;
+  oauth: ConfigOAuthInterface;
 }

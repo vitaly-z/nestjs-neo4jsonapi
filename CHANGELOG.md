@@ -1,3 +1,9 @@
+## [1.24.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.23.3...v1.24.0) (2026-01-07)
+
+### 🚀 Features
+
+* add OAuth support ([7b840b0](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/7b840b00f999c20047f1d223b03420e73610fa74))
+
 ## [1.23.3](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.23.2...v1.23.3) (2026-01-07)
 
 ### 🐛 Bug Fixes

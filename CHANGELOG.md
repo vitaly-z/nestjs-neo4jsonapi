@@ -1,3 +1,13 @@
+## [1.23.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.23.0...v1.23.1) (2026-01-07)
+
+### 🐛 Bug Fixes
+
+* ensure record key existence before accessing field value ([56a31b1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/56a31b1b8a0af197754ecf7f12599440367604a0))
+
+### 📦 Code Refactoring
+
+* remove unused import of CypherType in example generator utility ([81bbba9](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/81bbba98afe1a72d88a223e58b56c9a2271a884f))
+
 ## [1.23.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.22.0...v1.23.0) (2026-01-06)
 
 ### 🚀 Features

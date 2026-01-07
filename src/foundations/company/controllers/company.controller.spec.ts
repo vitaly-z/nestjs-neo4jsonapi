@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Mock problematic modules before any imports
 vi.mock("../../../foundations/chunker/chunker.module", () => ({
   ChunkerModule: class {},
@@ -22,7 +22,7 @@ vi.mock("@carlonicora/nestjs-neo4jsonapi", async () => {
 
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { SystemRoles, RoleId } from "../../../common/constants/system.roles";
+import { RoleId } from "../../../common/constants/system.roles";
 // TODO: App must define its own RoleId extending SystemRoles
 import { FastifyReply } from "fastify";
 import { AdminJwtAuthGuard } from "../../../common/guards/jwt.auth.admin.guard";
@@ -30,7 +30,6 @@ import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { CacheService } from "../../../core/cache/services/cache.service";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
-import { CompanyLicensePutDTO } from "../dtos/company.license.put.dto";
 import { CompanyPostDTO } from "../dtos/company.post.dto";
 import { CompanyPutDTO } from "../dtos/company.put.dto";
 import { companyMeta } from "../entities/company.meta";
@@ -493,85 +492,6 @@ describe("CompanyController", () => {
       });
       expect(mockReply.send).toHaveBeenCalledWith();
       expect(cacheService.invalidateByElement).toHaveBeenCalledWith(companyMeta.endpoint, MOCK_COMPANY_ID);
-    });
-  });
-
-  describe("activateLicense", () => {
-    const mockLicensePutDTO: CompanyLicensePutDTO = {
-      data: {
-        type: "companies",
-        id: MOCK_COMPANY_ID,
-        attributes: {
-          license: "test-license-key",
-          privateKey: "test-private-key",
-        },
-      },
-      included: [],
-    };
-
-    it("should activate license when user is administrator", async () => {
-      const mockRequest = { user: mockAdminUser } as AuthenticatedRequest;
-      companyService.activateLicense.mockResolvedValue(mockServiceResponse);
-      cacheService.invalidateByType.mockResolvedValue();
-
-      await controller.activateLicense(mockRequest, mockReply, MOCK_COMPANY_ID, mockLicensePutDTO);
-
-      expect(companyService.activateLicense).toHaveBeenCalledWith({
-        companyId: MOCK_COMPANY_ID,
-        data: mockLicensePutDTO.data,
-      });
-      expect(mockReply.send).toHaveBeenCalledWith(mockServiceResponse);
-      expect(cacheService.invalidateByType).toHaveBeenCalledWith(companyMeta.endpoint);
-    });
-
-    it("should activate license when user is company administrator of same company", async () => {
-      const mockRequest = { user: mockCompanyAdminUser } as AuthenticatedRequest;
-      companyService.activateLicense.mockResolvedValue(mockServiceResponse);
-      cacheService.invalidateByType.mockResolvedValue();
-
-      await controller.activateLicense(mockRequest, mockReply, MOCK_COMPANY_ID, mockLicensePutDTO);
-
-      expect(companyService.activateLicense).toHaveBeenCalledWith({
-        companyId: MOCK_COMPANY_ID,
-        data: mockLicensePutDTO.data,
-      });
-      expect(mockReply.send).toHaveBeenCalledWith(mockServiceResponse);
-      expect(cacheService.invalidateByType).toHaveBeenCalledWith(companyMeta.endpoint);
-    });
-
-    it("should handle service errors during license activation", async () => {
-      const mockRequest = { user: mockAdminUser } as AuthenticatedRequest;
-      const serviceError = new Error("License activation failed");
-      companyService.activateLicense.mockRejectedValue(serviceError);
-
-      await expect(
-        controller.activateLicense(mockRequest, mockReply, MOCK_COMPANY_ID, mockLicensePutDTO),
-      ).rejects.toThrow("License activation failed");
-
-      expect(companyService.activateLicense).toHaveBeenCalledWith({
-        companyId: MOCK_COMPANY_ID,
-        data: mockLicensePutDTO.data,
-      });
-      expect(mockReply.send).not.toHaveBeenCalled();
-      expect(cacheService.invalidateByType).not.toHaveBeenCalled();
-    });
-
-    it("should handle cache invalidation errors", async () => {
-      const mockRequest = { user: mockAdminUser } as AuthenticatedRequest;
-      const cacheError = new Error("Cache invalidation failed");
-      companyService.activateLicense.mockResolvedValue(mockServiceResponse);
-      cacheService.invalidateByType.mockRejectedValue(cacheError);
-
-      await expect(
-        controller.activateLicense(mockRequest, mockReply, MOCK_COMPANY_ID, mockLicensePutDTO),
-      ).rejects.toThrow("Cache invalidation failed");
-
-      expect(companyService.activateLicense).toHaveBeenCalledWith({
-        companyId: MOCK_COMPANY_ID,
-        data: mockLicensePutDTO.data,
-      });
-      expect(mockReply.send).toHaveBeenCalledWith(mockServiceResponse);
-      expect(cacheService.invalidateByType).toHaveBeenCalledWith(companyMeta.endpoint);
     });
   });
 

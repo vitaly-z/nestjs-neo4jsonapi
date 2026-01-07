@@ -11,8 +11,6 @@ export type Company = Entity & {
   availableTokens: number;
   configurations?: string;
 
-  licenseExpirationDate?: Date;
-
   feature: Feature[];
   module: Module[];
   configuration?: any;

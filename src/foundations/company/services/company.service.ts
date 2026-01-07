@@ -1,9 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import axios from "axios";
 import { Queue } from "bullmq";
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 import { ClsService } from "nestjs-cls";
 import { QueueId } from "../../../config/enums/queue.id";
 import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.data.interface";
@@ -11,15 +9,12 @@ import { JsonApiPaginator } from "../../../core/jsonapi/serialisers/jsonapi.pagi
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { VersionService } from "../../../core/version/services/version.service";
-import { CompanyLicensePutDataDTO } from "../../company/dtos/company.license.put.dto";
 import { CompanyPostDataDTO } from "../../company/dtos/company.post.dto";
 import { CompanyPutDataDTO } from "../../company/dtos/company.put.dto";
 import { Company } from "../../company/entities/company.entity";
 import { CompanyModel } from "../../company/entities/company.model";
 import { CompanyRepository } from "../../company/repositories/company.repository";
 import { CompanyConfigurationsPutDataDTO } from "../dtos/company.configurations.put.dto";
-
-const LICENSE_SERVICE_URL = "http://localhost:3300/licenses/:installationId/validate";
 
 @Injectable()
 export class CompanyService {
@@ -147,98 +142,6 @@ export class CompanyService {
       const company = await this.companyRepository.findSingle();
       if (!company) throw new HttpException(`Forbidden`, HttpStatus.FORBIDDEN);
       this.cls.set("companyId", company.id);
-    }
-  }
-
-  // async validateLicense(params: { companyId: string }): Promise<void> {
-  //   const company = await this.companyRepository.findByCompanyId({ companyId: params.companyId });
-  //   const licenseData = {
-  //     isFirstActivation: true,
-  //     license: company.license,
-  //     installationIdentifier: params.companyId,
-  //     version: this.versionService.getVersion(),
-  //   };
-  // }
-
-  async activateLicense(params: { companyId: string; data: CompanyLicensePutDataDTO }) {
-    const userCount = await this.companyRepository.countCompanyUsers({ companyId: params.companyId });
-
-    const licenseData = {
-      isFirstActivation: true,
-      license: params.data.attributes.license,
-      installationIdentifier: params.companyId,
-      version: this.versionService.getVersion(),
-      featureIds: [],
-      userCount: userCount,
-    };
-
-    const licenseValidationResponse = await this._sendLicenseValidationRequest({
-      companyId: params.companyId,
-      licenseData: licenseData,
-      privateKey: params.data.attributes.privateKey,
-    });
-
-    await this.companyRepository.updateLicense({
-      companyId: params.companyId,
-      license: licenseValidationResponse.license,
-      licenseExpirationDate: new Date(licenseValidationResponse.expirationDate).toISOString(),
-      licenseLastValidation: new Date().toISOString(),
-    });
-
-    return this.findOne({ companyId: params.companyId });
-  }
-
-  private async _sendLicenseValidationRequest(params: {
-    companyId: string;
-    licenseData: any;
-    privateKey: string;
-  }): Promise<{
-    installationIdentifier: string;
-    license: string;
-    featureIds: string[];
-    expirationDate: string;
-  }> {
-    try {
-      const licenseJson = JSON.stringify(params.licenseData);
-      const aesKey = createHash("sha256").update(params.privateKey, "utf8").digest();
-
-      const iv = randomBytes(16);
-      const cipher = createCipheriv("aes-256-cbc", aesKey, iv);
-      let encrypted = cipher.update(licenseJson, "utf8", "hex");
-      encrypted += cipher.final("hex");
-
-      const payload = iv.toString("hex") + ":" + encrypted;
-
-      const requestBody = {
-        data: {
-          id: params.companyId,
-          type: "licenses",
-          attributes: {
-            payload: payload,
-          },
-        },
-      };
-
-      const response = await axios.post(LICENSE_SERVICE_URL.replace(":installationId", params.companyId), requestBody, {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
-
-      const [ivHex, encryptedData] = response.data.split(":");
-      const decryptionIv = Buffer.from(ivHex, "hex");
-
-      const decryptionAesKey = createHash("sha256").update(params.privateKey, "utf8").digest();
-
-      const decipher = createDecipheriv("aes-256-cbc", decryptionAesKey, decryptionIv);
-      let decrypted = decipher.update(encryptedData, "hex", "utf8");
-      decrypted += decipher.final("utf8");
-
-      return JSON.parse(decrypted);
-    } catch (error) {
-      console.error("Error during license validation:", error);
-      throw new HttpException(`License validation failed`, HttpStatus.PRECONDITION_FAILED);
     }
   }
 }

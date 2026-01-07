@@ -372,29 +372,4 @@ export class CompanyRepository implements OnModuleInit {
     const result = await this.neo4j.read(query, queryParams);
     return result?.userCount || 0;
   }
-
-  async updateLicense(params: {
-    companyId: string;
-    license: string;
-    licenseExpirationDate: string;
-    licenseLastValidation: string;
-  }): Promise<void> {
-    const query = this.neo4j.initQuery({});
-
-    query.queryParams = {
-      companyId: params.companyId,
-      license: params.license,
-      licenseExpirationDate: params.licenseExpirationDate,
-      licenseLastValidation: params.licenseLastValidation,
-    };
-
-    query.query = `
-      MATCH (company:Company {id: $companyId})
-      SET company.license = $license,
-          company.licenseExpirationDate = datetime($licenseExpirationDate),
-          company.licenseLastValidation = datetime($licenseLastValidation)
-    `;
-
-    await this.neo4j.writeOne(query);
-  }
 }

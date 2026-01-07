@@ -22,7 +22,6 @@ import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { CacheService } from "../../../core/cache/services/cache.service";
-import { CompanyLicensePutDTO } from "../../company/dtos/company.license.put.dto";
 import { CompanyPostDTO } from "../../company/dtos/company.post.dto";
 import { CompanyPutDTO } from "../../company/dtos/company.put.dto";
 import { companyMeta } from "../../company/entities/company.meta";
@@ -128,20 +127,5 @@ export class CompanyController {
     reply.send();
 
     await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
-  @Put(`${companyMeta.endpoint}/:companyId/license`)
-  async activateLicense(
-    @Req() request: AuthenticatedRequest,
-    @Res() reply: FastifyReply,
-    @Param("companyId") companyId: string,
-    @Body() body: CompanyLicensePutDTO,
-  ) {
-    const response = await this.companyService.activateLicense({ companyId: companyId, data: body.data });
-    reply.send(response);
-
-    await this.cacheService.invalidateByType(companyMeta.endpoint);
   }
 }

@@ -39,7 +39,6 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
         if (data.availableTokens === undefined) return 0;
         return Number(data.availableTokens);
       },
-      licenseExpirationDate: (data: Company) => data.licenseExpirationDate?.toISOString(),
     };
 
     this.relationships = {

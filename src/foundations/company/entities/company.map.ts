@@ -13,8 +13,6 @@ export const mapCompany = (params: { data: any; record: any; entityFactory: Enti
     ownerEmail: params.data.ownerEmail,
     isActiveSubscription: params.data.isActive,
 
-    licenseExpirationDate: params.data.licenseExpirationDate ? new Date(params.data.licenseExpirationDate) : undefined,
-
     feature: [],
     module: [],
     configuration: undefined,

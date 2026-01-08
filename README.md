@@ -701,7 +701,8 @@ type Company = {
   logo?: string;
   isActiveSubscription: boolean;
   ownerEmail: string;
-  availableTokens: number;
+  monthlyTokens: number;
+  oneOffTokens: number;
 
   feature: Feature[]; // Features available to company
   module: Module[]; // Modules available to company
@@ -911,17 +912,18 @@ The package includes built-in health check endpoints using `@nestjs/terminus` fo
 
 ### Endpoints
 
-| Endpoint | Purpose | Checks |
-|----------|---------|--------|
-| `GET /health` | Full health status | Neo4j, Redis, S3, Disk |
-| `GET /health/live` | Liveness probe | None (process running) |
-| `GET /health/ready` | Readiness probe | Neo4j, Redis |
+| Endpoint            | Purpose            | Checks                 |
+| ------------------- | ------------------ | ---------------------- |
+| `GET /health`       | Full health status | Neo4j, Redis, S3, Disk |
+| `GET /health/live`  | Liveness probe     | None (process running) |
+| `GET /health/ready` | Readiness probe    | Neo4j, Redis           |
 
 ### Full Health Check: GET /health
 
 Returns detailed status of all dependencies. Use for monitoring dashboards.
 
 **Response when healthy (200 OK):**
+
 ```json
 {
   "status": "ok",
@@ -943,6 +945,7 @@ Indicates if the application process is running. Does NOT check external depende
 **Use for Kubernetes livenessProbe:** If this fails, the container should be restarted.
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "ok",
@@ -959,6 +962,7 @@ Indicates if the application can accept traffic. Checks critical dependencies (N
 **Use for Kubernetes readinessProbe:** If this fails, traffic should be routed elsewhere.
 
 **Response when healthy (200 OK):**
+
 ```json
 {
   "status": "ok",
@@ -972,6 +976,7 @@ Indicates if the application can accept traffic. Checks critical dependencies (N
 ```
 
 **Response when unhealthy (503 Service Unavailable):**
+
 ```json
 {
   "status": "error",
@@ -992,31 +997,31 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-  - name: api
-    livenessProbe:
-      httpGet:
-        path: /health/live
-        port: 3000
-      initialDelaySeconds: 10
-      periodSeconds: 10
-    readinessProbe:
-      httpGet:
-        path: /health/ready
-        port: 3000
-      initialDelaySeconds: 5
-      periodSeconds: 5
+    - name: api
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        initialDelaySeconds: 5
+        periodSeconds: 5
 ```
 
 ### Health Indicators
 
 The module includes four health indicators:
 
-| Indicator | Timeout | What it checks |
-|-----------|---------|----------------|
-| `Neo4jHealthIndicator` | 3s | Executes `RETURN 1` query |
-| `RedisHealthIndicator` | 3s | Connection status + PING |
-| `S3HealthIndicator` | 5s | Bucket access (HeadBucket) |
-| `DiskHealthIndicator` | - | Free space ≥ 1GB or 10% |
+| Indicator              | Timeout | What it checks             |
+| ---------------------- | ------- | -------------------------- |
+| `Neo4jHealthIndicator` | 3s      | Executes `RETURN 1` query  |
+| `RedisHealthIndicator` | 3s      | Connection status + PING   |
+| `S3HealthIndicator`    | 5s      | Bucket access (HeadBucket) |
+| `DiskHealthIndicator`  | -       | Free space ≥ 1GB or 10%    |
 
 ## Foundation Modules
 

@@ -15,7 +15,15 @@ export class CompanyPutAttributesDTO {
 
   @IsOptional()
   @IsNumber()
-  availableTokens?: number;
+  monthlyTokens?: number;
+
+  @IsOptional()
+  @IsNumber()
+  availableMonthlyTokens?: number;
+
+  @IsOptional()
+  @IsNumber()
+  availableExtraTokens?: number;
 
   @IsOptional()
   @IsString()

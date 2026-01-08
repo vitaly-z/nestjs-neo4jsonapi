@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { ClsService } from "nestjs-cls";
 import { updateRelationshipQuery } from "../../../core";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
@@ -11,7 +12,10 @@ import { companyMeta } from "../entities/company.meta";
 
 @Injectable()
 export class CompanyRepository implements OnModuleInit {
-  constructor(private readonly neo4j: Neo4jService) {}
+  constructor(
+    private readonly neo4j: Neo4jService,
+    private readonly clsService: ClsService,
+  ) {}
 
   async onModuleInit() {
     await this.neo4j.writeOne({
@@ -109,7 +113,9 @@ export class CompanyRepository implements OnModuleInit {
     companyId: string;
     name: string;
     configurations?: string;
-    availableTokens?: number;
+    monthlyTokens?: number;
+    availableMonthlyTokens?: number;
+    availableExtraTokens?: number;
     featureIds?: string[];
     moduleIds?: string[];
   }): Promise<Company> {
@@ -130,7 +136,9 @@ export class CompanyRepository implements OnModuleInit {
       companyId: params.companyId,
       name: params.name,
       configurations: params.configurations ?? "",
-      availableTokens: params.availableTokens ?? 0,
+      monthlyTokens: params.monthlyTokens ?? 0,
+      availableMonthlyTokens: params.availableMonthlyTokens ?? 0,
+      availableExtraTokens: params.availableExtraTokens ?? 0,
       featureIds: params.featureIds ?? [],
       moduleIds: params.moduleIds ?? [],
     };
@@ -139,7 +147,9 @@ export class CompanyRepository implements OnModuleInit {
       CREATE (company:Company {id: $companyId})
       SET company.name=$name,
         company.configurations=$configurations,
-        company.availableTokens=$availableTokens,
+        company.monthlyTokens=$monthlyTokens,
+        company.availableMonthlyTokens=$availableMonthlyTokens,
+        company.availableExtraTokens=$availableExtraTokens,
         company.createdAt=datetime(),
         company.updatedAt=datetime()
     `;
@@ -182,7 +192,9 @@ export class CompanyRepository implements OnModuleInit {
     name: string;
     configurations?: string;
     logo?: string;
-    availableTokens?: number;
+    monthlyTokens?: number;
+    availableMonthlyTokens?: number;
+    availableExtraTokens?: number;
     featureIds?: string[];
     moduleIds?: string[];
   }): Promise<void> {
@@ -203,7 +215,11 @@ export class CompanyRepository implements OnModuleInit {
     updateParams.push("company.name = $name");
     updateParams.push("company.configurations = $configurations");
     if (params.logo !== undefined) updateParams.push("company.logo = $logo");
-    if (params.availableTokens !== undefined) updateParams.push("company.availableTokens = $availableTokens");
+    if (params.monthlyTokens !== undefined) updateParams.push("company.monthlyTokens = $monthlyTokens");
+    if (params.availableMonthlyTokens !== undefined)
+      updateParams.push("company.availableMonthlyTokens = $availableMonthlyTokens");
+    if (params.availableExtraTokens !== undefined)
+      updateParams.push("company.availableExtraTokens = $availableExtraTokens");
     updateParams.push("company.updatedAt = datetime()");
     const update = updateParams.join(", ");
 
@@ -212,7 +228,9 @@ export class CompanyRepository implements OnModuleInit {
       name: params.name,
       configurations: params.configurations ?? "",
       logo: params.logo ?? "",
-      availableTokens: params.availableTokens ?? 0,
+      monthlyTokens: params.monthlyTokens ?? 0,
+      availableMonthlyTokens: params.availableMonthlyTokens ?? 0,
+      availableExtraTokens: params.availableExtraTokens ?? 0,
       featureIds: params.featureIds ?? [],
       moduleIds: params.moduleIds ?? [],
     };
@@ -300,18 +318,42 @@ export class CompanyRepository implements OnModuleInit {
   async useTokens(params: { input: number; output: number; companyId?: string }): Promise<void> {
     const tokens = params.input + params.output;
 
-    const query = this.neo4j.initQuery();
+    const companyQuery = this.neo4j.initQuery({ serialiser: CompanyModel });
+    companyQuery.queryParams = {
+      companyId: params.companyId ?? this.clsService.get("companyId"),
+    };
+    companyQuery.query = `MATCH (company:Company {id: $companyId}) RETURN company`;
+    const company: Company = await this.neo4j.readOne(companyQuery);
 
+    // Convert BigInt values from Neo4j to numbers for arithmetic operations
+    const availableMonthlyTokens = Number(company.availableMonthlyTokens ?? 0);
+    const availableExtraTokens = Number(company.availableExtraTokens ?? 0);
+
+    const query = this.neo4j.initQuery();
     query.queryParams = {
-      ...query.queryParams,
-      usedTokens: tokens,
+      companyId: params.companyId ?? this.clsService.get("companyId"),
     };
 
-    if (params.companyId) query.queryParams.companyId = params.companyId;
+    if (availableMonthlyTokens >= tokens) {
+      query.queryParams.availableMonthlyTokens = availableMonthlyTokens - tokens;
 
-    query.query += `
-      SET company.availableTokens = company.availableTokens - $usedTokens
+      query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET company.availableMonthlyTokens = $availableMonthlyTokens,
+          company.updatedAt = datetime()
     `;
+    } else if (availableMonthlyTokens > 0) {
+      const remainingTokens = tokens - availableMonthlyTokens;
+      query.queryParams.availableMonthlyTokens = 0;
+      query.queryParams.availableExtraTokens = availableExtraTokens - remainingTokens;
+
+      query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET company.availableMonthlyTokens = $availableMonthlyTokens,
+          company.availableExtraTokens = $availableExtraTokens,
+          company.updatedAt = datetime()
+    `;
+    }
 
     await this.neo4j.writeOne(query);
   }

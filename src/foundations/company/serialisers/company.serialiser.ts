@@ -35,9 +35,17 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
 
         return await this.s3Service.generateSignedUrl({ key: data.logo, isPublic: true });
       },
-      availableTokens: async (data: Company) => {
-        if (data.availableTokens === undefined) return 0;
-        return Number(data.availableTokens);
+      monthlyTokens: async (data: Company) => {
+        if (data.monthlyTokens === undefined) return 0;
+        return Number(data.monthlyTokens);
+      },
+      availableMonthlyTokens: async (data: Company) => {
+        if (data.availableMonthlyTokens === undefined) return 0;
+        return Number(data.availableMonthlyTokens);
+      },
+      availableExtraTokens: async (data: Company) => {
+        if (data.availableExtraTokens === undefined) return 0;
+        return Number(data.availableExtraTokens);
       },
     };
 

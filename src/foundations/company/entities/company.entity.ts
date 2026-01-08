@@ -8,7 +8,9 @@ export type Company = Entity & {
   logoUrl?: string;
   isActiveSubscription: boolean;
   ownerEmail: string;
-  availableTokens: number;
+  monthlyTokens: number;
+  availableMonthlyTokens: number;
+  availableExtraTokens: number;
   configurations?: string;
 
   feature: Feature[];

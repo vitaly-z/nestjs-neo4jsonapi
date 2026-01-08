@@ -9,7 +9,9 @@ export const mapCompany = (params: { data: any; record: any; entityFactory: Enti
     configurations: params.data.configurations,
     logo: params.data.logo,
     logoUrl: params.data.logoUrl,
-    availableTokens: params.data.availableTokens ?? 0,
+    monthlyTokens: params.data.monthlyTokens ?? 0,
+    availableMonthlyTokens: params.data.availableMonthlyTokens ?? 0,
+    availableExtraTokens: params.data.availableExtraTokens ?? 0,
     ownerEmail: params.data.ownerEmail,
     isActiveSubscription: params.data.isActive,
 

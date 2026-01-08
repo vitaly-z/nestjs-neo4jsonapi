@@ -41,7 +41,10 @@ export class CompanyService {
       companyId: params.companyId,
     });
 
-    if (!company.availableTokens || company.availableTokens <= 0)
+    if (
+      (!company.availableMonthlyTokens || company.availableMonthlyTokens <= 0) &&
+      (!company.availableExtraTokens || company.availableExtraTokens <= 0)
+    )
       throw new HttpException("NO_TOKENS", HttpStatus.PAYMENT_REQUIRED);
   }
 
@@ -57,7 +60,9 @@ export class CompanyService {
       companyId: params.data.id,
       name: params.data.attributes.name,
       configurations: params.data.attributes.configurations,
-      availableTokens: params.data.attributes.availableTokens,
+      monthlyTokens: params.data.attributes.monthlyTokens,
+      availableMonthlyTokens: params.data.attributes.availableMonthlyTokens,
+      availableExtraTokens: params.data.attributes.availableExtraTokens,
       featureIds: params.data.relationships?.features?.data.map((feature) => feature.id),
     });
   }
@@ -67,7 +72,9 @@ export class CompanyService {
       companyId: params.data.id,
       name: params.data.attributes.name,
       configurations: params.data.attributes.configurations,
-      availableTokens: params.data.attributes.availableTokens,
+      monthlyTokens: params.data.attributes.monthlyTokens,
+      availableMonthlyTokens: params.data.attributes.availableMonthlyTokens,
+      availableExtraTokens: params.data.attributes.availableExtraTokens,
       featureIds: params.data.relationships?.features?.data.map((feature) => feature.id),
       moduleIds: params.data.relationships?.modules?.data.map((module) => module.id),
     });
@@ -84,7 +91,9 @@ export class CompanyService {
       name: params.data.attributes.name,
       configurations: params.data.attributes.configurations,
       logo: params.data.attributes.logo,
-      availableTokens: params.data.attributes.availableTokens,
+      monthlyTokens: params.data.attributes.monthlyTokens,
+      availableMonthlyTokens: params.data.attributes.availableMonthlyTokens,
+      availableExtraTokens: params.data.attributes.availableExtraTokens,
       featureIds: params.data.relationships?.features?.data.map((feature) => feature.id),
       moduleIds: params.data.relationships?.modules?.data.map((module) => module.id),
     });

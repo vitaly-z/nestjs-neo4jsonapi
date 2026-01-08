@@ -28,10 +28,11 @@ export class StripeProductPostAttributesDTO {
   @MaxLength(255)
   name: string;
 
-  @IsOptional()
+  @IsDefined()
+  @IsNotEmpty()
   @IsString()
   @MaxLength(500)
-  description?: string;
+  description: string;
 
   @IsOptional()
   @IsObject()

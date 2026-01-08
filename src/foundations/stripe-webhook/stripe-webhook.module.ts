@@ -5,6 +5,7 @@ import { modelRegistry } from "../../common/registries/registry";
 import { QueueId } from "../../config/enums/queue.id";
 import { StripeCustomerModule } from "../stripe-customer/stripe-customer.module";
 import { StripeInvoiceModule } from "../stripe-invoice/stripe-invoice.module";
+import { StripePriceModule } from "../stripe-price/stripe-price.module";
 import { StripeSubscriptionModule } from "../stripe-subscription/stripe-subscription.module";
 import { StripeModule } from "../stripe/stripe.module";
 import { StripeWebhookController } from "./controllers/stripe-webhook.controller";
@@ -49,6 +50,7 @@ import { StripeWebhookService } from "./services/stripe-webhook.service";
     forwardRef(() => StripeModule),
     forwardRef(() => StripeCustomerModule),
     forwardRef(() => StripeInvoiceModule),
+    forwardRef(() => StripePriceModule),
     forwardRef(() => StripeSubscriptionModule),
     BullModule.registerQueue({ name: QueueId.BILLING_WEBHOOK }),
     BullModule.registerQueue({ name: QueueId.EMAIL }),

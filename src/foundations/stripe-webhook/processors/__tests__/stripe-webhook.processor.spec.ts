@@ -32,9 +32,11 @@ import { StripeWebhookProcessor, StripeWebhookJobData } from "../stripe-webhook.
 import { StripeWebhookEventRepository } from "../../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../../services/stripe-webhook-notification.service";
 import { StripeSubscriptionAdminService } from "../../../stripe-subscription/services/stripe-subscription-admin.service";
+import { TokenAllocationService } from "../../../stripe-subscription/services/token-allocation.service";
 import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceRepository } from "../../../stripe-invoice/repositories/stripe-invoice.repository";
+import { StripePriceRepository } from "../../../stripe-price/repositories/stripe-price.repository";
 import { AppLoggingService } from "../../../../core/logging";
 import { StripeService } from "../../../stripe/services/stripe.service";
 import {
@@ -92,11 +94,21 @@ describe("StripeWebhookProcessor", () => {
 
     const mockSubscriptionRepository = {
       cancelAllByStripeCustomerId: vi.fn(),
+      findByStripeSubscriptionId: vi.fn().mockResolvedValue(null),
     };
 
     const mockStripeInvoiceRepository = {
       findByStripeInvoiceId: vi.fn(),
       updateByStripeInvoiceId: vi.fn(),
+    };
+
+    const mockStripePriceRepository = {
+      findByStripePriceId: vi.fn(),
+    };
+
+    const mockTokenAllocationService = {
+      allocateTokensOnPayment: vi.fn().mockResolvedValue({ success: true, tokensAllocated: 0 }),
+      allocateProratedTokensOnPlanChange: vi.fn().mockResolvedValue({ success: true, tokensAllocated: 0 }),
     };
 
     const mockNotificationService = {
@@ -144,8 +156,16 @@ describe("StripeWebhookProcessor", () => {
           useValue: mockStripeInvoiceRepository,
         },
         {
+          provide: StripePriceRepository,
+          useValue: mockStripePriceRepository,
+        },
+        {
           provide: StripeWebhookNotificationService,
           useValue: mockNotificationService,
+        },
+        {
+          provide: TokenAllocationService,
+          useValue: mockTokenAllocationService,
         },
         {
           provide: StripeService,

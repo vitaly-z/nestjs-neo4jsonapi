@@ -358,6 +358,54 @@ export class CompanyRepository implements OnModuleInit {
     await this.neo4j.writeOne(query);
   }
 
+  /**
+   * Update company token allocation fields
+   *
+   * Used by TokenAllocationService to reset tokens on subscription payment
+   * or pro-rate tokens on plan changes.
+   *
+   * @param params - Update parameters
+   * @param params.companyId - Company identifier
+   * @param params.monthlyTokens - Optional new monthly token allocation
+   * @param params.availableMonthlyTokens - Optional new available monthly tokens
+   * @param params.availableExtraTokens - Optional new available extra tokens
+   */
+  async updateTokens(params: {
+    companyId: string;
+    monthlyTokens?: number;
+    availableMonthlyTokens?: number;
+    availableExtraTokens?: number;
+  }): Promise<void> {
+    const setParams: string[] = [];
+    setParams.push("company.updatedAt = datetime()");
+
+    if (params.monthlyTokens !== undefined) {
+      setParams.push("company.monthlyTokens = $monthlyTokens");
+    }
+    if (params.availableMonthlyTokens !== undefined) {
+      setParams.push("company.availableMonthlyTokens = $availableMonthlyTokens");
+    }
+    if (params.availableExtraTokens !== undefined) {
+      setParams.push("company.availableExtraTokens = $availableExtraTokens");
+    }
+
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      monthlyTokens: params.monthlyTokens,
+      availableMonthlyTokens: params.availableMonthlyTokens,
+      availableExtraTokens: params.availableExtraTokens,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET ${setParams.join(", ")}
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
+
   async find(params: { term: string; cursor: JsonApiCursorInterface }): Promise<Company[]> {
     const query = this.neo4j.initQuery({ serialiser: CompanyModel, cursor: params.cursor });
 
@@ -397,6 +445,31 @@ export class CompanyRepository implements OnModuleInit {
     `;
 
     await this.neo4j.writeOne(query);
+  }
+
+  /**
+   * Find company by stripe customer internal ID
+   *
+   * Follows the BELONGS_TO relationship from StripeCustomer to Company.
+   * Used by TokenAllocationService to find company for token allocation.
+   *
+   * @param params - Query parameters
+   * @param params.stripeCustomerId - Internal stripe customer ID (NOT the Stripe cus_ ID)
+   * @returns Company if found, null otherwise
+   */
+  async findByStripeCustomerId(params: { stripeCustomerId: string }): Promise<Company | null> {
+    const query = this.neo4j.initQuery({ serialiser: CompanyModel });
+
+    query.queryParams = {
+      stripeCustomerId: params.stripeCustomerId,
+    };
+
+    query.query = `
+      MATCH (stripeCustomer:StripeCustomer {id: $stripeCustomerId})-[:BELONGS_TO]->(company:Company)
+      RETURN company
+    `;
+
+    return this.neo4j.readOne(query);
   }
 
   async countCompanyUsers(params: { companyId: string }): Promise<number> {

@@ -5,8 +5,10 @@ import { QueueId } from "../../../config/enums/queue.id";
 import { AppLoggingService } from "../../../core/logging";
 import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
+import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
 import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
+import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
@@ -26,7 +28,9 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly stripeCustomerRepository: StripeCustomerRepository,
     private readonly subscriptionRepository: StripeSubscriptionRepository,
     private readonly stripeInvoiceRepository: StripeInvoiceRepository,
+    private readonly stripePriceRepository: StripePriceRepository,
     private readonly notificationService: StripeWebhookNotificationService,
+    private readonly tokenAllocationService: TokenAllocationService,
     private readonly stripeService: StripeService,
     private readonly logger: AppLoggingService,
   ) {
@@ -110,9 +114,68 @@ export class StripeWebhookProcessor extends WorkerHost {
   }
 
   private async handleSubscriptionEvent(subscription: Stripe.Subscription): Promise<void> {
+    console.log(`[Webhook] handleSubscriptionEvent: ${subscription.id}, status: ${subscription.status}`);
+
+    // Get previous subscription state to detect price changes
+    const previousSubscription = await this.subscriptionRepository.findByStripeSubscriptionId({
+      stripeSubscriptionId: subscription.id,
+    });
+
+    // Get current price ID from Stripe subscription
+    const currentStripePriceId = subscription.items?.data?.[0]?.price?.id;
+    console.log(
+      `[Webhook] Previous price: ${previousSubscription?.stripePrice?.stripePriceId}, Current price: ${currentStripePriceId}`,
+    );
+
+    // Sync subscription from Stripe
     await this.subscriptionService.syncSubscriptionFromStripe({
       stripeSubscriptionId: subscription.id,
     });
+
+    // Detect price change and allocate prorated tokens
+    if (previousSubscription && currentStripePriceId) {
+      const previousStripePriceId = previousSubscription.stripePrice?.stripePriceId;
+
+      if (previousStripePriceId && previousStripePriceId !== currentStripePriceId) {
+        console.log(`[Webhook] 🔄 PRICE CHANGE DETECTED: ${previousStripePriceId} -> ${currentStripePriceId}`);
+        this.logger.log(
+          `Price change detected for subscription ${subscription.id}: ${previousStripePriceId} -> ${currentStripePriceId}`,
+        );
+
+        // Find the new price in our database by Stripe price ID
+        const newPrice = await this.stripePriceRepository.findByStripePriceId({
+          stripePriceId: currentStripePriceId,
+        });
+
+        if (newPrice) {
+          // Allocate prorated tokens (non-blocking - failures don't fail webhook)
+          try {
+            const result = await this.tokenAllocationService.allocateProratedTokensOnPlanChange({
+              stripeSubscriptionId: subscription.id,
+              newPriceId: newPrice.id,
+            });
+            if (result.success) {
+              this.logger.debug(
+                `Prorated token allocation successful for subscription ${subscription.id}: ${result.tokensAllocated} tokens`,
+              );
+            } else {
+              this.logger.warn(
+                `Prorated token allocation skipped for subscription ${subscription.id}: ${result.reason}`,
+              );
+            }
+          } catch (error) {
+            this.logger.error(
+              `Prorated token allocation failed for subscription ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            );
+            // Don't throw - token allocation failure should not fail webhook processing
+          }
+        } else {
+          this.logger.warn(
+            `New price ${currentStripePriceId} not found in database - skipping prorated token allocation`,
+          );
+        }
+      }
+    }
   }
 
   private async handleInvoiceEvent(eventType: string, invoice: Stripe.Invoice): Promise<void> {
@@ -161,15 +224,53 @@ export class StripeWebhookProcessor extends WorkerHost {
     }
 
     // In Stripe v20, subscription is nested under parent.subscription_details
+    // Fallback to invoice.subscription for backwards compatibility and test data
     const subscriptionDetails = invoice.parent?.subscription_details;
-    if (eventType === "invoice.paid" && subscriptionDetails?.subscription) {
-      const subscriptionId =
+    const directSubscription = (invoice as unknown as { subscription?: string | { id: string } }).subscription;
+
+    console.log(`[Webhook] handleInvoiceEvent: ${eventType}, invoice: ${invoice.id}`);
+    console.log(`[Webhook] subscriptionDetails:`, subscriptionDetails);
+    console.log(`[Webhook] directSubscription:`, directSubscription);
+
+    // Try to get subscription ID from either location
+    let subscriptionId: string | undefined;
+    if (subscriptionDetails?.subscription) {
+      subscriptionId =
         typeof subscriptionDetails.subscription === "string"
           ? subscriptionDetails.subscription
           : subscriptionDetails.subscription.id;
+    } else if (directSubscription) {
+      subscriptionId = typeof directSubscription === "string" ? directSubscription : directSubscription.id;
+    }
+
+    if (eventType === "invoice.paid" && subscriptionId) {
+      console.log(`[Webhook] 💰 INVOICE PAID - Subscription: ${subscriptionId}`);
+
+      // Sync subscription first
       await this.subscriptionService.syncSubscriptionFromStripe({
         stripeSubscriptionId: subscriptionId,
       });
+
+      console.log(`[Webhook] Triggering token allocation for subscription: ${subscriptionId}`);
+
+      // Allocate tokens (non-blocking - failures don't fail webhook)
+      try {
+        const result = await this.tokenAllocationService.allocateTokensOnPayment({
+          stripeSubscriptionId: subscriptionId,
+        });
+        if (result.success) {
+          this.logger.debug(
+            `Token allocation successful for subscription ${subscriptionId}: ${result.tokensAllocated} tokens`,
+          );
+        } else {
+          this.logger.warn(`Token allocation skipped for subscription ${subscriptionId}: ${result.reason}`);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Token allocation failed for subscription ${subscriptionId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+        // Don't throw - token allocation failure should not fail webhook processing
+      }
     }
   }
 

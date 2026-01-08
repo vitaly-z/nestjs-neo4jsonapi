@@ -297,13 +297,13 @@ describe("StripeSubscriptionRepository", () => {
         stripeSubscriptionId: TEST_IDS.stripeSubscriptionId,
       });
       expect(mockQuery.query).toContain(
-        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
+        `MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName} {stripeSubscriptionId: $stripeSubscriptionId})-[:BELONGS_TO]->(${stripeSubscriptionMeta.nodeName}_${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
         `MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}_${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})`,
       );
       expect(mockQuery.query).toContain(
-        `RETURN ${stripeSubscriptionMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}_${stripeProductMeta.nodeName}`,
+        `RETURN ${stripeSubscriptionMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripeCustomerMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}_${stripeProductMeta.nodeName}`,
       );
       expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
       expect(result).toEqual(MOCK_SUBSCRIPTION);

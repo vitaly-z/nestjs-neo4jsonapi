@@ -15,6 +15,7 @@ import { Company } from "../../company/entities/company.entity";
 import { CompanyModel } from "../../company/entities/company.model";
 import { CompanyRepository } from "../../company/repositories/company.repository";
 import { CompanyConfigurationsPutDataDTO } from "../dtos/company.configurations.put.dto";
+import { WebSocketService } from "../../../core/websocket/services/websocket.service";
 
 @Injectable()
 export class CompanyService {
@@ -26,6 +27,7 @@ export class CompanyService {
     private readonly neo4j: Neo4jService,
     private readonly versionService: VersionService,
     private readonly moduleRef: ModuleRef,
+    private readonly webSocketService: WebSocketService,
   ) {}
 
   async validate(params: { companyId: string }) {
@@ -53,6 +55,15 @@ export class CompanyService {
       input: params.inputTokens,
       output: params.outputTokens,
     });
+
+    // Broadcast token update to all company users
+    const companyId = this.cls.get("companyId");
+    if (companyId) {
+      await this.webSocketService.sendMessageToCompany(companyId, "company:tokens_updated", {
+        type: "company:tokens_updated",
+        companyId,
+      });
+    }
   }
 
   async create(params: { data: CompanyPostDataDTO }): Promise<Company> {

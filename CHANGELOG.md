@@ -1,3 +1,14 @@
+## [1.25.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.24.0...v1.25.0) (2026-01-08)
+
+### 🚀 Features
+
+* add token information to company ([26fb90c](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/26fb90cb2cc4793738e631e9244e32ede3445e23))
+* broadcast WebSocket token update on token consumption ([5402558](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/5402558d08047d5f2321c637b9a5fbd6253c256f))
+
+### 🐛 Bug Fixes
+
+* remove company license ([89525c1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/89525c180a0b27958d507b54ba309b756bdbf7d4))
+
 ## [1.24.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.23.3...v1.24.0) (2026-01-07)
 
 ### 🚀 Features

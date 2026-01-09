@@ -164,6 +164,67 @@ export class TokenAllocationService {
   }
 
   /**
+   * Allocate extra tokens for one-time purchases
+   *
+   * Unlike recurring subscriptions which reset monthly tokens,
+   * one-time purchases ADD tokens to availableExtraTokens.
+   *
+   * Called when payment_intent.succeeded webhook is received for a one-time purchase.
+   *
+   * @param params - Allocation parameters
+   * @param params.paymentIntentId - Stripe PaymentIntent ID (stored as stripeSubscriptionId for one-time purchases)
+   * @returns Result indicating success/failure and tokens allocated
+   */
+  async allocateExtraTokensOnOneTimePurchase(params: { paymentIntentId: string }): Promise<TokenAllocationResult> {
+    // 1. Find subscription record by PaymentIntent ID (stored as stripeSubscriptionId)
+    const subscription = await this.subscriptionRepository.findByStripeSubscriptionId({
+      stripeSubscriptionId: params.paymentIntentId,
+    });
+
+    if (!subscription) {
+      this.logger.warn(`One-time purchase record ${params.paymentIntentId} not found for extra token allocation`);
+      return { success: false, reason: "Subscription not found" };
+    }
+
+    // 2. Get the StripePrice (includes token field)
+    const price = subscription.stripePrice;
+
+    if (!price || price.token === undefined || price.token === null) {
+      this.logger.debug(`No tokens configured for price ${price?.id} - skipping extra token allocation`);
+      return { success: true, reason: "No tokens configured for this price" };
+    }
+
+    // 3. Find the Company via StripeCustomer
+    const company = await this.findCompanyBySubscription(subscription.stripeCustomer?.id);
+
+    if (!company) {
+      this.logger.error(`Company not found for one-time purchase ${params.paymentIntentId}`);
+      return { success: false, reason: "Company not found" };
+    }
+
+    // 4. ADD tokens to availableExtraTokens (not replace)
+    const currentExtraTokens = Number(company.availableExtraTokens) || 0;
+    const tokensToAdd = Number(price.token);
+    const newExtraTokens = currentExtraTokens + tokensToAdd;
+
+    await this.companyRepository.updateTokens({
+      companyId: company.id,
+      availableExtraTokens: newExtraTokens,
+    });
+
+    this.logger.log(
+      `Extra token allocation on one-time purchase: Company ${company.id} - added ${tokensToAdd} tokens (${currentExtraTokens} -> ${newExtraTokens})`,
+    );
+
+    return {
+      success: true,
+      companyId: company.id,
+      tokensAllocated: tokensToAdd,
+      previousTokens: currentExtraTokens,
+    };
+  }
+
+  /**
    * Helper to find company from subscription's customer
    */
   private async findCompanyBySubscription(stripeCustomerInternalId?: string): Promise<Company | null> {

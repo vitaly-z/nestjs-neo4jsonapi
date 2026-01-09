@@ -350,6 +350,28 @@ export class StripeWebhookProcessor extends WorkerHost {
           });
           this.logger.debug(`One-time purchase ${paymentIntent.id} marked as active`);
         }
+
+        // Allocate extra tokens (non-blocking - failures don't fail webhook)
+        try {
+          const result = await this.tokenAllocationService.allocateExtraTokensOnOneTimePurchase({
+            paymentIntentId: paymentIntent.id,
+          });
+          if (result.success) {
+            this.logger.debug(
+              `Extra token allocation successful for one-time purchase ${paymentIntent.id}: ${result.tokensAllocated} tokens added`,
+            );
+          } else {
+            this.logger.warn(
+              `Extra token allocation skipped for one-time purchase ${paymentIntent.id}: ${result.reason}`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `Extra token allocation failed for one-time purchase ${paymentIntent.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+          // Don't throw - token allocation failure should not fail webhook processing
+        }
+
         return;
       }
 

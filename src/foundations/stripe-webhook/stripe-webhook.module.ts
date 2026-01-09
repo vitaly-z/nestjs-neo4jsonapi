@@ -8,6 +8,7 @@ import { StripeInvoiceModule } from "../stripe-invoice/stripe-invoice.module";
 import { StripePriceModule } from "../stripe-price/stripe-price.module";
 import { StripeSubscriptionModule } from "../stripe-subscription/stripe-subscription.module";
 import { StripeModule } from "../stripe/stripe.module";
+import { CompanyModule } from "../company/company.module";
 import { StripeWebhookController } from "./controllers/stripe-webhook.controller";
 import { StripeWebhookEventModel } from "./entities/stripe-webhook-event.model";
 import { StripeWebhookProcessor } from "./processors/stripe-webhook.processor";
@@ -52,6 +53,7 @@ import { StripeWebhookService } from "./services/stripe-webhook.service";
     forwardRef(() => StripeInvoiceModule),
     forwardRef(() => StripePriceModule),
     forwardRef(() => StripeSubscriptionModule),
+    forwardRef(() => CompanyModule),
     BullModule.registerQueue({ name: QueueId.BILLING_WEBHOOK }),
     BullModule.registerQueue({ name: QueueId.EMAIL }),
   ],

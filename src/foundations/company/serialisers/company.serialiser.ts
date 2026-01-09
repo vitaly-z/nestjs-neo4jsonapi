@@ -47,6 +47,7 @@ export class CompanySerialiser extends AbstractJsonApiSerialiser implements Json
         if (data.availableExtraTokens === undefined) return 0;
         return Number(data.availableExtraTokens);
       },
+      isActiveSubscription: "isActiveSubscription",
     };
 
     this.relationships = {

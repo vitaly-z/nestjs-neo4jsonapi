@@ -10,6 +10,7 @@ import { StripeSubscriptionRepository } from "../../stripe-subscription/reposito
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
+import { CompanyRepository } from "../../company/repositories/company.repository";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
 
@@ -32,6 +33,7 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly notificationService: StripeWebhookNotificationService,
     private readonly tokenAllocationService: TokenAllocationService,
     private readonly stripeService: StripeService,
+    private readonly companyRepository: CompanyRepository,
     private readonly logger: AppLoggingService,
   ) {
     super();
@@ -132,6 +134,49 @@ export class StripeWebhookProcessor extends WorkerHost {
       stripeSubscriptionId: subscription.id,
     });
 
+    // Update company subscription status based on Stripe subscription status
+    try {
+      const stripeCustomerId =
+        typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+
+      if (stripeCustomerId) {
+        const stripeCustomer = await this.stripeCustomerRepository.findByStripeCustomerId({
+          stripeCustomerId,
+        });
+
+        if (stripeCustomer) {
+          const company = await this.companyRepository.findByStripeCustomerId({
+            stripeCustomerId: stripeCustomer.id,
+          });
+
+          if (company) {
+            if (subscription.status === "active") {
+              await this.companyRepository.markSubscriptionStatus({
+                companyId: company.id,
+                isActiveSubscription: true,
+              });
+              this.logger.debug(`Company ${company.id} subscription marked active`);
+            } else if (subscription.status === "canceled") {
+              await this.companyRepository.markSubscriptionStatus({
+                companyId: company.id,
+                isActiveSubscription: false,
+              });
+              this.logger.debug(`Company ${company.id} subscription marked inactive (canceled)`);
+            }
+          } else {
+            this.logger.warn(`Company not found for stripe customer ${stripeCustomerId}`);
+          }
+        } else {
+          this.logger.warn(`Stripe customer ${stripeCustomerId} not found in database`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to update company subscription status for subscription ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      // Don't throw - status update failure should not fail webhook processing
+    }
+
     // Detect price change and allocate prorated tokens
     if (previousSubscription && currentStripePriceId) {
       const previousStripePriceId = previousSubscription.stripePrice?.stripePriceId;
@@ -228,10 +273,6 @@ export class StripeWebhookProcessor extends WorkerHost {
     const subscriptionDetails = invoice.parent?.subscription_details;
     const directSubscription = (invoice as unknown as { subscription?: string | { id: string } }).subscription;
 
-    console.log(`[Webhook] handleInvoiceEvent: ${eventType}, invoice: ${invoice.id}`);
-    console.log(`[Webhook] subscriptionDetails:`, subscriptionDetails);
-    console.log(`[Webhook] directSubscription:`, directSubscription);
-
     // Try to get subscription ID from either location
     let subscriptionId: string | undefined;
     if (subscriptionDetails?.subscription) {
@@ -244,14 +285,10 @@ export class StripeWebhookProcessor extends WorkerHost {
     }
 
     if (eventType === "invoice.paid" && subscriptionId) {
-      console.log(`[Webhook] 💰 INVOICE PAID - Subscription: ${subscriptionId}`);
-
       // Sync subscription first
       await this.subscriptionService.syncSubscriptionFromStripe({
         stripeSubscriptionId: subscriptionId,
       });
-
-      console.log(`[Webhook] Triggering token allocation for subscription: ${subscriptionId}`);
 
       // Allocate tokens (non-blocking - failures don't fail webhook)
       try {

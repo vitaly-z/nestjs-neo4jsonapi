@@ -358,6 +358,23 @@ export class CompanyRepository implements OnModuleInit {
     await this.neo4j.writeOne(query);
   }
 
+  async markSubscriptionStatus(params: { companyId: string; isActiveSubscription: boolean }): Promise<void> {
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      isActiveSubscription: params.isActiveSubscription,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET company.isActiveSubscription = $isActiveSubscription,
+          company.updatedAt = datetime()
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
+
   /**
    * Update company token allocation fields
    *

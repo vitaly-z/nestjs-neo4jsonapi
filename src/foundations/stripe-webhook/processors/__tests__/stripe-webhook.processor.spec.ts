@@ -37,6 +37,7 @@ import { StripeCustomerRepository } from "../../../stripe-customer/repositories/
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeInvoiceRepository } from "../../../stripe-invoice/repositories/stripe-invoice.repository";
 import { StripePriceRepository } from "../../../stripe-price/repositories/stripe-price.repository";
+import { CompanyRepository } from "../../../company/repositories/company.repository";
 import { AppLoggingService } from "../../../../core/logging";
 import { StripeService } from "../../../stripe/services/stripe.service";
 import {
@@ -55,6 +56,7 @@ describe("StripeWebhookProcessor", () => {
   let stripeCustomerRepository: vi.Mocked<StripeCustomerRepository>;
   let subscriptionRepository: vi.Mocked<StripeSubscriptionRepository>;
   let stripeInvoiceRepository: vi.Mocked<StripeInvoiceRepository>;
+  let companyRepository: vi.Mocked<CompanyRepository>;
   let notificationService: vi.Mocked<StripeWebhookNotificationService>;
   let logger: vi.Mocked<AppLoggingService>;
 
@@ -90,6 +92,12 @@ describe("StripeWebhookProcessor", () => {
 
     const mockStripeCustomerRepository = {
       updateByStripeCustomerId: vi.fn(),
+      findByStripeCustomerId: vi.fn(),
+    };
+
+    const mockCompanyRepository = {
+      findByStripeCustomerId: vi.fn(),
+      markSubscriptionStatus: vi.fn(),
     };
 
     const mockSubscriptionRepository = {
@@ -172,6 +180,10 @@ describe("StripeWebhookProcessor", () => {
           useValue: mockStripeService,
         },
         {
+          provide: CompanyRepository,
+          useValue: mockCompanyRepository,
+        },
+        {
           provide: AppLoggingService,
           useValue: mockLogger,
         },
@@ -184,6 +196,7 @@ describe("StripeWebhookProcessor", () => {
     stripeCustomerRepository = module.get(StripeCustomerRepository);
     subscriptionRepository = module.get(StripeSubscriptionRepository);
     stripeInvoiceRepository = module.get(StripeInvoiceRepository);
+    companyRepository = module.get(CompanyRepository);
     notificationService = module.get(StripeWebhookNotificationService);
     logger = module.get(AppLoggingService);
   });
@@ -277,6 +290,111 @@ describe("StripeWebhookProcessor", () => {
       expect(subscriptionService.syncSubscriptionFromStripe).toHaveBeenCalledWith({
         stripeSubscriptionId: MOCK_SUBSCRIPTION.id,
       });
+    });
+
+    it("should mark company subscription as active when subscription status is active", async () => {
+      const activeSubscription = {
+        ...MOCK_SUBSCRIPTION,
+        status: "active",
+      };
+      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+
+      const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
+      const mockCompany = { id: "company-id" };
+
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(mockStripeCustomer as any);
+      companyRepository.findByStripeCustomerId.mockResolvedValue(mockCompany as any);
+      subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
+
+      await processor.process(job);
+
+      expect(companyRepository.markSubscriptionStatus).toHaveBeenCalledWith({
+        companyId: "company-id",
+        isActiveSubscription: true,
+      });
+    });
+
+    it("should mark company subscription as inactive when subscription status is canceled", async () => {
+      const canceledSubscription = {
+        ...MOCK_SUBSCRIPTION,
+        status: "canceled",
+      };
+      const job = createMockJob("customer.subscription.deleted", canceledSubscription as unknown as Record<string, any>);
+
+      const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
+      const mockCompany = { id: "company-id" };
+
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(mockStripeCustomer as any);
+      companyRepository.findByStripeCustomerId.mockResolvedValue(mockCompany as any);
+      subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
+
+      await processor.process(job);
+
+      expect(companyRepository.markSubscriptionStatus).toHaveBeenCalledWith({
+        companyId: "company-id",
+        isActiveSubscription: false,
+      });
+    });
+
+    it("should not fail webhook when company subscription status update fails", async () => {
+      const activeSubscription = {
+        ...MOCK_SUBSCRIPTION,
+        status: "active",
+      };
+      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+
+      const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
+      const mockCompany = { id: "company-id" };
+
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(mockStripeCustomer as any);
+      companyRepository.findByStripeCustomerId.mockResolvedValue(mockCompany as any);
+      companyRepository.markSubscriptionStatus.mockRejectedValue(new Error("DB error"));
+      subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
+
+      await processor.process(job);
+
+      // Should still complete successfully
+      expect(stripeWebhookEventRepository.updateStatus).toHaveBeenCalledWith({
+        id: TEST_DATA.webhookEventId,
+        status: "completed",
+        processedAt: expect.any(Date),
+      });
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to update company subscription status"));
+    });
+
+    it("should not update subscription status when stripe customer not found", async () => {
+      const activeSubscription = {
+        ...MOCK_SUBSCRIPTION,
+        status: "active",
+      };
+      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
+      subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
+
+      await processor.process(job);
+
+      expect(companyRepository.markSubscriptionStatus).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("not found in database"));
+    });
+
+    it("should not update subscription status when company not found", async () => {
+      const activeSubscription = {
+        ...MOCK_SUBSCRIPTION,
+        status: "active",
+      };
+      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+
+      const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
+
+      stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(mockStripeCustomer as any);
+      companyRepository.findByStripeCustomerId.mockResolvedValue(null);
+      subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
+
+      await processor.process(job);
+
+      expect(companyRepository.markSubscriptionStatus).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Company not found"));
     });
   });
 

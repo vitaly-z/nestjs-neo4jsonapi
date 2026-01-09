@@ -88,6 +88,7 @@ describe("TokenAllocationService", () => {
     const mockCompanyRepository = {
       findByStripeCustomerId: vi.fn(),
       updateTokens: vi.fn(),
+      markSubscriptionStatus: vi.fn(),
     };
 
     const mockStripePriceRepository = {

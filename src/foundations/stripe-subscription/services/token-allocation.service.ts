@@ -33,8 +33,6 @@ export class TokenAllocationService {
    * @returns Result indicating success/failure and tokens allocated
    */
   async allocateTokensOnPayment(params: { stripeSubscriptionId: string }): Promise<TokenAllocationResult> {
-    console.log(`[TokenAllocation] allocateTokensOnPayment called for subscription: ${params.stripeSubscriptionId}`);
-
     // 1. Find subscription with price
     const subscription = await this.subscriptionRepository.findByStripeSubscriptionId({
       stripeSubscriptionId: params.stripeSubscriptionId,
@@ -45,8 +43,6 @@ export class TokenAllocationService {
       this.logger.warn(`Subscription ${params.stripeSubscriptionId} not found for token allocation`);
       return { success: false, reason: "Subscription not found" };
     }
-
-    console.log(`[TokenAllocation] Found subscription: ${subscription.id}`);
 
     // 2. Get price tokens
     const price = subscription.stripePrice;
@@ -63,7 +59,6 @@ export class TokenAllocationService {
     console.log(`[TokenAllocation] Company ID: ${company?.id}`);
 
     if (!company) {
-      console.log(`[TokenAllocation] Company NOT FOUND for subscription`);
       this.logger.error(`Company not found for subscription ${params.stripeSubscriptionId}`);
       return { success: false, reason: "Company not found" };
     }
@@ -71,6 +66,11 @@ export class TokenAllocationService {
     // 4. Get current company state
     const previousTokens = Number(company.availableMonthlyTokens ?? 0);
     console.log(`[TokenAllocation] Current tokens: ${previousTokens}, New tokens: ${price.token}`);
+
+    await this.companyRepository.markSubscriptionStatus({
+      companyId: company.id,
+      isActiveSubscription: true,
+    });
 
     // 5. Reset monthly tokens to full amount
     await this.companyRepository.updateTokens({

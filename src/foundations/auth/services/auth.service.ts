@@ -186,7 +186,7 @@ export class AuthService {
     await this.userService.expectNotExists({ email: params.data.attributes.email });
 
     const company = await this.companyRepository.createByName({
-      name: params.data.attributes.name,
+      name: params.data.attributes.companyName ?? params.data.attributes.name,
     });
 
     const password = await hashPassword(params.data.attributes.password);

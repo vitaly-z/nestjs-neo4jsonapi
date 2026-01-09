@@ -11,6 +11,7 @@ import { StripeSubscriptionRepository } from "../../stripe-subscription/reposito
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
+import { StripeInvoiceAdminService } from "../../stripe-invoice/services/stripe-invoice-admin.service";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
 
@@ -34,6 +35,7 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly tokenAllocationService: TokenAllocationService,
     private readonly stripeService: StripeService,
     private readonly companyRepository: CompanyRepository,
+    private readonly stripeInvoiceAdminService: StripeInvoiceAdminService,
     private readonly logger: AppLoggingService,
   ) {
     super();
@@ -95,6 +97,10 @@ export class StripeWebhookProcessor extends WorkerHost {
         await this.handleSubscriptionEvent(payload as Stripe.Subscription);
         break;
 
+      case "invoice.created":
+      case "invoice.finalized":
+      case "invoice.updated":
+      case "invoice.sent":
       case "invoice.paid":
       case "invoice.payment_failed":
         await this.handleInvoiceEvent(eventType, payload as Stripe.Invoice);
@@ -218,6 +224,11 @@ export class StripeWebhookProcessor extends WorkerHost {
   }
 
   private async handleInvoiceEvent(eventType: string, invoice: Stripe.Invoice): Promise<void> {
+    // Sync invoice from Stripe for all invoice events (creates or updates)
+    await this.stripeInvoiceAdminService.syncInvoiceFromStripe({
+      stripeInvoiceId: invoice.id,
+    });
+
     const stripeCustomerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
 
     if (!stripeCustomerId) {

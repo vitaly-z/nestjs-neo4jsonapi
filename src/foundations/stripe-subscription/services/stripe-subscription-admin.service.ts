@@ -149,6 +149,24 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
     }
 
+    // Prevent duplicate recurring subscriptions
+    if (price.priceType === "recurring") {
+      const existingSubscriptions = await this.subscriptionRepository.findByStripeCustomerId({
+        stripeCustomerId: customer.id,
+      });
+
+      const hasActiveRecurring = existingSubscriptions.some(
+        (sub) => (sub.status === "active" || sub.status === "trialing") && sub.stripePrice?.priceType === "recurring",
+      );
+
+      if (hasActiveRecurring) {
+        throw new HttpException(
+          "You already have an active subscription. Please change your plan instead of creating a new one.",
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
     // Validate and auto-select payment method
     let paymentMethodId = params.paymentMethodId;
     if (!paymentMethodId) {

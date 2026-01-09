@@ -40,6 +40,7 @@ import { StripePriceRepository } from "../../../stripe-price/repositories/stripe
 import { CompanyRepository } from "../../../company/repositories/company.repository";
 import { AppLoggingService } from "../../../../core/logging";
 import { StripeService } from "../../../stripe/services/stripe.service";
+import { StripeInvoiceAdminService } from "../../../stripe-invoice/services/stripe-invoice-admin.service";
 import {
   MOCK_SUBSCRIPTION,
   MOCK_INVOICE,
@@ -140,6 +141,10 @@ describe("StripeWebhookProcessor", () => {
       }),
     };
 
+    const mockStripeInvoiceAdminService = {
+      syncInvoiceFromStripe: vi.fn().mockResolvedValue({}),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StripeWebhookProcessor,
@@ -182,6 +187,10 @@ describe("StripeWebhookProcessor", () => {
         {
           provide: CompanyRepository,
           useValue: mockCompanyRepository,
+        },
+        {
+          provide: StripeInvoiceAdminService,
+          useValue: mockStripeInvoiceAdminService,
         },
         {
           provide: AppLoggingService,

@@ -39,24 +39,20 @@ export class TokenAllocationService {
     });
 
     if (!subscription) {
-      console.log(`[TokenAllocation] Subscription NOT FOUND: ${params.stripeSubscriptionId}`);
       this.logger.warn(`Subscription ${params.stripeSubscriptionId} not found for token allocation`);
       return { success: false, reason: "Subscription not found" };
     }
 
     // 2. Get price tokens
     const price = subscription.stripePrice;
-    console.log(`[TokenAllocation] Price info:`, { priceId: price?.id, tokens: price?.token });
 
     if (!price || price.token === undefined || price.token === null) {
-      console.log(`[TokenAllocation] No tokens on price - skipping allocation`);
       this.logger.debug(`No tokens configured for price ${price?.id} - skipping allocation`);
       return { success: true, reason: "No tokens configured for this plan" };
     }
 
     // 3. Find company via customer relationship
     const company = await this.findCompanyBySubscription(subscription.stripeCustomer?.id);
-    console.log(`[TokenAllocation] Company ID: ${company?.id}`);
 
     if (!company) {
       this.logger.error(`Company not found for subscription ${params.stripeSubscriptionId}`);
@@ -65,7 +61,6 @@ export class TokenAllocationService {
 
     // 4. Get current company state
     const previousTokens = Number(company.availableMonthlyTokens ?? 0);
-    console.log(`[TokenAllocation] Current tokens: ${previousTokens}, New tokens: ${price.token}`);
 
     await this.companyRepository.markSubscriptionStatus({
       companyId: company.id,
@@ -79,7 +74,6 @@ export class TokenAllocationService {
       availableMonthlyTokens: price.token,
     });
 
-    console.log(`[TokenAllocation] ✅ SUCCESS - Allocated ${price.token} tokens to company ${company.id}`);
     this.logger.log(
       `Token allocation on payment: Company ${company.id} - reset from ${previousTokens} to ${price.token} tokens`,
     );
@@ -109,35 +103,22 @@ export class TokenAllocationService {
     stripeSubscriptionId: string;
     newPriceId: string;
   }): Promise<TokenAllocationResult> {
-    console.log(`[TokenAllocation] allocateProratedTokensOnPlanChange called`, {
-      subscriptionId: params.stripeSubscriptionId,
-      newPriceId: params.newPriceId,
-    });
-
     // 1. Find subscription
     const subscription = await this.subscriptionRepository.findByStripeSubscriptionId({
       stripeSubscriptionId: params.stripeSubscriptionId,
     });
 
     if (!subscription) {
-      console.log(`[TokenAllocation] Subscription NOT FOUND: ${params.stripeSubscriptionId}`);
       this.logger.warn(`Subscription ${params.stripeSubscriptionId} not found for prorated allocation`);
       return { success: false, reason: "Subscription not found" };
     }
-
-    console.log(`[TokenAllocation] Found subscription with period:`, {
-      start: subscription.currentPeriodStart,
-      end: subscription.currentPeriodEnd,
-    });
 
     // 2. Get new price tokens
     const newPrice = await this.stripePriceRepository.findById({
       id: params.newPriceId,
     });
-    console.log(`[TokenAllocation] New price info:`, { priceId: newPrice?.id, tokens: newPrice?.token });
 
     if (!newPrice || newPrice.token === undefined || newPrice.token === null) {
-      console.log(`[TokenAllocation] No tokens on new price - skipping allocation`);
       this.logger.debug(`No tokens configured for new price ${params.newPriceId} - skipping allocation`);
       return { success: true, reason: "No tokens configured for new plan" };
     }
@@ -152,26 +133,16 @@ export class TokenAllocationService {
 
     const proratedTokens = Math.floor(newPrice.token * (remainingDays / totalDays));
 
-    console.log(`[TokenAllocation] Pro-ration calculation:`, {
-      totalDays: totalDays.toFixed(1),
-      remainingDays: remainingDays.toFixed(1),
-      fullTokens: newPrice.token,
-      proratedTokens,
-    });
-
     // 4. Find company
     const company = await this.findCompanyBySubscription(subscription.stripeCustomer?.id);
-    console.log(`[TokenAllocation] Company ID: ${company?.id}`);
 
     if (!company) {
-      console.log(`[TokenAllocation] Company NOT FOUND for subscription`);
       this.logger.error(`Company not found for subscription ${params.stripeSubscriptionId}`);
       return { success: false, reason: "Company not found" };
     }
 
     // 5. Get current company state
     const previousTokens = Number(company.availableMonthlyTokens ?? 0);
-    console.log(`[TokenAllocation] Current tokens: ${previousTokens}, Prorated tokens: ${proratedTokens}`);
 
     // 6. Reset to prorated amount
     await this.companyRepository.updateTokens({
@@ -180,7 +151,6 @@ export class TokenAllocationService {
       availableMonthlyTokens: proratedTokens,
     });
 
-    console.log(`[TokenAllocation] ✅ SUCCESS - Allocated ${proratedTokens} prorated tokens to company ${company.id}`);
     this.logger.log(
       `Prorated token allocation: Company ${company.id} - reset from ${previousTokens} to ${proratedTokens} tokens (${remainingDays.toFixed(1)}/${totalDays.toFixed(1)} days remaining)`,
     );

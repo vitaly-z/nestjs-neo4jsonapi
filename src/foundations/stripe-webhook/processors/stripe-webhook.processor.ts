@@ -3,6 +3,7 @@ import { Job } from "bullmq";
 import Stripe from "stripe";
 import { QueueId } from "../../../config/enums/queue.id";
 import { AppLoggingService } from "../../../core/logging";
+import { CompanyRepository } from "../../company/repositories/company.repository";
 import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
 import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
@@ -10,7 +11,6 @@ import { StripeSubscriptionRepository } from "../../stripe-subscription/reposito
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
-import { CompanyRepository } from "../../company/repositories/company.repository";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
 
@@ -116,8 +116,6 @@ export class StripeWebhookProcessor extends WorkerHost {
   }
 
   private async handleSubscriptionEvent(subscription: Stripe.Subscription): Promise<void> {
-    console.log(`[Webhook] handleSubscriptionEvent: ${subscription.id}, status: ${subscription.status}`);
-
     // Get previous subscription state to detect price changes
     const previousSubscription = await this.subscriptionRepository.findByStripeSubscriptionId({
       stripeSubscriptionId: subscription.id,
@@ -125,9 +123,6 @@ export class StripeWebhookProcessor extends WorkerHost {
 
     // Get current price ID from Stripe subscription
     const currentStripePriceId = subscription.items?.data?.[0]?.price?.id;
-    console.log(
-      `[Webhook] Previous price: ${previousSubscription?.stripePrice?.stripePriceId}, Current price: ${currentStripePriceId}`,
-    );
 
     // Sync subscription from Stripe
     await this.subscriptionService.syncSubscriptionFromStripe({
@@ -182,7 +177,6 @@ export class StripeWebhookProcessor extends WorkerHost {
       const previousStripePriceId = previousSubscription.stripePrice?.stripePriceId;
 
       if (previousStripePriceId && previousStripePriceId !== currentStripePriceId) {
-        console.log(`[Webhook] 🔄 PRICE CHANGE DETECTED: ${previousStripePriceId} -> ${currentStripePriceId}`);
         this.logger.log(
           `Price change detected for subscription ${subscription.id}: ${previousStripePriceId} -> ${currentStripePriceId}`,
         );

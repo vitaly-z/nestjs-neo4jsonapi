@@ -1,3 +1,17 @@
+## [1.27.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.26.0...v1.27.0) (2026-01-09)
+
+### 🚀 Features
+
+* add subscription status management for companies in StripeWebhookProcessor ([a6fdf8e](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/a6fdf8eaa361b9edb3ea51645c2b779adf763206))
+* prevent duplicate recurring subscriptions during creation ([cbb5282](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/cbb5282d093dacb1240ac86d6cd3ecbc8ba6cd07))
+
+### 🐛 Bug Fixes
+
+* correct company name on registration ([f681f9c](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/f681f9c9cd1cae04c85b310ed3110b5b6d0df10f))
+* correct isActiveSubscription ([a3efa15](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/a3efa15264dbb0365b9fc2c362bcbce820afa6ee))
+* enforce required description field in StripeProductPostAttributesDTO ([cb5b5bf](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/cb5b5bf130c3e20971e2aaa4c0fe755375cf85c3))
+* remove console logs ([56ae64f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/56ae64f4d84ed6a1e3bf6a5fac417dd7ef150cd8))
+
 ## [1.26.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.25.0...v1.26.0) (2026-01-08)
 
 ### 🚀 Features

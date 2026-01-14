@@ -186,6 +186,7 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
         apiVersion: process.env.AI_API_VERSION || "",
         inputCostPer1MTokens: parseFloat(process.env.AI_INPUT_COST_PER_1M_TOKENS || "0"),
         outputCostPer1MTokens: parseFloat(process.env.AI_OUTPUT_COST_PER_1M_TOKENS || "0"),
+        googleCredentialsBase64: process.env.AI_GOOGLE_CREDENTIALS_BASE64 || "",
       },
       transcriber: {
         provider: process.env.TRANSCRIBER_PROVIDER || "",
@@ -202,6 +203,8 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
         instance: process.env.EMBEDDER_INSTANCE || "",
         apiVersion: process.env.EMBEDDER_API_VERSION || "",
         dimensions: parseInt(process.env.EMBEDDER_DIMENSIONS || "0"),
+        region: process.env.EMBEDDER_REGION || "",
+        googleCredentialsBase64: process.env.EMBEDDER_GOOGLE_CREDENTIALS_BASE64 || "",
       },
     },
     rateLimit: {
@@ -226,6 +229,10 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
       clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
       token: process.env.DISCORD_TOKEN || "",
       devGuildId: process.env.DISCORD_DEV_GUILD_ID || "",
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     },
     oauth: {
       enabled: process.env.OAUTH_ENABLED === "true",

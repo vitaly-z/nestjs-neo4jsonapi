@@ -24,6 +24,7 @@ import { UserRepository } from "../../user/repositories/user.repository";
 import { UserService } from "../../user/services/user.service";
 import { PendingRegistrationService } from "./pending-registration.service";
 import { DiscordUserService } from "../../discord-user/services/discord-user.service";
+import { GoogleUserService } from "../../google-user/services/google-user.service";
 
 @Injectable()
 export class AuthService {
@@ -41,6 +42,7 @@ export class AuthService {
     private readonly configService: ConfigService<BaseConfigInterface>,
     private readonly pendingRegistrationService: PendingRegistrationService,
     private readonly discordUserService: DiscordUserService,
+    private readonly googleUserService: GoogleUserService,
   ) {}
 
   private get appConfig(): ConfigAppInterface {
@@ -348,6 +350,20 @@ export class AuthService {
           email: pending.email,
           username: pending.name,
           avatar: pending.avatar,
+        },
+        termsAcceptedAt: params.termsAcceptedAt,
+        marketingConsent: params.marketingConsent,
+        marketingConsentAt: params.marketingConsentAt,
+      });
+    } else if (pending.provider === "google") {
+      await this.googleUserService.create({
+        userId,
+        companyId,
+        userDetails: {
+          id: pending.providerUserId,
+          email: pending.email,
+          name: pending.name,
+          picture: pending.avatar,
         },
         termsAcceptedAt: params.termsAcceptedAt,
         marketingConsent: params.marketingConsent,

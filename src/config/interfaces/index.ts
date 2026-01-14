@@ -12,6 +12,7 @@ export * from "./config.chunk.queues.interface";
 export * from "./config.content.types.interface";
 export * from "./config.cors.interface";
 export * from "./config.discord.interface";
+export * from "./config.google.interface";
 export * from "./config.email.interface";
 export * from "./config.encryption.interface";
 export * from "./config.environment.interface";

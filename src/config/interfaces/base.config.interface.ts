@@ -7,6 +7,7 @@ import { ConfigChunkQueuesInterface } from "./config.chunk.queues.interface";
 import { ConfigContentTypesInterface } from "./config.content.types.interface";
 import { ConfigCorsInterface } from "./config.cors.interface";
 import { ConfigDiscordInterface } from "./config.discord.interface";
+import { ConfigGoogleInterface } from "./config.google.interface";
 import { ConfigEmailInterface } from "./config.email.interface";
 import { ConfigEncryptionInterface } from "./config.encryption.interface";
 import { ConfigEnvironmentInterface } from "./config.environment.interface";
@@ -47,5 +48,6 @@ export interface BaseConfigInterface {
   contentTypes: ConfigContentTypesInterface;
   jobNames: ConfigJobNamesInterface;
   discord: ConfigDiscordInterface;
+  google: ConfigGoogleInterface;
   oauth: ConfigOAuthInterface;
 }

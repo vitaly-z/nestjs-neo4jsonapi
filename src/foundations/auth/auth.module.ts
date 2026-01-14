@@ -5,21 +5,31 @@ import { AuthController } from "./controllers/auth.controller";
 import { modelRegistry } from "../../common/registries/registry";
 import { CompanyModule } from "../company/company.module";
 import { DiscordUserModule } from "../discord-user/discord-user.module";
+import { GoogleUserModule } from "../google-user/google-user.module";
 import { UserModule } from "../user/user.module";
 import { AuthDiscordController } from "./controllers/auth.discord.controller";
+import { AuthGoogleController } from "./controllers/auth.google.controller";
 import { AuthCodeModel } from "./entities/auth.code.model";
 import { AuthModel } from "./entities/auth.model";
 import { AuthRepository } from "./repositories/auth.repository";
 import { AuthSerialiser } from "./serialisers/auth.serialiser";
 import { AuthDiscordService } from "./services/auth.discord.service";
+import { AuthGoogleService } from "./services/auth.google.service";
 import { AuthService } from "./services/auth.service";
 import { PendingRegistrationService } from "./services/pending-registration.service";
 
 @Module({
-  controllers: [AuthController, AuthDiscordController],
-  providers: [AuthService, AuthRepository, AuthSerialiser, AuthDiscordService, PendingRegistrationService],
+  controllers: [AuthController, AuthDiscordController, AuthGoogleController],
+  providers: [
+    AuthService,
+    AuthRepository,
+    AuthSerialiser,
+    AuthDiscordService,
+    AuthGoogleService,
+    PendingRegistrationService,
+  ],
   exports: [AuthService, PendingRegistrationService],
-  imports: [UserModule, JwtModule, CompanyModule, DiscordUserModule],
+  imports: [UserModule, JwtModule, CompanyModule, DiscordUserModule, GoogleUserModule],
 })
 export class AuthModule implements OnModuleInit {
   onModuleInit() {

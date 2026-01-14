@@ -22,6 +22,8 @@ import { Role } from "../../role/entities/role.entity";
 import { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/repositories/user.repository";
 import { UserService } from "../../user/services/user.service";
+import { PendingRegistrationService } from "./pending-registration.service";
+import { DiscordUserService } from "../../discord-user/services/discord-user.service";
 
 @Injectable()
 export class AuthService {
@@ -37,6 +39,8 @@ export class AuthService {
     private readonly neo4j: Neo4jService,
     private readonly moduleRef: ModuleRef,
     private readonly configService: ConfigService<BaseConfigInterface>,
+    private readonly pendingRegistrationService: PendingRegistrationService,
+    private readonly discordUserService: DiscordUserService,
   ) {}
 
   private get appConfig(): ConfigAppInterface {
@@ -198,6 +202,9 @@ export class AuthService {
       password: password,
       companyId: company.id,
       roleIds: [RoleId.CompanyAdministrator],
+      termsAcceptedAt: params.data.attributes.termsAcceptedAt,
+      marketingConsent: params.data.attributes.marketingConsent,
+      marketingConsentAt: params.data.attributes.marketingConsentAt,
     });
 
     const link: string = `${this.appConfig.url}en/activation/${user.code}`;
@@ -308,5 +315,67 @@ export class AuthService {
     if (user.codeExpiration < new Date()) throw new HttpException("The code provided is expired", HttpStatus.NOT_FOUND);
 
     await this.repository.activateAccount({ userId: user.id });
+  }
+
+  async completeOAuthRegistration(params: {
+    pendingId: string;
+    termsAcceptedAt: string;
+    marketingConsent: boolean;
+    marketingConsentAt: string | null;
+  }): Promise<{ code: string }> {
+    // Get pending registration from Redis
+    const pending = await this.pendingRegistrationService.get(params.pendingId);
+    if (!pending) {
+      throw new HttpException("Pending registration not found or expired", HttpStatus.NOT_FOUND);
+    }
+
+    // Check if registration is allowed
+    if (!this.authConfig.allowRegistration) {
+      throw new HttpException("Registration is currently disabled", HttpStatus.FORBIDDEN);
+    }
+
+    // Generate IDs for new user and company
+    const userId = randomUUID();
+    const companyId = randomUUID();
+
+    // Create user based on provider
+    if (pending.provider === "discord") {
+      await this.discordUserService.create({
+        userId,
+        companyId,
+        userDetails: {
+          id: pending.providerUserId,
+          email: pending.email,
+          username: pending.name,
+          avatar: pending.avatar,
+        },
+        termsAcceptedAt: params.termsAcceptedAt,
+        marketingConsent: params.marketingConsent,
+        marketingConsentAt: params.marketingConsentAt,
+      });
+    } else {
+      throw new HttpException(`Unsupported provider: ${pending.provider}`, HttpStatus.BAD_REQUEST);
+    }
+
+    // Set CLS context
+    this.clsService.set("companyId", companyId);
+    this.clsService.set("userId", userId);
+
+    // Delete pending registration
+    await this.pendingRegistrationService.delete(params.pendingId);
+
+    // Get created user
+    const user = await this.users.findByUserId({ userId });
+
+    // Create auth token
+    const token: any = await this.createToken({ user });
+    const authCodeId = randomUUID();
+
+    await this.createCode({
+      authCodeId,
+      authId: token.data.attributes.refreshToken,
+    });
+
+    return { code: authCodeId };
   }
 }

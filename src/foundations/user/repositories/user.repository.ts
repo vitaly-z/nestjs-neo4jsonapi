@@ -307,6 +307,9 @@ export class UserRepository implements OnModuleInit {
     roleIds: string[];
     isActive?: boolean;
     phone?: string;
+    termsAcceptedAt?: string;
+    marketingConsent?: boolean;
+    marketingConsentAt?: string;
   }): Promise<User> {
     const query = this.neo4j.initQuery();
 
@@ -325,6 +328,9 @@ export class UserRepository implements OnModuleInit {
       codeExpiration: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       companyId: params.companyId,
       roleIds: params.roleIds,
+      termsAcceptedAt: params.termsAcceptedAt ?? null,
+      marketingConsent: params.marketingConsent ?? false,
+      marketingConsentAt: params.marketingConsentAt ?? null,
     };
 
     query.query = `
@@ -341,6 +347,9 @@ export class UserRepository implements OnModuleInit {
         phone: $phone,
         code: $code,
         ${params.avatar ? "avatar: $avatar," : ""}
+        ${params.termsAcceptedAt ? "termsAcceptedAt: datetime($termsAcceptedAt)," : ""}
+        marketingConsent: $marketingConsent,
+        ${params.marketingConsentAt ? "marketingConsentAt: datetime($marketingConsentAt)," : ""}
         codeExpiration: datetime($codeExpiration),
         createdAt: datetime(),
         updatedAt: datetime()

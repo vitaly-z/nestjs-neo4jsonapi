@@ -84,4 +84,17 @@ export class AuthController {
   async activateAccount(@Param("code") code: string) {
     await this.service.activateAccount(code);
   }
+
+  @Post("oauth/complete")
+  async completeOAuthRegistration(
+    @Body()
+    body: {
+      pendingId: string;
+      termsAcceptedAt: string;
+      marketingConsent: boolean;
+      marketingConsentAt: string | null;
+    },
+  ): Promise<{ code: string }> {
+    return this.service.completeOAuthRegistration(body);
+  }
 }

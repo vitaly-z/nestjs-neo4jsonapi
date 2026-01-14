@@ -1,5 +1,15 @@
 import { Type } from "class-transformer";
-import { Equals, IsDefined, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";
+import {
+  Equals,
+  IsBoolean,
+  IsDefined,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from "class-validator";
 import { authMeta } from "../../auth/entities/auth.meta";
 
 export class AuthPostRegisterAttributesDTO {
@@ -18,6 +28,18 @@ export class AuthPostRegisterAttributesDTO {
   @IsDefined()
   @IsString()
   password: string;
+
+  @IsDefined()
+  @IsString()
+  termsAcceptedAt: string;
+
+  @IsOptional()
+  @IsBoolean()
+  marketingConsent?: boolean;
+
+  @IsOptional()
+  @IsString()
+  marketingConsentAt?: string;
 }
 
 export class AuthPostRegisterDataDTO {

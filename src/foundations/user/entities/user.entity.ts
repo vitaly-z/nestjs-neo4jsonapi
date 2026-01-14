@@ -20,6 +20,11 @@ export type User = Entity & {
   code?: string;
   codeExpiration?: Date;
 
+  // GDPR consent fields
+  termsAcceptedAt?: Date;
+  marketingConsent?: boolean;
+  marketingConsentAt?: Date;
+
   role?: Role[];
   company?: Company;
   module?: Module[];

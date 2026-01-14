@@ -10,7 +10,8 @@ import { DiscordUserService } from "../../discord-user";
 import { DiscordUser } from "../../discord-user/entities/discord-user";
 import { DiscordUserRepository } from "../../discord-user/repositories/discord-user.repository";
 import { discordUser } from "../../discord-user/types/discord.user.type";
-import { User, UserRepository } from "../../user";
+import { UserRepository } from "../../user";
+import { PendingRegistrationService } from "./pending-registration.service";
 
 @Injectable()
 export class AuthDiscordService {
@@ -21,6 +22,7 @@ export class AuthDiscordService {
     private readonly authService: AuthService,
     private readonly config: ConfigService<BaseConfigInterface>,
     private readonly clsService: ClsService,
+    private readonly pendingRegistrationService: PendingRegistrationService,
   ) {}
 
   private readonly _discordApiUrl = "https://discord.com/api/";
@@ -37,8 +39,8 @@ export class AuthDiscordService {
     const discordUser: DiscordUser = await this.discordUserRepository.findByDiscordId({
       discordId: params.userDetails.id,
     });
-    let user: User;
 
+    // Existing user - normal login flow
     if (discordUser) {
       if (discordUser.user.avatar !== params.userDetails.avatar) {
         await this.userRepository.updateAvatar({
@@ -46,32 +48,33 @@ export class AuthDiscordService {
           avatar: params.userDetails.avatar,
         });
       }
-      user = discordUser.user;
-    } else {
-      // New user - check if registration is allowed
-      if (!this.authConfig.allowRegistration) {
-        return `${this.config.get<ConfigAppInterface>("app").url}auth?error=registration_disabled`;
-      }
 
-      const id = randomUUID();
-      const companyId = randomUUID();
-      await this.discordUserService.create({ userId: id, companyId: companyId, userDetails: params.userDetails });
+      const token: any = await this.authService.createToken({ user: discordUser.user });
+      const authCodeId = randomUUID();
 
-      this.clsService.set("companyId", companyId);
-      this.clsService.set("userId", id);
+      await this.authService.createCode({
+        authCodeId: authCodeId,
+        authId: token.data.attributes.refreshToken,
+      });
 
-      user = await this.userRepository.findByUserId({ userId: id });
+      return `${this.config.get<ConfigAppInterface>("app").url}auth?code=${authCodeId}`;
     }
 
-    const token: any = await this.authService.createToken({ user: user });
-    const authCodeId = randomUUID();
+    // New user - redirect to consent page
+    if (!this.authConfig.allowRegistration) {
+      return `${this.config.get<ConfigAppInterface>("app").url}auth?error=registration_disabled`;
+    }
 
-    await this.authService.createCode({
-      authCodeId: authCodeId,
-      authId: token.data.attributes.refreshToken,
+    // Store pending registration in Redis
+    const pendingId = await this.pendingRegistrationService.create({
+      provider: "discord",
+      providerUserId: params.userDetails.id,
+      email: params.userDetails.email,
+      name: params.userDetails.username,
+      avatar: params.userDetails.avatar,
     });
 
-    return `${this.config.get<ConfigAppInterface>("app").url}auth?code=${authCodeId}`;
+    return `${this.config.get<ConfigAppInterface>("app").url}auth/consent?pending=${pendingId}`;
   }
 
   async exchangeCodeForToken(code: string): Promise<string> {

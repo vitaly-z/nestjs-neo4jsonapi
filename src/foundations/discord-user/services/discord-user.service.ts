@@ -16,7 +16,14 @@ export class DiscordUserService {
     private readonly clsService: ClsService,
   ) {}
 
-  async create(params: { userId: string; companyId: string; userDetails: discordUser }): Promise<void> {
+  async create(params: {
+    userId: string;
+    companyId: string;
+    userDetails: discordUser;
+    termsAcceptedAt?: string;
+    marketingConsent?: boolean;
+    marketingConsentAt?: string | null;
+  }): Promise<void> {
     this.clsService.set("companyId", params.companyId);
     this.clsService.set("userId", params.userId);
 
@@ -34,6 +41,9 @@ export class DiscordUserService {
       avatar: params.userDetails.avatar,
       roleIds: [RoleId.CompanyAdministrator],
       isActive: true,
+      termsAcceptedAt: params.termsAcceptedAt,
+      marketingConsent: params.marketingConsent,
+      marketingConsentAt: params.marketingConsentAt ?? undefined,
     });
 
     await this.discordUserRepository.create({

@@ -13,11 +13,12 @@ import { AuthRepository } from "./repositories/auth.repository";
 import { AuthSerialiser } from "./serialisers/auth.serialiser";
 import { AuthDiscordService } from "./services/auth.discord.service";
 import { AuthService } from "./services/auth.service";
+import { PendingRegistrationService } from "./services/pending-registration.service";
 
 @Module({
   controllers: [AuthController, AuthDiscordController],
-  providers: [AuthService, AuthRepository, AuthSerialiser, AuthDiscordService],
-  exports: [AuthService],
+  providers: [AuthService, AuthRepository, AuthSerialiser, AuthDiscordService, PendingRegistrationService],
+  exports: [AuthService, PendingRegistrationService],
   imports: [UserModule, JwtModule, CompanyModule, DiscordUserModule],
 })
 export class AuthModule implements OnModuleInit {

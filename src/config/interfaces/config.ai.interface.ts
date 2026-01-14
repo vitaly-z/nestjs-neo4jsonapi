@@ -10,6 +10,8 @@ export interface ConfigAiInterface {
     apiVersion?: string;
     inputCostPer1MTokens: number;
     outputCostPer1MTokens: number;
+    /** Base64-encoded GCP service account JSON for Google Vertex AI */
+    googleCredentialsBase64?: string;
   };
   transcriber: {
     provider: string;
@@ -26,5 +28,9 @@ export interface ConfigAiInterface {
     instance?: string;
     apiVersion?: string;
     dimensions: number;
+    /** GCP region for Google Vertex AI embeddings (e.g., "us-central1") */
+    region?: string;
+    /** Base64-encoded GCP service account JSON for Google Vertex AI */
+    googleCredentialsBase64?: string;
   };
 }

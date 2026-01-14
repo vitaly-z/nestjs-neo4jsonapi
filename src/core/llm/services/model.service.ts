@@ -1,9 +1,12 @@
 import { EmbeddingsInterface } from "@langchain/core/embeddings";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { ChatVertexAI, VertexAIEmbeddings } from "@langchain/google-vertexai";
 import { AzureOpenAIEmbeddings, ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import { ClsService } from "nestjs-cls";
 import OpenAI, { AzureOpenAI } from "openai";
 import { BaseConfigInterface, ConfigAiInterface } from "../../../config/interfaces";
@@ -102,6 +105,29 @@ export class ModelService {
         }
         break;
 
+      case "vertex": {
+        // Google Vertex AI (Gemini models)
+        // Project ID is automatically extracted from the service account credentials JSON
+        const googleConfig = this.aiConfig.ai;
+
+        // Decode base64 credentials and write to temp file if provided
+        if (googleConfig.googleCredentialsBase64) {
+          const credentialsJson = Buffer.from(googleConfig.googleCredentialsBase64, "base64").toString("utf-8");
+          const tempCredPath = path.join(os.tmpdir(), "gcp-credentials-llm.json");
+          fs.writeFileSync(tempCredPath, credentialsJson, { mode: 0o600 });
+          process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredPath;
+        }
+
+        const vertexModel = new ChatVertexAI({
+          model: googleConfig.model,
+          temperature: temperature,
+          location: googleConfig.region,
+        });
+
+        this._modelCache.set(cacheKey, vertexModel);
+        return vertexModel;
+      }
+
       default:
         throw new Error(`Unsupported LLM type: ${this.aiConfig.ai.provider}`);
     }
@@ -161,6 +187,24 @@ export class ModelService {
           azureOpenAIApiVersion: this.aiConfig.embedder.apiVersion,
         });
         break;
+      case "vertex": {
+        // Google Vertex AI Embeddings (uses embedder-specific credentials)
+        const embedderConfig = this.aiConfig.embedder;
+
+        if (embedderConfig.googleCredentialsBase64) {
+          const credentialsJson = Buffer.from(embedderConfig.googleCredentialsBase64, "base64").toString("utf-8");
+          const tempCredPath = path.join(os.tmpdir(), "gcp-credentials-embedder.json");
+          fs.writeFileSync(tempCredPath, credentialsJson, { mode: 0o600 });
+          process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredPath;
+        }
+
+        response = new VertexAIEmbeddings({
+          model: embedderConfig.model,
+          location: embedderConfig.region,
+          dimensions: embedderConfig.dimensions,
+        });
+        break;
+      }
     }
 
     return response;

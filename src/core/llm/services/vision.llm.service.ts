@@ -45,7 +45,65 @@ interface StructuredOutputResponse<T> {
 
 @Injectable()
 export class VisionLLMService {
+  private readonly MAX_RETRIES = 5;
+  private readonly INITIAL_DELAY_MS = 1000;
+
   constructor(private readonly modelService: ModelService) {}
+
+  /**
+   * Checks if an error is a rate limit (429) error
+   */
+  private isRateLimitError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes("429") ||
+        message.includes("rate limit") ||
+        message.includes("resource exhausted") ||
+        message.includes("too many requests")
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Sleep for specified milliseconds
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Execute a function with exponential backoff retry on rate limit errors
+   */
+  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!this.isRateLimitError(error) || attempt === this.MAX_RETRIES - 1) {
+          throw lastError;
+        }
+
+        // Exponential backoff with jitter: 1s, 2s, 4s, 8s, 16s + random 0-500ms
+        const baseDelay = this.INITIAL_DELAY_MS * Math.pow(2, attempt);
+        const jitter = Math.random() * 500;
+        const delay = baseDelay + jitter;
+
+        console.log(
+          `[VisionLLMService] Rate limited (attempt ${attempt + 1}/${this.MAX_RETRIES}), retrying in ${Math.round(delay)}ms...`,
+        );
+
+        await this.sleep(delay);
+      }
+    }
+
+    throw lastError ?? new Error("Max retries exceeded");
+  }
 
   /**
    * Fetches an image from a URL and converts it to a base64 data URL.
@@ -108,7 +166,9 @@ export class VisionLLMService {
         ],
       });
 
-      const response = (await structuredLlm.invoke([message])) as unknown as StructuredOutputResponse<T>;
+      const response = await this.withRetry(async () => {
+        return (await structuredLlm.invoke([message])) as unknown as StructuredOutputResponse<T>;
+      });
 
       // Extract token usage with type guard - same pattern as LLMService
       const raw = isValidRaw(response.raw) ? response.raw : undefined;

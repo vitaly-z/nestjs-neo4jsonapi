@@ -1,3 +1,9 @@
+## [1.31.2](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.31.1...v1.31.2) (2026-01-15)
+
+### 🐛 Bug Fixes
+
+* update third party login configuration ([f91ac64](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/f91ac644b350af5c85ec67cd9d4aa988eff12a52))
+
 ## [1.31.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.31.0...v1.31.1) (2026-01-15)
 
 ### 🐛 Bug Fixes

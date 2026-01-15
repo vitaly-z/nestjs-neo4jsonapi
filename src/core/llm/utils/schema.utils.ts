@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from "zod-to-json-schema";
+import * as z from "zod";
 
 /**
  * Metadata extracted from a field in a Zod schema
@@ -22,15 +22,17 @@ export interface SchemaMetadata {
 /**
  * Converts a Zod schema to JSON Schema format
  *
- * Uses the same library that LangChain uses internally for consistency.
+ * Uses Zod 4's built-in z.toJSONSchema() for native conversion.
  *
  * @param zodSchema - The Zod schema to convert
  * @returns JSON Schema object
  */
 export function convertZodToJsonSchema(zodSchema: any): any {
-  return zodToJsonSchema(zodSchema, {
-    $refStrategy: "none", // Avoid references for simplicity
-    target: "openApi3", // Use OpenAPI 3.0 format (compatible with OpenAI)
+  // Use Zod 4's native JSON Schema conversion
+  return z.toJSONSchema(zodSchema, {
+    target: "openapi-3.0", // Use OpenAPI 3.0 format (compatible with OpenAI/Gemini)
+    cycles: "ref", // Handle cycles with $defs
+    unrepresentable: "any", // Unrepresentable types become {} instead of throwing
   });
 }
 
@@ -175,4 +177,101 @@ export function formatFieldWithDescription(fieldName: string, fieldValue: any, d
   } else {
     return `${fieldName}: ${formattedValue}`;
   }
+}
+
+/**
+ * Removes JSON Schema properties not supported by Gemini API.
+ *
+ * Gemini uses a subset of OpenAPI 3.0 schema that doesn't support:
+ * - $schema, $id, $defs, $ref, $comment
+ * - allOf, anyOf, oneOf (need flattening)
+ *
+ * This function recursively sanitizes a JSON Schema to make it Gemini-compatible.
+ * Use this when calling Gemini models through proxies like Requesty that don't
+ * automatically sanitize schemas.
+ *
+ * @param schema - JSON Schema object (typically from zodToJsonSchema or convertZodToJsonSchema)
+ * @returns Sanitized schema compatible with Gemini API
+ *
+ * @example
+ * ```typescript
+ * const jsonSchema = convertZodToJsonSchema(myZodSchema);
+ * const geminiSchema = sanitizeSchemaForGemini(jsonSchema);
+ * // geminiSchema has no $schema, $defs, etc.
+ * ```
+ */
+export function sanitizeSchemaForGemini(schema: any): any {
+  if (!schema || typeof schema !== "object") return schema;
+
+  // Handle arrays
+  if (Array.isArray(schema)) {
+    return schema.map((item) => sanitizeSchemaForGemini(item));
+  }
+
+  const sanitized = { ...schema };
+
+  // Remove unsupported top-level properties
+  const unsupportedProps = ["$schema", "$id", "$defs", "$ref", "$comment"];
+  for (const prop of unsupportedProps) {
+    delete sanitized[prop];
+  }
+
+  // Recursively sanitize nested objects in properties
+  if (sanitized.properties) {
+    sanitized.properties = Object.fromEntries(
+      Object.entries(sanitized.properties).map(([key, value]) => [key, sanitizeSchemaForGemini(value)]),
+    );
+  }
+
+  // Handle array items
+  if (sanitized.items) {
+    sanitized.items = sanitizeSchemaForGemini(sanitized.items);
+  }
+
+  // Handle allOf - merge all schemas into one
+  if (Array.isArray(sanitized.allOf)) {
+    for (const subSchema of sanitized.allOf) {
+      const cleaned = sanitizeSchemaForGemini(subSchema);
+      // Merge properties
+      if (cleaned.properties) {
+        sanitized.properties = { ...sanitized.properties, ...cleaned.properties };
+      }
+      // Merge required arrays (deduplicate)
+      if (cleaned.required) {
+        const merged = [...(sanitized.required || []), ...cleaned.required];
+        sanitized.required = Array.from(new Set(merged));
+      }
+      // Copy type if not set
+      if (cleaned.type && !sanitized.type) {
+        sanitized.type = cleaned.type;
+      }
+    }
+    delete sanitized.allOf;
+  }
+
+  // Handle anyOf/oneOf - use first option (simplified approach)
+  for (const keyword of ["anyOf", "oneOf"]) {
+    if (Array.isArray(sanitized[keyword]) && sanitized[keyword].length > 0) {
+      const firstOption = sanitizeSchemaForGemini(sanitized[keyword][0]);
+      // Merge the first option into sanitized
+      if (firstOption.properties) {
+        sanitized.properties = { ...sanitized.properties, ...firstOption.properties };
+      }
+      if (firstOption.required) {
+        const merged = [...(sanitized.required || []), ...firstOption.required];
+        sanitized.required = Array.from(new Set(merged));
+      }
+      if (firstOption.type && !sanitized.type) {
+        sanitized.type = firstOption.type;
+      }
+      delete sanitized[keyword];
+    }
+  }
+
+  // Recursively sanitize additionalProperties if it's an object schema
+  if (sanitized.additionalProperties && typeof sanitized.additionalProperties === "object") {
+    sanitized.additionalProperties = sanitizeSchemaForGemini(sanitized.additionalProperties);
+  }
+
+  return sanitized;
 }

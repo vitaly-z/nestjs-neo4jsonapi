@@ -105,6 +105,11 @@ export class ModelService {
         }
         break;
 
+      case "requesty":
+        // Requesty uses configured values (JSON mode is used for structured output instead of function calling)
+        llmConfig.configuration.baseURL = this.aiConfig.ai.url;
+        break;
+
       case "vertex": {
         // Google Vertex AI (Gemini models)
         // Project ID is automatically extracted from the service account credentials JSON
@@ -171,7 +176,16 @@ export class ModelService {
             baseURL: this.aiConfig.embedder.url,
           },
         });
-
+        break;
+      case "requesty":
+        response = new OpenAIEmbeddings({
+          openAIApiKey: this.aiConfig.embedder.apiKey,
+          model: this.aiConfig.embedder.model,
+          dimensions: this.aiConfig.embedder.dimensions,
+          configuration: {
+            baseURL: this.aiConfig.embedder.url,
+          },
+        });
         break;
       case "openai":
         response = new OpenAIEmbeddings({

@@ -2,10 +2,17 @@ import { AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage } from
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ZodType } from "zod";
 import { AgentMessageType } from "../../../common/enums/agentmessage.type";
+import { BaseConfigInterface, ConfigAiInterface } from "../../../config/interfaces";
 import { ModelService } from "../../llm/services/model.service";
-import { extractSchemaMetadata, formatFieldWithDescription } from "../../llm/utils/schema.utils";
+import {
+  convertZodToJsonSchema,
+  extractSchemaMetadata,
+  formatFieldWithDescription,
+  sanitizeSchemaForGemini,
+} from "../../llm/utils/schema.utils";
 
 /**
  * Raw LLM response structure with usage metadata
@@ -72,7 +79,10 @@ interface StructuredOutputResponse<T> {
 export class LLMService {
   private _sessionTokens: SessionUsage;
 
-  constructor(private readonly modelService: ModelService) {
+  constructor(
+    private readonly modelService: ModelService,
+    private readonly config: ConfigService<BaseConfigInterface>,
+  ) {
     this._sessionTokens = {
       input: 0,
       output: 0,
@@ -479,9 +489,27 @@ export class LLMService {
       }
 
       // Get final structured response (unified path for both tool and non-tool flows)
-      const structuredLlm = baseModel.withStructuredOutput(params.outputSchema, {
-        includeRaw: true,
-      });
+      // For Requesty + Gemini: sanitize schema to remove $schema, $defs, etc. that Gemini rejects
+      const aiConfig = this.config.get<ConfigAiInterface>("ai").ai;
+      // Check if model is Gemini (handles both "gemini-..." and "google/gemini-..." formats)
+      const modelLower = aiConfig.model.toLowerCase();
+      const isGeminiModel = modelLower.startsWith("gemini") || modelLower.includes("/gemini");
+      const needsGeminiSanitization = aiConfig.provider === "requesty" && isGeminiModel;
+
+      let structuredLlm;
+      if (needsGeminiSanitization) {
+        // Convert Zod to JSON Schema and remove Gemini-incompatible properties
+        const jsonSchema = convertZodToJsonSchema(params.outputSchema);
+        const sanitizedSchema = sanitizeSchemaForGemini(jsonSchema);
+        structuredLlm = baseModel.withStructuredOutput(sanitizedSchema, {
+          includeRaw: true,
+        });
+      } else {
+        // All other providers: use Zod schema directly
+        structuredLlm = baseModel.withStructuredOutput(params.outputSchema, {
+          includeRaw: true,
+        });
+      }
 
       const response = (await structuredLlm.invoke(
         conversationMessages,

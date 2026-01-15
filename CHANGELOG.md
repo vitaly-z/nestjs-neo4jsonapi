@@ -1,3 +1,9 @@
+## [1.31.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.30.0...v1.31.0) (2026-01-15)
+
+### 🚀 Features
+
+* implement exponential backoff retry for rate limit errors ([df00d91](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/df00d9190b07453b056e7a6996715a50595971a2))
+
 ## [1.30.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.29.0...v1.30.0) (2026-01-14)
 
 ### 🚀 Features

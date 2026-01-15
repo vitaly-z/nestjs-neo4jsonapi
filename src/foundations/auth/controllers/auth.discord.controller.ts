@@ -1,26 +1,25 @@
 import { Controller, Get, HttpException, HttpStatus, Query, Req, Res } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { FastifyReply } from "fastify";
 import { authMeta } from "..";
+import { BaseConfigInterface, ConfigDiscordInterface } from "../../../config/interfaces";
 import { discordUser } from "../../discord-user/types/discord.user.type";
 import { AuthDiscordService } from "../services/auth.discord.service";
 
 @Controller()
 export class AuthDiscordController {
-  constructor(private readonly authDiscordService: AuthDiscordService) {}
+  constructor(
+    private readonly authDiscordService: AuthDiscordService,
+    private readonly configService: ConfigService<BaseConfigInterface>,
+  ) {}
 
-  // @Get(`${DiscordDescriptor.model.endpoint}/:discordId`)
-  // async findOneByParameterId(@Param("discordId") discordId: string) {
-  //   return this.discordService.findByDiscordId(discordId);
-  // }
-
-  // @Post(DiscordDescriptor.model.endpoint)
-  // async createFromDiscord(@Body() body: any) {
-  //   return this.discordService.createFromDiscord(body);
-  // }
+  private get discordConfig(): ConfigDiscordInterface {
+    return this.configService.get<ConfigDiscordInterface>("discord");
+  }
 
   @Get(`${authMeta.endpoint}/discord`)
   async loginWithDiscord(@Res() reply: FastifyReply) {
-    if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET)
+    if (!this.discordConfig.clientId || !this.discordConfig.clientSecret)
       throw new HttpException("Login with Discord is not available", HttpStatus.NOT_IMPLEMENTED);
 
     reply.redirect(this.authDiscordService.generateLoginUrl(), 302);

@@ -92,6 +92,13 @@ export class JsonApiService {
       data: undefined,
     };
 
+    // Add meta.total - check CLS first (auto-computed by Neo4jService), then paginator (manually set)
+    const queryTotal = this.clsService?.get("queryTotal");
+    const total = queryTotal ?? paginator?.total;
+    if (total !== undefined) {
+      response.meta = { total };
+    }
+
     if (paginator && Array.isArray(data)) {
       if (url) {
         const links = paginator.generateLinks(data, url);

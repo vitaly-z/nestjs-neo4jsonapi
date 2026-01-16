@@ -76,6 +76,7 @@ export abstract class AbstractService<
 
   /**
    * Find entities with optional search term, ordering, and pagination
+   * Total count is automatically computed by Neo4jService when {CURSOR} is detected
    */
   async find(params: {
     query: any;
@@ -85,16 +86,14 @@ export abstract class AbstractService<
   }): Promise<JsonApiDataInterface> {
     const paginator = new JsonApiPaginator(params.query);
 
-    return this.jsonApiService.buildList(
-      this.model,
-      await this.repository.find({
-        fetchAll: params.fetchAll,
-        term: params.term,
-        orderBy: params.orderBy,
-        cursor: paginator.generateCursor(),
-      }),
-      paginator,
-    );
+    const data = await this.repository.find({
+      fetchAll: params.fetchAll,
+      term: params.term,
+      orderBy: params.orderBy,
+      cursor: paginator.generateCursor(),
+    });
+
+    return this.jsonApiService.buildList(this.model, data, paginator);
   }
 
   /**
@@ -349,6 +348,7 @@ export abstract class AbstractService<
 
   /**
    * Find entities by a related entity
+   * Total count is automatically computed by Neo4jService when {CURSOR} is detected
    *
    * @example
    * ```typescript
@@ -369,18 +369,16 @@ export abstract class AbstractService<
   }): Promise<JsonApiDataInterface> {
     const paginator = new JsonApiPaginator(params.query);
 
-    return this.jsonApiService.buildList(
-      this.model,
-      await this.repository.findByRelated({
-        relationship: params.relationship,
-        id: params.id,
-        fetchAll: params.fetchAll,
-        term: params.term,
-        orderBy: params.orderBy,
-        cursor: paginator.generateCursor(),
-      }),
-      paginator,
-    );
+    const data = await this.repository.findByRelated({
+      relationship: params.relationship,
+      id: params.id,
+      fetchAll: params.fetchAll,
+      term: params.term,
+      orderBy: params.orderBy,
+      cursor: paginator.generateCursor(),
+    });
+
+    return this.jsonApiService.buildList(this.model, data, paginator);
   }
 
   /**

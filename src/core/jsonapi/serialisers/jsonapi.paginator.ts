@@ -18,6 +18,7 @@ export class JsonApiPaginator {
   private _includedFields: JsonApiIncludedFields[] = [];
   private _includeSpecified: boolean = false;
   private _fetchAll: boolean = false;
+  private _total?: number;
 
   constructor(query?: any) {
     if (!query) return;
@@ -152,6 +153,14 @@ export class JsonApiPaginator {
 
   get fetchAll(): boolean {
     return this._fetchAll;
+  }
+
+  get total(): number | undefined {
+    return this._total;
+  }
+
+  set total(value: number | undefined) {
+    this._total = value;
   }
 
   generateCursor(): JsonApiCursorInterface | undefined {

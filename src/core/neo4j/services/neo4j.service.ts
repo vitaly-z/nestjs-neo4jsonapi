@@ -107,7 +107,7 @@ export class Neo4jService implements OnModuleInit, OnModuleDestroy {
     return items.length > 0 ? items[0] : null;
   }
 
-  async readMany<T>(params: QueryType<T>): Promise<T[]> {
+  async readManyWithoutCount<T>(params: QueryType<T>): Promise<T[]> {
     params.query = params.query.replace(/^\s*$(?:\r\n?|\n)/gm, "");
     params.query = params.query.replace(/;\s*$/, "");
 
@@ -137,6 +137,101 @@ export class Neo4jService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async readMany<T>(params: QueryType<T>): Promise<T[]> {
+    params.query = params.query.replace(/^\s*$(?:\r\n?|\n)/gm, "");
+    params.query = params.query.replace(/;\s*$/, "");
+
+    // Clear any previous query total
+    this.cls.set("queryTotal", undefined);
+
+    if (params.query.includes("{CURSOR}")) {
+      if (!params.fetchAll) {
+        params.queryParams.cursor = params.cursor?.cursor;
+        params.queryParams.take = params.cursor?.take ?? 26;
+
+        // Build count query if we have a serialiser with nodeName
+        const countQuery = params.serialiser?.nodeName
+          ? this.buildCountQuery(params.query, params.serialiser.nodeName)
+          : null;
+
+        // Replace cursor placeholder for data query
+        let dataQuery: string;
+        if (params.cursor?.cursor)
+          dataQuery = params.query.replace("{CURSOR}", `SKIP toInteger($cursor) LIMIT toInteger($take)`);
+        else dataQuery = params.query.replace("{CURSOR}", `LIMIT toInteger($take)`);
+
+        try {
+          // Execute data query and count query in parallel
+          if (countQuery) {
+            const [dataResult, countResult] = await Promise.all([
+              this.read(dataQuery, params.queryParams),
+              this.read(countQuery, params.queryParams),
+            ]);
+
+            // Store total in CLS for JsonApiService to pick up
+            if (countResult.records.length > 0) {
+              const count = countResult.records[0].get("total");
+              const total = count?.toNumber?.() ?? count ?? 0;
+              this.cls.set("queryTotal", total);
+            }
+
+            return this.entityFactory.createGraphList({
+              model: params.serialiser,
+              records: dataResult.records,
+            });
+          } else {
+            // Fallback: no count query, just run data query
+            const result = await this.read(dataQuery, params.queryParams);
+            return this.entityFactory.createGraphList({
+              model: params.serialiser,
+              records: result.records,
+            });
+          }
+        } catch (error) {
+          this.logger.error(dataQuery, params.queryParams);
+          this.logger.error(error);
+          throw error;
+        }
+      } else {
+        params.query = params.query.replace("{CURSOR}", ``);
+      }
+    }
+
+    try {
+      const result = await this.read(params.query, params.queryParams);
+      return this.entityFactory.createGraphList({
+        model: params.serialiser,
+        records: result.records,
+      });
+    } catch (error) {
+      this.logger.error(params.query, params.queryParams);
+      this.logger.error(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Build a count query from a data query by:
+   * 1. Taking everything before {CURSOR}
+   * 2. Removing ORDER BY clause
+   * 3. Adding RETURN count(DISTINCT nodeName) AS total
+   */
+  private buildCountQuery(query: string, nodeName: string): string {
+    const cursorIndex = query.indexOf("{CURSOR}");
+    if (cursorIndex === -1) return null;
+
+    // Take query up to {CURSOR}
+    let countQuery = query.substring(0, cursorIndex);
+
+    // Remove ORDER BY clause (case-insensitive, handles multi-line)
+    countQuery = countQuery.replace(/ORDER\s+BY\s+[^{]+$/is, "");
+
+    // Add count return
+    countQuery += `\nRETURN count(DISTINCT ${nodeName}) AS total`;
+
+    return countQuery;
+  }
+
   async writeOne<T>(params: QueryType<T>): Promise<T | null> {
     const result = await this.write(params.query, params.queryParams);
 
@@ -159,6 +254,14 @@ export class Neo4jService implements OnModuleInit, OnModuleDestroy {
       model: params.serialiser,
       records: result.records,
     });
+  }
+
+  async readCount(query: string, params?: any): Promise<number> {
+    const result = await this.read(query, params);
+    if (result.records.length === 0) return 0;
+
+    const count = result.records[0].get("total");
+    return count?.toNumber?.() ?? count ?? 0;
   }
 
   async read(query: string, params?: any): Promise<any> {

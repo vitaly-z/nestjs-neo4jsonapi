@@ -127,6 +127,16 @@ export interface ComputedConfig {
   meta: boolean;
 }
 
+/**
+ * Configuration for virtual fields - output-only computed values with arbitrary names.
+ * These fields don't exist in the entity type but appear in JSON:API output.
+ */
+export interface VirtualFieldConfig {
+  name: string;
+  compute: string;
+  meta: boolean;
+}
+
 export interface RelationshipConfig {
   name: string;
   model: string;

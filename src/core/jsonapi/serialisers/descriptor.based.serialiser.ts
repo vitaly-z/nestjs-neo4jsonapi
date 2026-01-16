@@ -68,6 +68,13 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
         }
       }
     }
+    // 1b. Add virtual fields to attributes (or meta if specified)
+    for (const [fieldName, virtualDef] of Object.entries(this.descriptor.virtualFields || {})) {
+      if (!virtualDef.meta) {
+        // Virtual field value already computed by mapper, direct mapping
+        attributes[fieldName] = fieldName;
+      }
+    }
     this.attributes = attributes;
 
     // 2. Build meta from fields + computed (where meta: true)
@@ -88,6 +95,12 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
     for (const [fieldName, computedDef] of Object.entries(this.descriptor.computed || {})) {
       if (computedDef.meta) {
         // Computed value already calculated by mapper
+        meta[fieldName] = fieldName;
+      }
+    }
+    // Add virtual fields with meta: true to meta section
+    for (const [fieldName, virtualDef] of Object.entries(this.descriptor.virtualFields || {})) {
+      if (virtualDef.meta) {
         meta[fieldName] = fieldName;
       }
     }

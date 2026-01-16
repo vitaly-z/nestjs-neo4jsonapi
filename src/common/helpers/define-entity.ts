@@ -13,6 +13,7 @@ import {
   EntitySchemaInput,
   FieldDef,
   RelationshipDef,
+  VirtualFieldDef,
 } from "../interfaces/entity.schema.interface";
 
 /**
@@ -173,6 +174,7 @@ export function defineEntity<T>() {
       fields,
       relationships,
       computed = {},
+      virtualFields = {},
       serialiser: customSerialiser,
       injectServices = [],
       isCompanyScoped = true,
@@ -263,6 +265,11 @@ export function defineEntity<T>() {
         result[fieldName] = def.compute(params);
       }
 
+      // Evaluate virtual fields (output-only computed values with arbitrary names)
+      for (const [fieldName, def] of Object.entries(virtualFields) as [string, VirtualFieldDef][]) {
+        result[fieldName] = def.compute(params);
+      }
+
       // Initialize relationship placeholders
       if (isCompanyScoped) {
         result.company = undefined;
@@ -288,6 +295,7 @@ export function defineEntity<T>() {
       fieldDefaults,
       fields: fields as { [K in keyof Partial<T>]?: FieldDef },
       computed: mergedComputed as { [K in keyof Partial<T>]?: ComputedFieldDef },
+      virtualFields,
       injectServices,
 
       // Auto-generated database config

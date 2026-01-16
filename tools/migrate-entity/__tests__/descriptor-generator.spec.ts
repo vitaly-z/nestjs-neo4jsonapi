@@ -433,9 +433,10 @@ describe("descriptor-generator", () => {
 
       const result = generateDescriptor(parsed, entityDir);
 
-      // Check for single URL transform pattern
+      // Check for single URL transform pattern with tilde prefix handling
       expect(result.code).toContain("if (!data.url) return undefined;");
-      expect(result.code).toContain('return await services.S3Service.generateSignedUrl({ key: data.url });');
+      expect(result.code).toContain('if (data.url.startsWith("~")) return data.url.substring(1);');
+      expect(result.code).toContain("services.S3Service.generateSignedUrl({ key: data.url, isPublic: true })");
     });
 
     it("should generate array URL transform correctly", () => {
@@ -444,9 +445,11 @@ describe("descriptor-generator", () => {
 
       const result = generateDescriptor(parsed, entityDir);
 
-      // Check for array URL transform pattern
+      // Check for array URL transform pattern with tilde prefix handling
       expect(result.code).toContain("if (!data.samplePhotographs?.length) return [];");
-      expect(result.code).toContain("data.samplePhotographs.map((url: string) => services.S3Service.generateSignedUrl({ key: url })");
+      expect(result.code).toContain("data.samplePhotographs.map(async (url: string) => {");
+      expect(result.code).toContain('if (url.startsWith("~")) return url.substring(1);');
+      expect(result.code).toContain("services.S3Service.generateSignedUrl({ key: url, isPublic: true })");
     });
   });
 
@@ -483,15 +486,16 @@ describe("descriptor-generator", () => {
       expect(frameworkImport).toContain("Entity");
     });
 
-    it("should include S3Service in internal imports when transforms are used", () => {
+    it("should include S3Service in separate import when transforms are used", () => {
       const parsed = getParsedTestEntity();
       const entityDir = path.join(FIXTURES_DIR, "entities");
 
       const result = generateDescriptor(parsed, entityDir);
 
-      const frameworkImport = result.imports.find((i) => i.includes("../../../common"));
-      expect(frameworkImport).toBeDefined();
-      expect(frameworkImport).toContain("S3Service");
+      // S3Service has its own module, so it should be imported separately (not from ../../../common)
+      const s3Import = result.imports.find((i) => i.includes("S3Service"));
+      expect(s3Import).toBeDefined();
+      expect(s3Import).toContain('from "../../s3"');
     });
 
     it("should NOT include S3Service in internal imports when no transforms", () => {

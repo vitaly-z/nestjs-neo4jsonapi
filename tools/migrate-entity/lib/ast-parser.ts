@@ -116,8 +116,8 @@ export function parseSerialiserFile(filePath: string): ParsedSerialiser {
   const services = extractSerialiserServices(content);
   const customMethods = extractSerialiserCustomMethods(content);
 
-  // Detect S3 transforms if S3Service is injected
-  const s3Transforms = detectS3Transforms(content, attributes, services);
+  // Detect S3 transforms by parsing function-based attributes that use S3Service
+  const s3Transforms = detectS3Transforms(content);
 
   return { attributes, meta, relationships, imports, services, customMethods, s3Transforms };
 }
@@ -198,21 +198,54 @@ function extractImports(content: string): string[] {
 
 /**
  * Extracts serialiser attributes from this.attributes = {...}.
+ * Handles both simple string mappings and function-based computed attributes.
  */
 function extractSerialiserAttributes(content: string): ParsedSerialiserAttribute[] {
   const attributes: ParsedSerialiserAttribute[] = [];
 
-  // Match: this.attributes = { name: "name", content: "content", ... }
-  const attrMatch = content.match(/this\.attributes\s*=\s*\{([^}]+)\}/s);
-  if (!attrMatch) return attributes;
+  // Find the start of this.attributes = {
+  const attrStart = content.indexOf("this.attributes");
+  if (attrStart === -1) return attributes;
 
-  const attrBlock = attrMatch[1];
-  const fieldPattern = /(\w+):\s*["'](\w+)["']/g;
+  // Find the opening brace
+  const braceStart = content.indexOf("{", attrStart);
+  if (braceStart === -1) return attributes;
+
+  // Find matching closing brace (handle nested braces)
+  let depth = 1;
+  let i = braceStart + 1;
+  while (i < content.length && depth > 0) {
+    if (content[i] === "{") depth++;
+    else if (content[i] === "}") depth--;
+    i++;
+  }
+  const attrBlock = content.substring(braceStart + 1, i - 1);
+
+  // Match simple string mappings: name: "name", or name: 'name',
+  const simplePattern = /(\w+):\s*["'](\w+)["']/g;
   let match;
-  while ((match = fieldPattern.exec(attrBlock)) !== null) {
+  while ((match = simplePattern.exec(attrBlock)) !== null) {
     attributes.push({
       name: match[1],
       mapping: match[2],
+      isMeta: false,
+    });
+  }
+
+  // Match function-based computed attributes (arrow functions that return data properties)
+  // Pattern: fieldName: (data: Type) => { ... return data.property; }
+  // Or: fieldName: (data: Type) => data.property
+  const funcPattern = /(\w+):\s*(?:async\s+)?\([^)]*\)\s*=>\s*(?:\{[^}]*return\s+(?:data\.)?(\w+)[^}]*\}|(?:data\.)?(\w+))/g;
+  while ((match = funcPattern.exec(attrBlock)) !== null) {
+    const fieldName = match[1];
+    // Skip if already added as simple mapping
+    if (attributes.some((a) => a.name === fieldName)) continue;
+
+    // The mapping is either from the function body return or simple arrow return
+    const mapping = match[2] || match[3] || fieldName;
+    attributes.push({
+      name: fieldName,
+      mapping: mapping,
       isMeta: false,
     });
   }
@@ -339,77 +372,114 @@ function extractSerialiserCustomMethods(content: string): string[] {
 }
 
 /**
- * Detects S3 transforms for URL fields when S3Service is injected.
+ * Detects S3 transforms by parsing function-based attributes that use S3Service.
  *
- * Uses naming conventions to identify fields that need S3 URL signing:
- * - Single URL fields: url, originalUrl, thumbnailUrl, imageUrl, photoUrl, fileUrl
- * - Array URL fields: samplePhotographs, photographs, urls, imageUrls, photoUrls
+ * Looks for patterns like:
+ * ```typescript
+ * avatar: async (data: User) => {
+ *   return await this.s3Service.generateSignedUrl({ key: data.avatar });
+ * }
+ * ```
+ *
+ * Also detects array transforms using Promise.all with map.
  */
-function detectS3Transforms(
-  content: string,
-  attributes: ParsedSerialiserAttribute[],
-  services: string[],
-): S3TransformInfo[] {
+function detectS3Transforms(content: string): S3TransformInfo[] {
   const transforms: S3TransformInfo[] = [];
 
-  // Only detect transforms if S3Service is injected
-  if (!services.includes("S3Service")) {
-    return transforms;
+  // Find the this.attributes = { ... } block
+  const attrStart = content.indexOf("this.attributes");
+  if (attrStart === -1) return transforms;
+
+  const braceStart = content.indexOf("{", attrStart);
+  if (braceStart === -1) return transforms;
+
+  // Find matching closing brace (handle nested braces)
+  let depth = 1;
+  let i = braceStart + 1;
+  while (i < content.length && depth > 0) {
+    if (content[i] === "{") depth++;
+    else if (content[i] === "}") depth--;
+    i++;
   }
+  const attrBlock = content.substring(braceStart + 1, i - 1);
 
-  // Check if there are S3-related custom methods (confirms S3 is actually used)
-  const hasS3Methods =
-    content.includes("s3Service") ||
-    content.includes("S3Service") ||
-    content.includes("generateSignedUrl") ||
-    content.includes("getSignedUrl");
+  // Find function-based attributes that use s3Service.generateSignedUrl
+  // Pattern: fieldName: async (data) => { ... s3Service.generateSignedUrl ... }
+  // We need to match the field name and check if the function body uses S3
 
-  if (!hasS3Methods) {
-    return transforms;
-  }
+  // Split by top-level commas to get individual attribute definitions
+  const attrDefs = splitAttributeDefinitions(attrBlock);
 
-  // Single URL field patterns (case-insensitive matching)
-  const singleUrlPatterns = [
-    /^url$/i,
-    /^originalUrl$/i,
-    /^thumbnailUrl$/i,
-    /^imageUrl$/i,
-    /^photoUrl$/i,
-    /^fileUrl$/i,
-    /^coverUrl$/i,
-    /^avatarUrl$/i,
-    /^profileUrl$/i,
-  ];
-
-  // Array URL field patterns
-  const arrayUrlPatterns = [
-    /^samplePhotographs$/i,
-    /^photographs$/i,
-    /^urls$/i,
-    /^imageUrls$/i,
-    /^photoUrls$/i,
-    /^fileUrls$/i,
-    /^thumbnails$/i,
-    /^images$/i,
-    /^photos$/i,
-  ];
-
-  for (const attr of attributes) {
-    const fieldName = attr.name;
-
-    // Check for single URL patterns
-    if (singleUrlPatterns.some((pattern) => pattern.test(fieldName))) {
-      transforms.push({ fieldName, isArray: false });
+  for (const def of attrDefs) {
+    // Check if this definition uses s3Service.generateSignedUrl
+    if (!def.includes("s3Service") && !def.includes("generateSignedUrl")) {
       continue;
     }
 
-    // Check for array URL patterns
-    if (arrayUrlPatterns.some((pattern) => pattern.test(fieldName))) {
-      transforms.push({ fieldName, isArray: true });
-    }
+    // Extract field name (first identifier before the colon)
+    const fieldNameMatch = def.match(/^\s*(\w+)\s*:/);
+    if (!fieldNameMatch) continue;
+
+    const fieldName = fieldNameMatch[1];
+
+    // Check if it's an array transform (uses Promise.all or .map)
+    const isArray = def.includes("Promise.all") || def.includes(".map(");
+
+    transforms.push({ fieldName, isArray });
   }
 
   return transforms;
+}
+
+/**
+ * Splits the attributes block into individual attribute definitions,
+ * respecting nested braces and arrow functions.
+ */
+function splitAttributeDefinitions(attrBlock: string): string[] {
+  const definitions: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inString = false;
+  let stringChar = "";
+
+  for (let i = 0; i < attrBlock.length; i++) {
+    const char = attrBlock[i];
+    const prevChar = i > 0 ? attrBlock[i - 1] : "";
+
+    // Track string state
+    if ((char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+    }
+
+    if (!inString) {
+      if (char === "{" || char === "(" || char === "[") {
+        depth++;
+      } else if (char === "}" || char === ")" || char === "]") {
+        depth--;
+      } else if (char === "," && depth === 0) {
+        // Top-level comma - end of attribute definition
+        if (current.trim()) {
+          definitions.push(current.trim());
+        }
+        current = "";
+        continue;
+      }
+    }
+
+    current += char;
+  }
+
+  // Add the last definition
+  if (current.trim()) {
+    definitions.push(current.trim());
+  }
+
+  return definitions;
 }
 
 /**

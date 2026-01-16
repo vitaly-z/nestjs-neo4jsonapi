@@ -148,6 +148,19 @@ function createAttributesSchema<T, R extends Record<string, RelationshipDef>>(
     }
   }
 
+  // Add virtual fields (output-only computed values)
+  if (descriptor.virtualFields) {
+    for (const [fieldName, virtualDef] of Object.entries(descriptor.virtualFields)) {
+      if (!virtualDef) continue;
+
+      properties[fieldName] = {
+        type: "string",
+        description: "Virtual field (computed at runtime)",
+        readOnly: true,
+      };
+    }
+  }
+
   return {
     type: "object",
     required: required.length > 0 ? required : undefined,

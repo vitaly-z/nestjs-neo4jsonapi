@@ -35,6 +35,7 @@ export type {
   EntitySchemaInput,
   FieldDef,
   RelationshipDef,
+  VirtualFieldDef,
 } from "./entity.schema.interface";
 
 export { defineEntity, defineEntityAlias } from "../helpers/define-entity";

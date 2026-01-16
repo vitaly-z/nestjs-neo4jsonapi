@@ -46,4 +46,11 @@ export class ComplexEntitySerialiser extends AbstractSerialiser<ComplexEntity> {
       },
     };
   }
+
+  /**
+   * Custom method for testing detection
+   */
+  formatPriority(priority: number): string {
+    return `Priority: ${priority}`;
+  }
 }

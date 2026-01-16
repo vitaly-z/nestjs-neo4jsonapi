@@ -21,6 +21,7 @@ export interface JsonApiSchemaObject {
   minItems?: number;
   items?: JsonApiSchemaObject | RefObject;
   additionalProperties?: boolean;
+  readOnly?: boolean;
   $ref?: string;
 }
 

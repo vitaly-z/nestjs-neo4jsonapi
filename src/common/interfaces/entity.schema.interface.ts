@@ -60,6 +60,20 @@ export interface ComputedFieldDef<T = any> {
 }
 
 /**
+ * Virtual field definition for output-only computed values.
+ * Unlike computed fields, virtual fields can have arbitrary names that
+ * don't exist in the entity type. They appear in JSON:API attributes by default.
+ *
+ * Example: avatarUrl returns the raw S3 key while avatar returns the signed URL.
+ */
+export interface VirtualFieldDef {
+  /** Function to compute the field value */
+  compute: ComputedFieldFn<any>;
+  /** If true, field goes to JSON:API meta instead of attributes (default: false) */
+  meta?: boolean;
+}
+
+/**
  * Field definition for relationship properties
  * These are stored on the Neo4j relationship (edge), not on nodes
  */
@@ -124,8 +138,12 @@ export interface EntitySchemaInput<T, R extends Record<string, RelationshipDef> 
   fields: { [K in keyof Partial<T>]?: FieldDef };
   /** Relationship definitions with named keys for autocomplete */
   relationships: R;
-  /** Computed fields - calculated at runtime from Neo4j record data */
+  /** Computed fields - calculated at runtime from Neo4j record data. Keys must be valid entity properties. */
   computed?: { [K in keyof Partial<T>]?: ComputedFieldDef };
+
+  /** Virtual fields - output-only computed values with arbitrary names (e.g., avatarUrl).
+   *  Unlike computed fields, virtual field keys don't need to exist in the entity type. */
+  virtualFields?: Record<string, VirtualFieldDef>;
 
   // === Optional overrides ===
 
@@ -175,6 +193,9 @@ export interface EntityDescriptor<T, R extends Record<string, RelationshipDef> =
 
   /** Computed field definitions */
   computed: { [K in keyof Partial<T>]?: ComputedFieldDef };
+
+  /** Virtual field definitions - output-only computed values with arbitrary names */
+  virtualFields: Record<string, VirtualFieldDef>;
 
   /** Services to inject into auto-generated serialiser for field transformers */
   injectServices: Type<any>[];

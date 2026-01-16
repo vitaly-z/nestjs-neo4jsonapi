@@ -19,8 +19,16 @@ export class TestEntitySerialiser extends AbstractSerialiser<TestEntity> {
     this.attributes = {
       name: "name",
       description: "description",
-      url: "url",
-      samplePhotographs: "samplePhotographs",
+      url: async (data: TestEntity) => {
+        if (!data.url) return undefined;
+        return await this.s3Service.generateSignedUrl({ key: data.url, isPublic: true });
+      },
+      samplePhotographs: async (data: TestEntity) => {
+        if (!data.samplePhotographs?.length) return [];
+        return Promise.all(
+          data.samplePhotographs.map((url: string) => this.s3Service.generateSignedUrl({ key: url, isPublic: true })),
+        );
+      },
       tags: "tags",
       isActive: "isActive",
       score: "score",
@@ -38,23 +46,5 @@ export class TestEntitySerialiser extends AbstractSerialiser<TestEntity> {
         data: this.serialiserFactory.create(UserModel),
       },
     };
-  }
-
-  /**
-   * Generates a signed URL for S3 access
-   */
-  async getSignedUrl(url: string): Promise<string | undefined> {
-    if (!url) return undefined;
-    return await this.s3Service.generateSignedUrl({ key: url });
-  }
-
-  /**
-   * Generates signed URLs for an array of S3 keys
-   */
-  async getSignedUrls(urls: string[]): Promise<string[]> {
-    if (!urls?.length) return [];
-    return Promise.all(
-      urls.map((url: string) => this.s3Service.generateSignedUrl({ key: url })),
-    );
   }
 }

@@ -13,6 +13,7 @@ import {
   ParsedEntity,
   RelationshipConfig,
   S3TransformInfo,
+  VirtualFieldConfig,
 } from "./types";
 
 export interface GeneratorOptions {
@@ -56,8 +57,8 @@ export function generateDescriptor(
   // Build field configs with S3 transforms applied
   const fields = buildFieldConfigs(entityType, serialiser, mapper, s3Transforms);
 
-  // Build computed configs
-  const computed = buildComputedConfigs(mapper, serialiser);
+  // Build computed configs and virtual fields
+  const { computed, virtualFields } = buildComputedConfigs(mapper, serialiser, entityType);
 
   // Build relationship configs using Cypher relationships when available
   const relationships = buildRelationshipConfigs(serialiser, cypherRelationships, options.verbose);
@@ -99,7 +100,7 @@ export function generateDescriptor(
   const imports = generateImports(parsed, relationships, entityDir, options.entityName, services);
 
   // Generate the descriptor code
-  const code = generateDescriptorCode(meta, entityType.name, fields, computed, relationships, services);
+  const code = generateDescriptorCode(meta, entityType.name, fields, computed, virtualFields, relationships, services);
 
   return { code, imports };
 }
@@ -166,48 +167,91 @@ function buildFieldConfigs(
 
 /**
  * Generates S3 transform function code for a field.
+ *
+ * Handles the `~` prefix convention: URLs starting with `~` are already
+ * signed or external URLs that should be returned as-is (without the prefix).
  */
 function generateS3TransformCode(fieldName: string, isArray: boolean): string {
   if (isArray) {
-    // Array URL transform
+    // Array URL transform with ~ prefix handling
     return `async (data, services) => {
         if (!data.${fieldName}?.length) return [];
         return Promise.all(
-          data.${fieldName}.map((url: string) => services.S3Service.generateSignedUrl({ key: url })),
+          data.${fieldName}.map(async (url: string) => {
+            if (url.startsWith("~")) return url.substring(1);
+            return services.S3Service.generateSignedUrl({ key: url, isPublic: true });
+          }),
         );
       }`;
   } else {
-    // Single URL transform
+    // Single URL transform with ~ prefix handling
     return `async (data, services) => {
         if (!data.${fieldName}) return undefined;
-        return await services.S3Service.generateSignedUrl({ key: data.${fieldName} });
+        if (data.${fieldName}.startsWith("~")) return data.${fieldName}.substring(1);
+        return await services.S3Service.generateSignedUrl({ key: data.${fieldName}, isPublic: true });
       }`;
   }
 }
 
 /**
- * Builds computed field configurations from mapper.
+ * Builds computed field configurations and virtual fields from mapper and serialiser.
+ *
+ * Includes:
+ * 1. Mapper-based computed fields (e.g., params.record.has patterns)
+ * 2. Virtual fields: Serialiser attributes where name differs from mapping (e.g., avatarUrl -> avatar)
+ *    These are output-only fields that don't exist in the entity type.
  */
 function buildComputedConfigs(
   mapper: ParsedEntity["mapper"],
   serialiser: ParsedEntity["serialiser"],
-): ComputedConfig[] {
+  entityType: ParsedEntity["entityType"],
+): { computed: ComputedConfig[]; virtualFields: VirtualFieldConfig[] } {
   const computed: ComputedConfig[] = [];
-
-  if (!mapper) return computed;
+  const virtualFields: VirtualFieldConfig[] = [];
+  const addedNames = new Set<string>();
 
   // Get meta names from serialiser
   const metaNames = new Set(serialiser?.meta.map((m) => m.name) || []);
 
-  for (const field of mapper.fields.filter((f) => f.isComputed)) {
-    computed.push({
-      name: field.name,
-      compute: field.mapping,
-      meta: metaNames.has(field.name),
-    });
+  // Get entity field names (to distinguish computed-only fields)
+  const entityFieldNames = new Set(entityType.fields.map((f) => f.name));
+
+  // 1. Add mapper-based computed fields
+  if (mapper) {
+    for (const field of mapper.fields.filter((f) => f.isComputed)) {
+      computed.push({
+        name: field.name,
+        compute: field.mapping,
+        meta: metaNames.has(field.name),
+      });
+      addedNames.add(field.name);
+    }
   }
 
-  return computed;
+  // 2. Serialiser attributes where name != mapping AND name not in entity type
+  // These are output-only fields like `avatarUrl` that return `data.avatar`.
+  // We generate them as virtualFields (new feature in defineEntity).
+  if (serialiser) {
+    for (const attr of serialiser.attributes) {
+      // Skip if already added from mapper
+      if (addedNames.has(attr.name)) continue;
+
+      // Skip if this field exists in entity type (it's a regular field, not computed)
+      if (entityFieldNames.has(attr.name)) continue;
+
+      // If the serialiser attribute name differs from its mapping, it's a virtual field
+      if (attr.name !== attr.mapping) {
+        virtualFields.push({
+          name: attr.name,
+          compute: `params.data.${attr.mapping}`,
+          meta: metaNames.has(attr.name),
+        });
+        addedNames.add(attr.name);
+      }
+    }
+  }
+
+  return { computed, virtualFields };
 }
 
 /**
@@ -384,9 +428,17 @@ function generateImports(
   // Collect all framework imports into a single barrel import
   const frameworkImports = new Set<string>(["defineEntity", "Entity"]);
 
-  // Add service imports (they come from the framework package)
+  // Add service imports
+  // Note: S3Service is NOT exported from common, it has its own foundation module
+  const serviceImports: string[] = [];
   for (const service of services) {
-    frameworkImports.add(service);
+    if (service === "S3Service") {
+      // S3Service comes from its own module
+      serviceImports.push(`import { S3Service } from "../../s3";`);
+    } else {
+      // Other services come from common
+      frameworkImports.add(service);
+    }
   }
 
   // Check if AiStatus is needed
@@ -486,6 +538,11 @@ function generateImports(
   // barrel re-exports from ./foundations which tries to load this entity again
   const frameworkImportList = Array.from(frameworkImports).sort();
   imports.push(`import {\n  ${frameworkImportList.join(",\n  ")},\n} from "../../../common";`);
+
+  // Group 1b: Service imports that have their own modules (e.g., S3Service)
+  if (serviceImports.length > 0) {
+    imports.push(...serviceImports);
+  }
 
   // Group 2: External type imports (from original entity imports that aren't framework)
   for (const imp of parsed.entityType.imports) {
@@ -628,6 +685,7 @@ function generateDescriptorCode(
   entityName: string,
   fields: FieldConfig[],
   computed: ComputedConfig[],
+  virtualFields: VirtualFieldConfig[],
   relationships: RelationshipConfig[],
   services: string[] = [],
 ): string {
@@ -691,6 +749,22 @@ export const ${descriptorName} = defineEntity<${entityName}>()({
       code += `    ${comp.name}: {\n`;
       code += `      compute: (params) => ${comp.compute},\n`;
       if (comp.meta) code += `      meta: true,\n`;
+      code += `    },\n`;
+    }
+    code += `  },
+`;
+  }
+
+  // Add virtual fields (output-only computed values with arbitrary names)
+  if (virtualFields.length > 0) {
+    code += `
+  // Virtual fields (output-only, not in entity type)
+  virtualFields: {
+`;
+    for (const vf of virtualFields) {
+      code += `    ${vf.name}: {\n`;
+      code += `      compute: (params) => ${vf.compute},\n`;
+      if (vf.meta) code += `      meta: true,\n`;
       code += `    },\n`;
     }
     code += `  },

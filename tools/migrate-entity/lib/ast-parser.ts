@@ -19,6 +19,7 @@ import {
   ParsedSerialiser,
   ParsedSerialiserAttribute,
   ParsedSerialiserRelationship,
+  S3TransformInfo,
 } from "./types";
 
 /**
@@ -101,7 +102,7 @@ export function parseMapFile(filePath: string): ParsedMapper {
 }
 
 /**
- * Parses the serialiser.ts file to extract attributes, meta, and relationships.
+ * Parses the serialiser.ts file to extract attributes, meta, relationships, services, and custom methods.
  */
 export function parseSerialiserFile(filePath: string): ParsedSerialiser {
   const content = fs.readFileSync(filePath, "utf-8");
@@ -110,8 +111,13 @@ export function parseSerialiserFile(filePath: string): ParsedSerialiser {
   const meta = extractSerialiserMeta(content);
   const relationships = extractSerialiserRelationships(content);
   const imports = extractImports(content);
+  const services = extractSerialiserServices(content);
+  const customMethods = extractSerialiserCustomMethods(content);
 
-  return { attributes, meta, relationships, imports };
+  // Detect S3 transforms if S3Service is injected
+  const s3Transforms = detectS3Transforms(content, attributes, services);
+
+  return { attributes, meta, relationships, imports, services, customMethods, s3Transforms };
 }
 
 /**
@@ -269,6 +275,124 @@ function extractSerialiserRelationships(content: string): ParsedSerialiserRelati
   }
 
   return relationships;
+}
+
+/**
+ * Extracts injected services from the serialiser constructor.
+ * Matches patterns like: private readonly s3Service: S3Service
+ */
+function extractSerialiserServices(content: string): string[] {
+  const services: string[] = [];
+
+  // Match: private readonly xxxService: XxxService (but not SerialiserFactory)
+  const pattern = /private\s+readonly\s+\w+:\s+(\w+Service)/g;
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    const serviceName = match[1];
+    // Skip SerialiserFactory - it's framework infrastructure, not app service
+    if (serviceName !== "SerialiserFactory") {
+      services.push(serviceName);
+    }
+  }
+
+  return services;
+}
+
+/**
+ * Extracts custom method names from the serialiser class.
+ * These methods may contain transform logic that needs manual migration.
+ */
+function extractSerialiserCustomMethods(content: string): string[] {
+  const customMethods: string[] = [];
+
+  // Match method definitions: async methodName(...) or methodName(...)
+  // Skip constructor and standard lifecycle methods
+  const methodPattern = /(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/g;
+  const standardMethods = new Set(["constructor", "onModuleInit", "onModuleDestroy"]);
+
+  let match;
+  while ((match = methodPattern.exec(content)) !== null) {
+    const methodName = match[1];
+    if (!standardMethods.has(methodName)) {
+      customMethods.push(methodName);
+    }
+  }
+
+  return customMethods;
+}
+
+/**
+ * Detects S3 transforms for URL fields when S3Service is injected.
+ *
+ * Uses naming conventions to identify fields that need S3 URL signing:
+ * - Single URL fields: url, originalUrl, thumbnailUrl, imageUrl, photoUrl, fileUrl
+ * - Array URL fields: samplePhotographs, photographs, urls, imageUrls, photoUrls
+ */
+function detectS3Transforms(
+  content: string,
+  attributes: ParsedSerialiserAttribute[],
+  services: string[],
+): S3TransformInfo[] {
+  const transforms: S3TransformInfo[] = [];
+
+  // Only detect transforms if S3Service is injected
+  if (!services.includes("S3Service")) {
+    return transforms;
+  }
+
+  // Check if there are S3-related custom methods (confirms S3 is actually used)
+  const hasS3Methods =
+    content.includes("s3Service") ||
+    content.includes("S3Service") ||
+    content.includes("generateSignedUrl") ||
+    content.includes("getSignedUrl");
+
+  if (!hasS3Methods) {
+    return transforms;
+  }
+
+  // Single URL field patterns (case-insensitive matching)
+  const singleUrlPatterns = [
+    /^url$/i,
+    /^originalUrl$/i,
+    /^thumbnailUrl$/i,
+    /^imageUrl$/i,
+    /^photoUrl$/i,
+    /^fileUrl$/i,
+    /^coverUrl$/i,
+    /^avatarUrl$/i,
+    /^profileUrl$/i,
+  ];
+
+  // Array URL field patterns
+  const arrayUrlPatterns = [
+    /^samplePhotographs$/i,
+    /^photographs$/i,
+    /^urls$/i,
+    /^imageUrls$/i,
+    /^photoUrls$/i,
+    /^fileUrls$/i,
+    /^thumbnails$/i,
+    /^images$/i,
+    /^photos$/i,
+  ];
+
+  for (const attr of attributes) {
+    const fieldName = attr.name;
+
+    // Check for single URL patterns
+    if (singleUrlPatterns.some((pattern) => pattern.test(fieldName))) {
+      transforms.push({ fieldName, isArray: false });
+      continue;
+    }
+
+    // Check for array URL patterns
+    if (arrayUrlPatterns.some((pattern) => pattern.test(fieldName))) {
+      transforms.push({ fieldName, isArray: true });
+    }
+  }
+
+  return transforms;
 }
 
 /**

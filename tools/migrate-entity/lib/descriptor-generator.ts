@@ -12,6 +12,7 @@ import {
   GeneratedDescriptor,
   ParsedEntity,
   RelationshipConfig,
+  S3TransformInfo,
 } from "./types";
 
 export interface GeneratorOptions {
@@ -49,8 +50,11 @@ export function generateDescriptor(
     }
   }
 
-  // Build field configs
-  const fields = buildFieldConfigs(entityType, serialiser, mapper);
+  // Get S3 transforms from serialiser
+  const s3Transforms = serialiser?.s3Transforms || [];
+
+  // Build field configs with S3 transforms applied
+  const fields = buildFieldConfigs(entityType, serialiser, mapper, s3Transforms);
 
   // Build computed configs
   const computed = buildComputedConfigs(mapper, serialiser);
@@ -58,11 +62,46 @@ export function generateDescriptor(
   // Build relationship configs using Cypher relationships when available
   const relationships = buildRelationshipConfigs(serialiser, cypherRelationships, options.verbose);
 
+  // Determine which services to include (only include S3Service if transforms are used)
+  const rawServices = serialiser?.services || [];
+  const services = s3Transforms.length > 0 ? rawServices : rawServices.filter((s) => s !== "S3Service");
+
+  // Log S3 transforms if verbose
+  if (options.verbose && s3Transforms.length > 0) {
+    console.log(`  Auto-generated ${s3Transforms.length} S3 transform(s):`);
+    for (const transform of s3Transforms) {
+      console.log(`    - ${transform.fieldName}: ${transform.isArray ? "array" : "single"} URL signing`);
+    }
+  }
+
+  // Warn about custom methods that may need manual migration (skip S3-related methods if transforms were generated)
+  const s3TransformFields = new Set(s3Transforms.map((t) => t.fieldName));
+  const s3RelatedMethods = ["getSignedUrl", "getSignedUrls", "generateSignedUrl", "signUrl", "signUrls"];
+
+  if (serialiser?.customMethods && serialiser.customMethods.length > 0) {
+    const unmigratableMethods = serialiser.customMethods.filter((method) => {
+      // Skip S3-related methods if we have transforms for URL fields
+      if (s3Transforms.length > 0 && s3RelatedMethods.some((s3m) => method.toLowerCase().includes(s3m.toLowerCase()))) {
+        return false;
+      }
+      return true;
+    });
+
+    if (unmigratableMethods.length > 0) {
+      console.warn(
+        `    ⚠️  Serialiser has custom methods that may need manual migration:`,
+      );
+      for (const method of unmigratableMethods) {
+        console.warn(`      - ${method}() → Consider adding field transform`);
+      }
+    }
+  }
+
   // Generate imports (pass entityName for correct file path in self-meta import)
-  const imports = generateImports(parsed, relationships, entityDir, options.entityName);
+  const imports = generateImports(parsed, relationships, entityDir, options.entityName, services);
 
   // Generate the descriptor code
-  const code = generateDescriptorCode(meta, entityType.name, fields, computed, relationships);
+  const code = generateDescriptorCode(meta, entityType.name, fields, computed, relationships, services);
 
   return { code, imports };
 }
@@ -74,6 +113,7 @@ function buildFieldConfigs(
   entityType: ParsedEntity["entityType"],
   serialiser: ParsedEntity["serialiser"],
   mapper: ParsedEntity["mapper"],
+  s3Transforms: S3TransformInfo[] = [],
 ): FieldConfig[] {
   const fields: FieldConfig[] = [];
 
@@ -85,6 +125,9 @@ function buildFieldConfigs(
 
   // Get mapper field names for mapping
   const mapperFields = new Map(mapper?.fields.filter((f) => !f.isComputed).map((f) => [f.name, f]) || []);
+
+  // Create a map of S3 transforms by field name
+  const s3TransformMap = new Map(s3Transforms.map((t) => [t.fieldName, t]));
 
   // Process entity type fields
   for (const field of entityType.fields) {
@@ -106,16 +149,42 @@ function buildFieldConfigs(
     // Check for default values (e.g., aiStatus)
     const defaultValue = getDefaultValue(field.name, mapper);
 
+    // Check for S3 transforms
+    const s3Transform = s3TransformMap.get(field.name);
+    const transform = s3Transform ? generateS3TransformCode(field.name, s3Transform.isArray) : undefined;
+
     fields.push({
       name: field.name,
       type: cypherType,
       required: isRequired,
       default: defaultValue,
       meta: isMeta,
+      transform,
     });
   }
 
   return fields;
+}
+
+/**
+ * Generates S3 transform function code for a field.
+ */
+function generateS3TransformCode(fieldName: string, isArray: boolean): string {
+  if (isArray) {
+    // Array URL transform
+    return `async (data, services) => {
+        if (!data.${fieldName}?.length) return [];
+        return Promise.all(
+          data.${fieldName}.map((url: string) => services.S3Service.generateSignedUrl({ key: url })),
+        );
+      }`;
+  } else {
+    // Single URL transform
+    return `async (data, services) => {
+        if (!data.${fieldName}) return undefined;
+        return await services.S3Service.generateSignedUrl({ key: data.${fieldName} });
+      }`;
+  }
 }
 
 /**
@@ -217,13 +286,29 @@ function buildRelationshipConfigs(
 
 /**
  * Maps TypeScript type to Cypher type.
+ * Handles both scalar types and array types.
  */
 function mapToCypherType(tsType: string): string {
+  // Handle array types first (e.g., string[], number[])
+  if (tsType.endsWith("[]")) {
+    const baseType = tsType.slice(0, -2);
+    const mappedBase = mapScalarToCypherType(baseType);
+    return `${mappedBase}[]`;
+  }
+
+  return mapScalarToCypherType(tsType);
+}
+
+/**
+ * Maps a scalar TypeScript type to Cypher type.
+ */
+function mapScalarToCypherType(tsType: string): string {
   const typeMap: Record<string, string> = {
     string: "string",
     number: "number",
     boolean: "boolean",
-    Date: "date",
+    Date: "datetime",
+    object: "json",
   };
 
   return typeMap[tsType] || "string";
@@ -288,11 +373,17 @@ function generateImports(
   relationships: RelationshipConfig[],
   entityDir: string,
   entityName?: string,
+  services: string[] = [],
 ): string[] {
   const { meta } = parsed;
 
   // Collect all framework imports into a single barrel import
   const frameworkImports = new Set<string>(["defineEntity", "Entity"]);
+
+  // Add service imports (they come from the framework package)
+  for (const service of services) {
+    frameworkImports.add(service);
+  }
 
   // Check if AiStatus is needed
   const hasAiStatus = parsed.entityType.fields.some((f) => f.name === "aiStatus");
@@ -417,6 +508,7 @@ function generateDescriptorCode(
   fields: FieldConfig[],
   computed: ComputedConfig[],
   relationships: RelationshipConfig[],
+  services: string[] = [],
 ): string {
   const descriptorName = `${meta.labelName}Descriptor`;
   const metaName = `${meta.nodeName}Meta`;
@@ -432,6 +524,13 @@ export const ${descriptorName} = defineEntity<${entityName}>()({
   ...${metaName},
 `;
 
+  // Add injectServices if services exist
+  if (services.length > 0) {
+    code += `
+  injectServices: [${services.join(", ")}],
+`;
+  }
+
   // Add fields
   if (fields.length > 0) {
     code += `
@@ -439,11 +538,23 @@ export const ${descriptorName} = defineEntity<${entityName}>()({
   fields: {
 `;
     for (const field of fields) {
-      code += `    ${field.name}: { type: "${field.type}"`;
-      if (field.required) code += `, required: true`;
-      if (field.default) code += `, default: ${field.default}`;
-      if (field.meta) code += `, meta: true`;
-      code += ` },\n`;
+      if (field.transform) {
+        // Multi-line format for fields with transforms
+        code += `    ${field.name}: {\n`;
+        code += `      type: "${field.type}",\n`;
+        if (field.required) code += `      required: true,\n`;
+        if (field.default) code += `      default: ${field.default},\n`;
+        if (field.meta) code += `      meta: true,\n`;
+        code += `      transform: ${field.transform},\n`;
+        code += `    },\n`;
+      } else {
+        // Single-line format for simple fields
+        code += `    ${field.name}: { type: "${field.type}"`;
+        if (field.required) code += `, required: true`;
+        if (field.default) code += `, default: ${field.default}`;
+        if (field.meta) code += `, meta: true`;
+        code += ` },\n`;
+      }
     }
     code += `  },
 `;
@@ -477,8 +588,19 @@ export const ${descriptorName} = defineEntity<${entityName}>()({
       code += `      direction: "${rel.direction}",\n`;
       code += `      relationship: "${rel.relationship}",\n`;
       code += `      cardinality: "${rel.cardinality}",\n`;
+      if (rel.required === false) code += `      required: false,\n`;
       if (rel.contextKey) code += `      contextKey: "${rel.contextKey}",\n`;
       if (rel.dtoKey) code += `      dtoKey: "${rel.dtoKey}",\n`;
+      // Add edge fields if present
+      if (rel.fields && rel.fields.length > 0) {
+        code += `      fields: [\n`;
+        for (const field of rel.fields) {
+          code += `        { name: "${field.name}", type: "${field.type}"`;
+          if (field.required) code += `, required: true`;
+          code += ` },\n`;
+        }
+        code += `      ],\n`;
+      }
       code += `    },\n`;
     }
     code += `  },

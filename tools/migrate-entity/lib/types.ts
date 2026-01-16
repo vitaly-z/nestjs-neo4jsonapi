@@ -66,11 +66,27 @@ export interface ParsedSerialiserRelationship {
   modelImport: string;
 }
 
+/**
+ * Detected S3 transform for a field
+ */
+export interface S3TransformInfo {
+  /** Field name to apply transform to */
+  fieldName: string;
+  /** Whether it's an array of URLs or single URL */
+  isArray: boolean;
+}
+
 export interface ParsedSerialiser {
   attributes: ParsedSerialiserAttribute[];
   meta: ParsedSerialiserAttribute[];
   relationships: ParsedSerialiserRelationship[];
   imports: string[];
+  /** Injected services detected from constructor (e.g., S3Service) */
+  services: string[];
+  /** Custom methods that may contain transform logic */
+  customMethods: string[];
+  /** Detected S3 transforms for URL fields */
+  s3Transforms: S3TransformInfo[];
 }
 
 export interface ParsedEntity {
@@ -86,6 +102,8 @@ export interface FieldConfig {
   required: boolean;
   default?: string;
   meta: boolean;
+  /** Transform function code (for S3 URL signing, etc.) */
+  transform?: string;
 }
 
 export interface ComputedConfig {
@@ -102,6 +120,16 @@ export interface RelationshipConfig {
   cardinality: "one" | "many";
   dtoKey?: string;
   contextKey?: string;
+  /** Whether relationship is required (true) or optional (false for OPTIONAL MATCH) */
+  required?: boolean;
+  /** Edge properties stored on the relationship */
+  fields?: RelationshipFieldConfig[];
+}
+
+export interface RelationshipFieldConfig {
+  name: string;
+  type: string;
+  required?: boolean;
 }
 
 export interface GeneratedDescriptor {

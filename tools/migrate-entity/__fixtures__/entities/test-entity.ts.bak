@@ -1,0 +1,36 @@
+/**
+ * Test Entity Type Definition - Old Pattern
+ *
+ * This file represents the old-style entity type definition
+ * (without defineEntity - just the type).
+ */
+
+import { Entity } from "@carlonicora/nestjs-neo4jsonapi";
+import { Company } from "@carlonicora/nestjs-neo4jsonapi";
+import { User } from "@carlonicora/nestjs-neo4jsonapi";
+
+/**
+ * TestEntity Type
+ */
+export type TestEntity = Entity & {
+  name: string;
+  description?: string;
+  url?: string;
+  tags?: string[];
+  position?: number;
+  isActive?: boolean;
+  score?: number;
+  createdDate?: Date;
+
+  // Relationship fields
+  company: Company;
+  author: User;
+  relatedItems?: RelatedItem[];
+};
+
+/**
+ * Related Item Type (for testing relationship with edge fields)
+ */
+export type RelatedItem = Entity & {
+  title: string;
+};

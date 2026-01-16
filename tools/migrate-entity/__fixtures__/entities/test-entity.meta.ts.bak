@@ -1,0 +1,12 @@
+/**
+ * Test Entity Meta - Old Pattern
+ *
+ * This file represents the old-style meta file that contains basic entity metadata.
+ */
+
+export const testEntityMeta = {
+  type: "test-entities",
+  endpoint: "test-entities",
+  nodeName: "testEntity",
+  labelName: "TestEntity",
+};

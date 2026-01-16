@@ -24,8 +24,12 @@ export async function findExternalReferences(
   const modelName = `${labelName}Model`;
   const entityTypeName = labelName; // e.g., "Article"
 
-  // Find all TypeScript files
-  const tsFiles = await glob(`${srcDir}/**/*.ts`, { nodir: true, cwd: process.cwd() });
+  // Find all TypeScript files (excluding test files)
+  const tsFiles = await glob(`${srcDir}/**/*.ts`, {
+    nodir: true,
+    cwd: process.cwd(),
+    ignore: [`${srcDir}/**/*.spec.ts`, `${srcDir}/**/*.test.ts`, `${srcDir}/**/__tests__/**`],
+  });
 
   for (const filePath of tsFiles) {
     const absolutePath = path.resolve(process.cwd(), filePath);

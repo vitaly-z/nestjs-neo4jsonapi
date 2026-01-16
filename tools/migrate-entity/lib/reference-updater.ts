@@ -47,21 +47,24 @@ export async function findExternalReferences(
 
     const content = fs.readFileSync(absolutePath, "utf-8");
 
-    // Check if file imports or uses the old exports
+    // Check if file imports or uses the old exports (model/entity files that will be deleted)
+    // Note: We DON'T include ${entityName}.meta because meta files are preserved
     const hasOldPatterns =
-      content.includes(metaName) ||
       content.includes(modelName) ||
       content.includes(`${entityName}.entity`) ||
-      content.includes(`${entityName}.meta`) ||
       content.includes(`${entityName}.model`);
 
     if (!hasOldPatterns) {
       continue;
     }
 
-    const usages = findUsagesInFile(content, metaName, modelName, labelName);
+    // Check if file imports from the meta file - if so, skip metaName replacements
+    // since companyMeta is still available from company.meta.ts
+    const importsFromMetaFile = content.includes(`${entityName}.meta"`);
 
-    // Find all old imports that need updating
+    const usages = findUsagesInFile(content, metaName, modelName, labelName, importsFromMetaFile);
+
+    // Find all old imports that need updating (excluding meta file imports)
     const oldImports = extractAllOldImports(content, entityName, metaName, modelName, entityTypeName);
 
     if (usages.length === 0 && oldImports.length === 0) continue;
@@ -82,12 +85,14 @@ export async function findExternalReferences(
 
 /**
  * Finds all usages of old exports within a file (excluding import lines).
+ * @param skipMetaReplacements - If true, don't replace metaName usages (file imports from .meta.ts)
  */
 function findUsagesInFile(
   content: string,
   metaName: string,
   modelName: string,
-  labelName: string
+  labelName: string,
+  skipMetaReplacements: boolean = false
 ): ReferenceUsage[] {
   const usages: ReferenceUsage[] = [];
   const lines = content.split("\n");
@@ -103,8 +108,8 @@ function findUsagesInFile(
     // Skip export lines (these are definitions, not usages)
     if (line.trim().startsWith("export ")) continue;
 
-    // Check for meta usage patterns
-    if (line.includes(metaName)) {
+    // Check for meta usage patterns (only if not importing from .meta.ts file)
+    if (!skipMetaReplacements && line.includes(metaName)) {
       // Pattern: entityMeta.property -> EntityDescriptor.model.property
       const metaPattern = new RegExp(`${metaName}\\.(\\w+)`, "g");
       let match;
@@ -179,6 +184,7 @@ function findUsagesInFile(
 
 /**
  * Extracts ALL old import statements related to the entity.
+ * Note: Excludes imports from .meta.ts files since those are preserved.
  */
 function extractAllOldImports(
   content: string,
@@ -193,12 +199,13 @@ function extractAllOldImports(
   for (const line of lines) {
     if (!line.trim().startsWith("import ")) continue;
 
-    // Check for various import patterns
+    // Skip imports from .meta.ts files - those are preserved and still valid
+    if (line.includes(`${entityName}.meta"`)) continue;
+
+    // Check for various import patterns (entity/model files that will be deleted)
     const isEntityImport =
-      line.includes(metaName) ||
       line.includes(modelName) ||
       (line.includes(`${entityName}.entity`) && line.includes(entityTypeName)) ||
-      line.includes(`${entityName}.meta`) ||
       line.includes(`${entityName}.model`);
 
     if (isEntityImport) {

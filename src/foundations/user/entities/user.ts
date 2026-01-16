@@ -1,10 +1,6 @@
-import {
-  Entity,
-  defineEntity,
-  defineEntityAlias,
-} from "../../../common";
+import { Entity, defineEntity, defineEntityAlias } from "../../../common";
 import { S3Service } from "../../s3";
-import type { Role } from "../../role/entities/role.entity";
+import { Role } from "../../role/entities/role";
 import type { Company } from "../../company/entities/company";
 import type { Module } from "../../module/entities/module.entity";
 import { roleMeta } from "../../role/entities/role.meta";
@@ -37,7 +33,6 @@ export type User = Entity & {
   company?: Company;
   module?: Module[];
 };
-
 
 /**
  * User Entity Descriptor

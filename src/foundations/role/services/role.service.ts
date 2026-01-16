@@ -4,7 +4,7 @@ import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.d
 import { JsonApiPaginator } from "../../../core/jsonapi/serialisers/jsonapi.paginator";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { RolePostDataDTO } from "../../role/dtos/role.post.dto";
-import { RoleModel } from "../../role/entities/role.model";
+import { RoleDescriptor } from "../../role/entities/role";
 import { RoleRepository } from "../repositories/role.repository";
 
 @Injectable()
@@ -22,7 +22,7 @@ export class RoleService {
 
   async findById(params: { roleId: string }): Promise<JsonApiDataInterface> {
     return this.builder.buildSingle(
-      RoleModel,
+      RoleDescriptor.model,
       await this.roleRepository.findById({
         roleId: params.roleId,
       }),
@@ -33,7 +33,7 @@ export class RoleService {
     const paginator: JsonApiPaginator = new JsonApiPaginator(params.query);
 
     return this.builder.buildList(
-      RoleModel,
+      RoleDescriptor.model,
       await this.roleRepository.find({
         term: params.term,
         cursor: paginator.generateCursor(),
@@ -46,7 +46,7 @@ export class RoleService {
     const paginator: JsonApiPaginator = new JsonApiPaginator(params.query);
 
     return this.builder.buildList(
-      RoleModel,
+      RoleDescriptor.model,
       await this.roleRepository.findForUser({
         userId: params.userId,
         term: params.term,
@@ -60,7 +60,7 @@ export class RoleService {
     const paginator: JsonApiPaginator = new JsonApiPaginator(params.query);
 
     return this.builder.buildList(
-      RoleModel,
+      RoleDescriptor.model,
       await this.roleRepository.findNotInUser({
         userId: params.userId,
         term: params.term,

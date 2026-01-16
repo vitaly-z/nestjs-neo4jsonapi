@@ -2,8 +2,7 @@ import { RoleId } from "../../../common/constants/system.roles";
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
-import { Role } from "../../role/entities/role.entity";
-import { RoleModel } from "../../role/entities/role.model";
+import { RoleDescriptor, Role } from "../../role/entities/role";
 
 @Injectable()
 export class RoleRepository implements OnModuleInit {
@@ -16,7 +15,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async findByNameNotId(params: { roleId: string; name: string }): Promise<Role> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model });
 
     query.queryParams = {
       roleId: params.roleId,
@@ -33,7 +32,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async findByName(params: { name: string }): Promise<Role> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model });
 
     query.queryParams = {
       name: params.name,
@@ -48,7 +47,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async findById(params: { roleId: string }): Promise<Role> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model });
 
     query.queryParams = {
       roleId: params.roleId,
@@ -63,7 +62,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async find(params: { term?: string; cursor: JsonApiCursorInterface }): Promise<Role[]> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel, cursor: params.cursor });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model, cursor: params.cursor });
 
     query.queryParams = {
       term: params.term,
@@ -86,7 +85,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async findForUser(params: { userId: string; term?: string; cursor: JsonApiCursorInterface }): Promise<Role[]> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel, cursor: params.cursor });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model, cursor: params.cursor });
 
     query.queryParams = {
       ...query.queryParams,
@@ -112,7 +111,7 @@ export class RoleRepository implements OnModuleInit {
   }
 
   async findNotInUser(params: { userId: string; term?: string; cursor: JsonApiCursorInterface }): Promise<Role[]> {
-    const query = this.neo4j.initQuery({ serialiser: RoleModel, cursor: params.cursor, fetchAll: true });
+    const query = this.neo4j.initQuery({ serialiser: RoleDescriptor.model, cursor: params.cursor, fetchAll: true });
 
     query.queryParams = {
       ...query.queryParams,

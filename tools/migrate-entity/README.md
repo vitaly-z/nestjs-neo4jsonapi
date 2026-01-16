@@ -52,7 +52,7 @@ pnpm neo4jsonapi-migrate --path src/features/article --verbose
 | `-e, --entity <name>`      | Entity name if module has multiple (e.g., `auth.code`) |
 | `-a, --all`                | Migrate all entities in codebase                       |
 | `-d, --dry-run`            | Preview changes without writing files                  |
-| `--skip-backup`            | Skip creating .bak backup files                        |
+| `--backup`                 | Create .bak backup files before overwriting            |
 | `-v, --verbose`            | Show detailed output                                   |
 
 ## What the Migration Does
@@ -108,7 +108,7 @@ Run `pnpm build` to check for any remaining TypeScript errors. Common issues:
 
 ### Reverting Changes
 
-If you didn't use `--skip-backup`, look for `.bak` files to restore:
+If you used `--backup`, look for `.bak` files to restore:
 
 ```bash
 # Restore from backup

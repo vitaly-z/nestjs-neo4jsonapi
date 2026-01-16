@@ -23,7 +23,7 @@ program
   .option("-e, --entity <name>", "Entity name if module has multiple (e.g., auth.code)")
   .option("-a, --all", "Migrate all entities in codebase")
   .option("-d, --dry-run", "Preview changes without writing files")
-  .option("--skip-backup", "Skip creating backup files")
+  .option("--backup", "Create .bak backup files before overwriting")
   .option("-v, --verbose", "Verbose output")
   .parse();
 
@@ -42,7 +42,7 @@ async function main() {
     entity: options.entity,
     all: options.all,
     dryRun: options.dryRun,
-    skipBackup: options.skipBackup,
+    skipBackup: !options.backup,
     verbose: options.verbose,
   });
 

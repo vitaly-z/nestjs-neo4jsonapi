@@ -306,9 +306,23 @@ function extractSerialiserCustomMethods(content: string): string[] {
   const customMethods: string[] = [];
 
   // Match method definitions: async methodName(...) or methodName(...)
-  // Skip constructor and standard lifecycle methods
+  // Skip constructor, standard lifecycle methods, and standard serialiser methods
   const methodPattern = /(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/g;
-  const standardMethods = new Set(["constructor", "onModuleInit", "onModuleDestroy"]);
+  const standardMethods = new Set([
+    "constructor",
+    "onModuleInit",
+    "onModuleDestroy",
+    // Standard serialiser methods from AbstractJsonApiSerialiser
+    "type",
+    "create",
+    "endpoint",
+    "endpointParameters",
+    "id",
+    "attributes",
+    "meta",
+    "links",
+    "relationships",
+  ]);
 
   let match;
   while ((match = methodPattern.exec(content)) !== null) {

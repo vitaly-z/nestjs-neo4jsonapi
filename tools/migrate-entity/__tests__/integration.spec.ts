@@ -256,12 +256,15 @@ describe("migration integration", () => {
     it("should discover all fixtures in the directory", async () => {
       const discovered = await discoverOldFiles(FIXTURES_DIR);
 
-      // Should find all 4 fixtures
+      // Should find all 7 fixtures (4 original + 3 from relationship-entity folder)
       const entityNames = discovered.map((d) => d.entityName);
       expect(entityNames).toContain("test-entity");
       expect(entityNames).toContain("simple-entity");
       expect(entityNames).toContain("complex-entity");
       expect(entityNames).toContain("migrated-entity");
+      expect(entityNames).toContain("relationship-entity");
+      expect(entityNames).toContain("feature");
+      expect(entityNames).toContain("module");
     });
 
     it("should correctly identify which entities need migration", async () => {
@@ -270,14 +273,17 @@ describe("migration integration", () => {
       const needsMigration = discovered.filter((f) => !isAlreadyMigrated(f));
       const alreadyMigrated = discovered.filter((f) => isAlreadyMigrated(f));
 
-      // 3 need migration, 1 already migrated
-      expect(needsMigration.length).toBe(3);
+      // 6 need migration (3 original + 3 from relationship-entity folder), 1 already migrated
+      expect(needsMigration.length).toBe(6);
       expect(alreadyMigrated.length).toBe(1);
 
       const needsMigrationNames = needsMigration.map((f) => f.entityName);
       expect(needsMigrationNames).toContain("test-entity");
       expect(needsMigrationNames).toContain("simple-entity");
       expect(needsMigrationNames).toContain("complex-entity");
+      expect(needsMigrationNames).toContain("relationship-entity");
+      expect(needsMigrationNames).toContain("feature");
+      expect(needsMigrationNames).toContain("module");
 
       const alreadyMigratedNames = alreadyMigrated.map((f) => f.entityName);
       expect(alreadyMigratedNames).toContain("migrated-entity");

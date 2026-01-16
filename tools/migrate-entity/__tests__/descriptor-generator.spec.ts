@@ -58,6 +58,23 @@ function getParsedComplexEntity(): ParsedEntity {
   return parseOldFiles(files);
 }
 
+/**
+ * Helper to get parsed entity with local relationship type imports
+ * This tests import type behavior for non-framework relationship types
+ */
+function getParsedRelationshipEntity(): ParsedEntity {
+  const files: OldEntityFiles = {
+    entityName: "relationship-entity",
+    entityDir: path.join(FIXTURES_DIR, "relationship-entity"),
+    entity: path.join(FIXTURES_DIR, "relationship-entity/relationship-entity.ts"),
+    meta: path.join(FIXTURES_DIR, "relationship-entity/relationship-entity.meta.ts"),
+    model: path.join(FIXTURES_DIR, "relationship-entity/relationship-entity.model.ts"),
+    map: path.join(FIXTURES_DIR, "relationship-entity/relationship-entity.map.ts"),
+    serialiser: path.join(FIXTURES_DIR, "relationship-entity/relationship-entity.serialiser.ts"),
+  };
+  return parseOldFiles(files);
+}
+
 describe("descriptor-generator", () => {
   describe("generateDescriptor", () => {
     it("should generate valid TypeScript code", () => {
@@ -430,6 +447,139 @@ describe("descriptor-generator", () => {
       // Check for array URL transform pattern
       expect(result.code).toContain("if (!data.samplePhotographs?.length) return [];");
       expect(result.code).toContain("data.samplePhotographs.map((url: string) => services.S3Service.generateSignedUrl({ key: url })");
+    });
+  });
+
+  /**
+   * Tests for circular dependency prevention
+   *
+   * These tests verify that the generated code avoids circular dependencies by:
+   * 1. Using internal imports (../../../common) instead of package barrel (@carlonicora/nestjs-neo4jsonapi)
+   * 2. Using "import type" for relationship type imports that would otherwise cause runtime circular deps
+   */
+  describe("circular dependency prevention - internal imports", () => {
+    it("should use internal import path instead of package barrel for framework imports", () => {
+      const parsed = getParsedTestEntity();
+      const entityDir = path.join(FIXTURES_DIR, "entities");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      // Framework imports should use internal path to avoid circular dependency
+      // when the package barrel re-exports from ./foundations
+      const frameworkImport = result.imports.find((i) => i.includes("defineEntity"));
+      expect(frameworkImport).toBeDefined();
+      expect(frameworkImport).toContain('from "../../../common"');
+      expect(frameworkImport).not.toContain("@carlonicora/nestjs-neo4jsonapi");
+    });
+
+    it("should include Entity in internal imports", () => {
+      const parsed = getParsedTestEntity();
+      const entityDir = path.join(FIXTURES_DIR, "entities");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      const frameworkImport = result.imports.find((i) => i.includes("../../../common"));
+      expect(frameworkImport).toBeDefined();
+      expect(frameworkImport).toContain("Entity");
+    });
+
+    it("should include S3Service in internal imports when transforms are used", () => {
+      const parsed = getParsedTestEntity();
+      const entityDir = path.join(FIXTURES_DIR, "entities");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      const frameworkImport = result.imports.find((i) => i.includes("../../../common"));
+      expect(frameworkImport).toBeDefined();
+      expect(frameworkImport).toContain("S3Service");
+    });
+
+    it("should NOT include S3Service in internal imports when no transforms", () => {
+      const parsed = getParsedSimpleEntity();
+      const entityDir = path.join(FIXTURES_DIR, "simple-entity");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      const frameworkImport = result.imports.find((i) => i.includes("../../../common"));
+      expect(frameworkImport).toBeDefined();
+      expect(frameworkImport).not.toContain("S3Service");
+    });
+
+    it("should generate internal imports for entity file", () => {
+      const parsed = getParsedTestEntity();
+      const entityDir = path.join(FIXTURES_DIR, "entities");
+
+      const result = generateEntityFile(parsed, entityDir);
+
+      // Verify the full file uses internal imports
+      expect(result).toContain('from "../../../common"');
+      expect(result).not.toMatch(/from ["']@carlonicora\/nestjs-neo4jsonapi["']/);
+    });
+  });
+
+  describe("circular dependency prevention - import type for relationship types", () => {
+    it("should use import type for non-framework relationship type imports", () => {
+      const parsed = getParsedRelationshipEntity();
+      const entityDir = path.join(FIXTURES_DIR, "relationship-entity");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      // Find imports for Feature and Module (non-framework types)
+      const featureImport = result.imports.find((i) => i.includes("Feature"));
+      const moduleImport = result.imports.find((i) => i.includes("Module"));
+
+      // Both should use "import type" to avoid runtime circular dependencies
+      if (featureImport) {
+        expect(featureImport).toMatch(/^import type\s/);
+      }
+      if (moduleImport) {
+        expect(moduleImport).toMatch(/^import type\s/);
+      }
+    });
+
+    it("should convert regular imports to import type for local entity files", () => {
+      const parsed = getParsedRelationshipEntity();
+      const entityDir = path.join(FIXTURES_DIR, "relationship-entity");
+
+      const result = generateEntityFile(parsed, entityDir);
+
+      // The generated file should have import type for Feature and Module
+      // These are only used in the type definition, not at runtime
+      const lines = result.split("\n");
+      const importLines = lines.filter((l) => l.includes("import") && (l.includes("Feature") || l.includes("Module")));
+
+      for (const importLine of importLines) {
+        // Skip framework imports which don't need import type
+        if (!importLine.includes("../../../common")) {
+          expect(importLine).toMatch(/^import type\s/);
+        }
+      }
+    });
+
+    it("should NOT use import type for framework types (User, Company)", () => {
+      const parsed = getParsedTestEntity();
+      const entityDir = path.join(FIXTURES_DIR, "entities");
+
+      const result = generateDescriptor(parsed, entityDir);
+
+      // Framework types like User and Company are included in the main internal import
+      // which is a regular import (not import type) because defineEntity is also needed at runtime
+      const frameworkImport = result.imports.find((i) => i.includes("../../../common"));
+      expect(frameworkImport).toBeDefined();
+      // This should be a regular import, not import type
+      expect(frameworkImport).not.toMatch(/^import type\s/);
+    });
+
+    it("should generate valid file for relationship-entity", () => {
+      const parsed = getParsedRelationshipEntity();
+      const entityDir = path.join(FIXTURES_DIR, "relationship-entity");
+
+      const result = generateEntityFile(parsed, entityDir);
+
+      expect(result).toContain("export const RelationshipEntityDescriptor = defineEntity<RelationshipEntity>()");
+      expect(result).toContain("relationships:");
+      expect(result).toContain("feature:");
+      expect(result).toContain("module:");
     });
   });
 });

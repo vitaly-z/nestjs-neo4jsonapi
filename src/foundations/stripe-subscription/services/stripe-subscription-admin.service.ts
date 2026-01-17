@@ -478,15 +478,27 @@ export class StripeSubscriptionAdminService {
       newPrice.stripePriceId,
     );
 
+    // Calculate immediate charge from proration line items only
+    // This represents the net amount charged NOW for the plan change
+    const immediateCharge = prorationPreview.lines.data
+      .filter((line: Stripe.InvoiceLineItem) => (line as any).proration === true)
+      .reduce((sum: number, line: Stripe.InvoiceLineItem) => sum + line.amount, 0);
+
     return {
       subtotal: prorationPreview.subtotal,
       total: prorationPreview.total,
       amountDue: prorationPreview.amount_due,
+      immediateCharge,
       currency: prorationPreview.currency,
+      prorationDate: new Date(),
       lines: prorationPreview.lines.data.map((line: Stripe.InvoiceLineItem) => ({
         description: line.description,
         amount: line.amount,
         proration: (line as any).proration,
+        period: {
+          start: line.period?.start ? new Date(line.period.start * 1000) : new Date(),
+          end: line.period?.end ? new Date(line.period.end * 1000) : new Date(),
+        },
       })),
     };
   }

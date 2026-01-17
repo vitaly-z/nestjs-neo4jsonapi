@@ -9,6 +9,7 @@ import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/strip
 import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
 import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
 import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
+import { FeatureSyncService } from "../../stripe-subscription/services/feature-sync.service";
 import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
 import { StripeInvoiceAdminService } from "../../stripe-invoice/services/stripe-invoice-admin.service";
@@ -33,6 +34,7 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly stripePriceRepository: StripePriceRepository,
     private readonly notificationService: StripeWebhookNotificationService,
     private readonly tokenAllocationService: TokenAllocationService,
+    private readonly featureSyncService: FeatureSyncService,
     private readonly stripeService: StripeService,
     private readonly companyRepository: CompanyRepository,
     private readonly stripeInvoiceAdminService: StripeInvoiceAdminService,
@@ -151,18 +153,33 @@ export class StripeWebhookProcessor extends WorkerHost {
           });
 
           if (company) {
-            if (subscription.status === "active") {
-              await this.companyRepository.markSubscriptionStatus({
-                companyId: company.id,
-                isActiveSubscription: true,
-              });
-              this.logger.debug(`Company ${company.id} subscription marked active`);
-            } else if (subscription.status === "canceled") {
+            // NOTE: We do NOT mark isActiveSubscription=true here based on subscription status.
+            // The subscription should only be marked active when payment is confirmed (invoice.paid).
+            // The TokenAllocationService.allocateTokensOnPayment handles setting isActiveSubscription=true.
+
+            if (subscription.status === "canceled") {
               await this.companyRepository.markSubscriptionStatus({
                 companyId: company.id,
                 isActiveSubscription: false,
               });
               this.logger.debug(`Company ${company.id} subscription marked inactive (canceled)`);
+
+              // Remove features (non-blocking, smart removal)
+              try {
+                const featureResult = await this.featureSyncService.removeFeaturesOnSubscriptionEnd({
+                  stripeSubscriptionId: subscription.id,
+                });
+                if (featureResult.success && featureResult.featuresRemoved?.length) {
+                  this.logger.debug(
+                    `Feature removal: ${featureResult.featuresRemoved.length} features removed for subscription ${subscription.id}`,
+                  );
+                }
+              } catch (error) {
+                this.logger.error(
+                  `Feature removal failed for ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                );
+                // Don't throw - feature removal failure should not fail webhook
+              }
             }
           } else {
             this.logger.warn(`Company not found for stripe customer ${stripeCustomerId}`);
@@ -312,6 +329,23 @@ export class StripeWebhookProcessor extends WorkerHost {
           `Token allocation failed for subscription ${subscriptionId}: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
         // Don't throw - token allocation failure should not fail webhook processing
+      }
+
+      // Sync features (non-blocking)
+      try {
+        const featureResult = await this.featureSyncService.syncFeaturesOnPayment({
+          stripeSubscriptionId: subscriptionId,
+        });
+        if (featureResult.success && featureResult.featuresAdded?.length) {
+          this.logger.debug(
+            `Feature sync: ${featureResult.featuresAdded.length} features added for subscription ${subscriptionId}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Feature sync failed for ${subscriptionId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+        // Don't throw - feature sync failure should not fail webhook
       }
 
       // Send payment success notifications (non-blocking)

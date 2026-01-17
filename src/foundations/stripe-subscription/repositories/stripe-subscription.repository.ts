@@ -437,4 +437,30 @@ export class StripeSubscriptionRepository implements OnModuleInit {
     const result = await this.neo4j.writeOne(query);
     return result?.count ?? 0;
   }
+
+  /**
+   * Find all active subscriptions for a Stripe customer
+   * Used for smart feature removal to check overlapping features
+   *
+   * @param params - Query parameters
+   * @param params.stripeCustomerId - Stripe customer ID (cus_xxx format)
+   * @returns Array of active subscriptions with price and product info
+   */
+  async findActiveByStripeCustomerId(params: { stripeCustomerId: string }): Promise<StripeSubscription[]> {
+    const query = this.neo4j.initQuery({ serialiser: StripeSubscriptionModel });
+
+    query.queryParams = {
+      stripeCustomerId: params.stripeCustomerId,
+    };
+
+    query.query = `
+      MATCH (${stripeSubscriptionMeta.nodeName}:${stripeSubscriptionMeta.labelName})-[:BELONGS_TO]->(${stripeCustomerMeta.nodeName}:${stripeCustomerMeta.labelName} {stripeCustomerId: $stripeCustomerId})
+      WHERE ${stripeSubscriptionMeta.nodeName}.status IN ['active', 'trialing']
+      MATCH (${stripeSubscriptionMeta.nodeName})-[:USES_PRICE]->(${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}:${stripePriceMeta.labelName})-[:BELONGS_TO]->(${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}_${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
+      RETURN ${stripeSubscriptionMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}, ${stripeSubscriptionMeta.nodeName}_${stripePriceMeta.nodeName}_${stripeProductMeta.nodeName}
+      ORDER BY ${stripeSubscriptionMeta.nodeName}.createdAt DESC
+    `;
+
+    return this.neo4j.readMany(query);
+  }
 }

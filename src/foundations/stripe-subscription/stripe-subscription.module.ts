@@ -12,6 +12,7 @@ import { StripeSubscriptionRepository } from "./repositories/stripe-subscription
 import { StripeSubscriptionSerialiser } from "./serialisers/stripe-subscription.serialiser";
 import { StripeSubscriptionAdminService } from "./services/stripe-subscription-admin.service";
 import { StripeSubscriptionApiService } from "./services/stripe-subscription-api.service";
+import { FeatureSyncService } from "./services/feature-sync.service";
 import { TokenAllocationService } from "./services/token-allocation.service";
 
 /**
@@ -61,12 +62,14 @@ import { TokenAllocationService } from "./services/token-allocation.service";
     StripeSubscriptionRepository,
     StripeSubscriptionSerialiser,
     TokenAllocationService,
+    FeatureSyncService,
   ],
   exports: [
     StripeSubscriptionApiService,
     StripeSubscriptionAdminService,
     StripeSubscriptionRepository,
     TokenAllocationService,
+    FeatureSyncService,
   ],
 })
 export class StripeSubscriptionModule implements OnModuleInit {

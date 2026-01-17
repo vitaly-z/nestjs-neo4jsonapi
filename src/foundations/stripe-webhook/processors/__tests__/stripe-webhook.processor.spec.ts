@@ -32,6 +32,7 @@ import { StripeWebhookProcessor, StripeWebhookJobData } from "../stripe-webhook.
 import { StripeWebhookEventRepository } from "../../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../../services/stripe-webhook-notification.service";
 import { StripeSubscriptionAdminService } from "../../../stripe-subscription/services/stripe-subscription-admin.service";
+import { FeatureSyncService } from "../../../stripe-subscription/services/feature-sync.service";
 import { TokenAllocationService } from "../../../stripe-subscription/services/token-allocation.service";
 import { StripeCustomerRepository } from "../../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeSubscriptionRepository } from "../../../stripe-subscription/repositories/stripe-subscription.repository";
@@ -120,6 +121,11 @@ describe("StripeWebhookProcessor", () => {
       allocateProratedTokensOnPlanChange: vi.fn().mockResolvedValue({ success: true, tokensAllocated: 0 }),
     };
 
+    const mockFeatureSyncService = {
+      syncFeaturesOnPayment: vi.fn().mockResolvedValue({ success: true, featuresAdded: [] }),
+      removeFeaturesOnSubscriptionEnd: vi.fn().mockResolvedValue({ success: true, featuresRemoved: [] }),
+    };
+
     const mockNotificationService = {
       sendPaymentFailedEmail: vi.fn(),
       sendSubscriptionStatusChangeEmail: vi.fn(),
@@ -179,6 +185,10 @@ describe("StripeWebhookProcessor", () => {
         {
           provide: TokenAllocationService,
           useValue: mockTokenAllocationService,
+        },
+        {
+          provide: FeatureSyncService,
+          useValue: mockFeatureSyncService,
         },
         {
           provide: StripeService,
@@ -301,7 +311,9 @@ describe("StripeWebhookProcessor", () => {
       });
     });
 
-    it("should mark company subscription as active when subscription status is active", async () => {
+    it("should NOT mark company subscription as active when subscription status is active (waits for invoice.paid)", async () => {
+      // The subscription should only be marked active when payment is confirmed (invoice.paid event),
+      // not when the subscription status changes to "active". This is handled by TokenAllocationService.
       const activeSubscription = {
         ...MOCK_SUBSCRIPTION,
         status: "active",
@@ -317,10 +329,8 @@ describe("StripeWebhookProcessor", () => {
 
       await processor.process(job);
 
-      expect(companyRepository.markSubscriptionStatus).toHaveBeenCalledWith({
-        companyId: "company-id",
-        isActiveSubscription: true,
-      });
+      // Should NOT mark subscription as active here - that happens on invoice.paid
+      expect(companyRepository.markSubscriptionStatus).not.toHaveBeenCalled();
     });
 
     it("should mark company subscription as inactive when subscription status is canceled", async () => {
@@ -345,12 +355,13 @@ describe("StripeWebhookProcessor", () => {
       });
     });
 
-    it("should not fail webhook when company subscription status update fails", async () => {
-      const activeSubscription = {
+    it("should not fail webhook when company subscription status update fails (canceled)", async () => {
+      // Test that we handle DB errors gracefully when marking subscription inactive on cancellation
+      const canceledSubscription = {
         ...MOCK_SUBSCRIPTION,
-        status: "active",
+        status: "canceled",
       };
-      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+      const job = createMockJob("customer.subscription.updated", canceledSubscription as unknown as Record<string, any>);
 
       const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
       const mockCompany = { id: "company-id" };
@@ -371,12 +382,13 @@ describe("StripeWebhookProcessor", () => {
       expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to update company subscription status"));
     });
 
-    it("should not update subscription status when stripe customer not found", async () => {
-      const activeSubscription = {
+    it("should not update subscription status when stripe customer not found (canceled)", async () => {
+      // Test that we gracefully handle missing stripe customer when trying to mark inactive
+      const canceledSubscription = {
         ...MOCK_SUBSCRIPTION,
-        status: "active",
+        status: "canceled",
       };
-      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+      const job = createMockJob("customer.subscription.updated", canceledSubscription as unknown as Record<string, any>);
 
       stripeCustomerRepository.findByStripeCustomerId.mockResolvedValue(null);
       subscriptionService.syncSubscriptionFromStripe.mockResolvedValue({} as any);
@@ -387,12 +399,13 @@ describe("StripeWebhookProcessor", () => {
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("not found in database"));
     });
 
-    it("should not update subscription status when company not found", async () => {
-      const activeSubscription = {
+    it("should not update subscription status when company not found (canceled)", async () => {
+      // Test that we gracefully handle missing company when trying to mark inactive
+      const canceledSubscription = {
         ...MOCK_SUBSCRIPTION,
-        status: "active",
+        status: "canceled",
       };
-      const job = createMockJob("customer.subscription.updated", activeSubscription as unknown as Record<string, any>);
+      const job = createMockJob("customer.subscription.updated", canceledSubscription as unknown as Record<string, any>);
 
       const mockStripeCustomer = { id: "internal-customer-id", stripeCustomerId: TEST_IDS.customerId };
 

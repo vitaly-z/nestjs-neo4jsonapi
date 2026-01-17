@@ -482,11 +482,76 @@ export class CompanyRepository implements OnModuleInit {
 
     query.query = `
       MATCH (stripeCustomer:StripeCustomer {id: $stripeCustomerId})-[:BELONGS_TO]->(company:Company)
-      OPTINAL MATCH (company)-[:HAS_FEATURE]->(company_feature:Feature)
+      OPTIONAL MATCH (company)-[:HAS_FEATURE]->(company_feature:Feature)
       RETURN company, company_feature
     `;
 
     return this.neo4j.readOne(query);
+  }
+
+  /**
+   * Add features to company (additive - won't remove existing)
+   * Uses MERGE to create only relationships that don't exist (idempotent)
+   *
+   * @param params - Parameters
+   * @param params.companyId - Company identifier
+   * @param params.featureIds - Array of feature IDs to add
+   * @returns Array of feature IDs that were actually added
+   */
+  async addFeatures(params: { companyId: string; featureIds: string[] }): Promise<string[]> {
+    if (params.featureIds.length === 0) {
+      return [];
+    }
+
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      featureIds: params.featureIds,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      WITH company
+      UNWIND $featureIds AS featureId
+      MATCH (feature:Feature {id: featureId})
+      MERGE (company)-[:HAS_FEATURE]->(feature)
+      RETURN collect(DISTINCT feature.id) AS addedFeatureIds
+    `;
+
+    const result = await this.neo4j.writeOne(query);
+    return result?.addedFeatureIds ?? [];
+  }
+
+  /**
+   * Remove specific features from company
+   *
+   * @param params - Parameters
+   * @param params.companyId - Company identifier
+   * @param params.featureIds - Array of feature IDs to remove
+   * @returns Array of feature IDs that were actually removed
+   */
+  async removeFeatures(params: { companyId: string; featureIds: string[] }): Promise<string[]> {
+    if (params.featureIds.length === 0) {
+      return [];
+    }
+
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      featureIds: params.featureIds,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})-[rel:HAS_FEATURE]->(feature:Feature)
+      WHERE feature.id IN $featureIds
+      DELETE rel
+      RETURN collect(feature.id) AS removedFeatureIds
+    `;
+
+    const result = await this.neo4j.writeOne(query);
+    return result?.removedFeatureIds ?? [];
   }
 
   async countCompanyUsers(params: { companyId: string }): Promise<number> {

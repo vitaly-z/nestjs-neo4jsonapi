@@ -4,7 +4,7 @@ import { ClsService } from "nestjs-cls";
 import { updateRelationshipQuery } from "../../../core";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
-import { CompanyDescriptor, Company } from "../../company/entities/company";
+import { Company, CompanyDescriptor } from "../../company/entities/company";
 import { featureMeta } from "../../feature/entities/feature.meta";
 import { moduleMeta } from "../../module";
 import { companyMeta } from "../entities/company.meta";
@@ -482,7 +482,8 @@ export class CompanyRepository implements OnModuleInit {
 
     query.query = `
       MATCH (stripeCustomer:StripeCustomer {id: $stripeCustomerId})-[:BELONGS_TO]->(company:Company)
-      RETURN company
+      OPTINAL MATCH (company)-[:HAS_FEATURE]->(company_feature:Feature)
+      RETURN company, company_feature
     `;
 
     return this.neo4j.readOne(query);

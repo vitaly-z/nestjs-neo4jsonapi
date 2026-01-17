@@ -188,6 +188,24 @@ export function createBaseConfig(options?: BaseConfigOptions): BaseConfigInterfa
         outputCostPer1MTokens: parseFloat(process.env.AI_OUTPUT_COST_PER_1M_TOKENS || "0"),
         googleCredentialsBase64: process.env.AI_GOOGLE_CREDENTIALS_BASE64 || "",
       },
+      vision: {
+        provider: process.env.VISION_PROVIDER || process.env.AI_PROVIDER || "",
+        apiKey: process.env.VISION_API_KEY || process.env.AI_API_KEY || "",
+        model: process.env.VISION_MODEL || process.env.AI_MODEL || "",
+        url: process.env.VISION_URL || process.env.AI_URL || "",
+        region: process.env.VISION_REGION || process.env.AI_REGION || "",
+        secret: process.env.VISION_SECRET || process.env.AI_SECRET || "",
+        instance: process.env.VISION_INSTANCE || process.env.AI_INSTANCE || "",
+        apiVersion: process.env.VISION_API_VERSION || process.env.AI_API_VERSION || "",
+        inputCostPer1MTokens: parseFloat(
+          process.env.VISION_INPUT_COST_PER_1M_TOKENS || process.env.AI_INPUT_COST_PER_1M_TOKENS || "0",
+        ),
+        outputCostPer1MTokens: parseFloat(
+          process.env.VISION_OUTPUT_COST_PER_1M_TOKENS || process.env.AI_OUTPUT_COST_PER_1M_TOKENS || "0",
+        ),
+        googleCredentialsBase64:
+          process.env.VISION_GOOGLE_CREDENTIALS_BASE64 || process.env.AI_GOOGLE_CREDENTIALS_BASE64 || "",
+      },
       transcriber: {
         provider: process.env.TRANSCRIBER_PROVIDER || "",
         apiKey: process.env.TRANSCRIBER_API_KEY || "",

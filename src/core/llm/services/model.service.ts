@@ -25,16 +25,22 @@ interface LLMParameters {
 @Injectable()
 export class ModelService {
   private _modelCache: Map<string, BaseChatModel>;
+  private _visionModelCache: Map<string, BaseChatModel>;
 
   constructor(
     private readonly clsService: ClsService,
     private readonly configService: ConfigService<BaseConfigInterface>,
   ) {
     this._modelCache = new Map();
+    this._visionModelCache = new Map();
   }
 
   private get aiConfig(): ConfigAiInterface {
     return this.configService.get<ConfigAiInterface>("ai");
+  }
+
+  private get visionConfig() {
+    return this.aiConfig.vision;
   }
 
   /**
@@ -160,6 +166,113 @@ export class ModelService {
    */
   getCacheSize(): number {
     return this._modelCache.size;
+  }
+
+  /**
+   * Gets a configured LLM instance for vision operations based on the current config.
+   *
+   * Uses caching to reuse model instances with the same configuration,
+   * improving performance by avoiding repeated instantiation.
+   *
+   * Supports multiple providers:
+   * - `llamacpp`/`local`: Local llama.cpp server (OpenAI-compatible API)
+   * - `openrouter`: OpenRouter cloud service
+   * - `requesty`: Requesty service
+   * - `vertex`: Google Vertex AI (Gemini models)
+   *
+   * @param params - Optional parameters
+   * @param params.temperature - Temperature for text generation (0-2, default: 0.1)
+   * @returns Configured BaseChatModel instance from LangChain (cached if available)
+   * @throws {Error} If the configured LLM type is not supported
+   */
+  getVisionLLM(params?: { temperature?: number }): BaseChatModel {
+    const temperature = params?.temperature ?? 0.1;
+
+    // Create cache key based on type, temperature, and region
+    const cacheKey = `vision-${this.visionConfig.provider}-${temperature}-${this.visionConfig.region || "default"}`;
+
+    // Return cached instance if available
+    if (this._visionModelCache.has(cacheKey)) {
+      return this._visionModelCache.get(cacheKey)!;
+    }
+
+    // Base configuration shared by all providers
+    const llmConfig: LLMParameters = {
+      apiKey: this.visionConfig.apiKey || "not-needed",
+      temperature,
+      model: this.visionConfig.model || "local-model",
+      configuration: {
+        baseURL: this.visionConfig.url || "http://localhost:8033/v1",
+      },
+    };
+
+    // Provider-specific overrides
+    switch (this.visionConfig.provider) {
+      case "llamacpp":
+        llmConfig.apiKey = "not-needed";
+        llmConfig.model = "local-model";
+        llmConfig.configuration.baseURL = this.visionConfig.url || "http://localhost:8033/v1";
+        break;
+
+      case "openrouter":
+        llmConfig.configuration.baseURL = this.visionConfig.url || "https://openrouter.ai/api/v1";
+        if (this.visionConfig.region) {
+          llmConfig.modelKwargs = {
+            provider: {
+              order: [this.visionConfig.region],
+              allow_fallbacks: true,
+            },
+          };
+        }
+        break;
+
+      case "requesty":
+        llmConfig.configuration.baseURL = this.visionConfig.url;
+        break;
+
+      case "vertex": {
+        const googleConfig = this.visionConfig;
+
+        if (googleConfig.googleCredentialsBase64) {
+          const credentialsJson = Buffer.from(googleConfig.googleCredentialsBase64, "base64").toString("utf-8");
+          const tempCredPath = path.join(os.tmpdir(), "gcp-credentials-vision.json");
+          fs.writeFileSync(tempCredPath, credentialsJson, { mode: 0o600 });
+          process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredPath;
+        }
+
+        const vertexModel = new ChatVertexAI({
+          model: googleConfig.model,
+          temperature: temperature,
+          location: googleConfig.region,
+        });
+
+        this._visionModelCache.set(cacheKey, vertexModel);
+        return vertexModel;
+      }
+
+      default:
+        throw new Error(`Unsupported Vision LLM type: ${this.visionConfig.provider}`);
+    }
+
+    // Create and cache new model instance
+    const model = new ChatOpenAI(llmConfig);
+    this._visionModelCache.set(cacheKey, model);
+
+    return model;
+  }
+
+  /**
+   * Clears the vision model cache.
+   */
+  clearVisionCache(): void {
+    this._visionModelCache.clear();
+  }
+
+  /**
+   * Gets the number of cached vision model instances.
+   */
+  getVisionCacheSize(): number {
+    return this._visionModelCache.size;
   }
 
   getEmbedder(): EmbeddingsInterface {

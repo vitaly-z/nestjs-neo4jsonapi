@@ -22,13 +22,16 @@ export class TokenUsageService {
     type: TokenUsageType;
     relationshipId: string;
     relationshipType: string;
+    useVisionCosts?: boolean;
   }): Promise<void> {
     let cost = 0;
 
-    if (this.aiConfig.ai.inputCostPer1MTokens !== 0 && this.aiConfig.ai.outputCostPer1MTokens !== 0) {
+    const costConfig = params.useVisionCosts ? this.aiConfig.vision : this.aiConfig.ai;
+
+    if (costConfig.inputCostPer1MTokens !== 0 && costConfig.outputCostPer1MTokens !== 0) {
       cost =
-        (this.aiConfig.ai.inputCostPer1MTokens * params.tokens.input) / 1000000 +
-        (this.aiConfig.ai.outputCostPer1MTokens * params.tokens.output) / 1000000;
+        (costConfig.inputCostPer1MTokens * params.tokens.input) / 1000000 +
+        (costConfig.outputCostPer1MTokens * params.tokens.output) / 1000000;
     }
 
     await this.tokenUsageRepository.create({

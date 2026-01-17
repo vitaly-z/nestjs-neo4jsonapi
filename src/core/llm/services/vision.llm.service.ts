@@ -143,7 +143,7 @@ export class VisionLLMService {
    */
   async call<T>(params: VisionCallParams<T>): Promise<T & { tokenUsage: { input: number; output: number } }> {
     try {
-      const baseModel = this.modelService.getLLM({
+      const baseModel = this.modelService.getVisionLLM({
         temperature: params.temperature ?? 0.1,
       });
 

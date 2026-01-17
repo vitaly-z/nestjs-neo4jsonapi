@@ -1,3 +1,27 @@
+## [1.32.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.31.2...v1.32.0) (2026-01-17)
+
+### 🚀 Features
+
+* add payment success email notifications ([4aa1cb6](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/4aa1cb6b484bdd103542f145ad606f6d3d2fd353))
+* add payment success email notifications ([06ac5d2](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/06ac5d2ff3040613df9a56a0254d46e872b963f7))
+* add price feature selection ([8ba80e7](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/8ba80e7ca5699259d9422493fd45ea1224b7e6dd))
+* add total to jsonapi list ([15947cb](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/15947cb63fdb6a7d9f4442cecaed8df83f6b133b))
+* add-feature-sync-subscription-lifecycle ([cc3e77a](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/cc3e77a15575c786a7f38393eaa6e3f5c117203d))
+
+### 🐛 Bug Fixes
+
+* correct admin validation ([028c1eb](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/028c1ebcc3ef121f72a528e8c5391213b300c7f8))
+* correct query to return user company features ([0d51777](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/0d51777a2f6b4ab60275770e910623dd94b8dc7c))
+* correct query to return user company features on login ([b7954a1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/b7954a19e996fd43dc56b74177554850554b9f12))
+* remove console logs ([8f3a862](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/8f3a8628a89a9b62dcc4c18eb304041b3d61161f))
+* return features when fetching companies by stripe customer id ([bf44517](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/bf44517e9ee8a1ba5f42dca9569ef38904ad9ee5))
+* skip export lines in usage detection ([7ca60c0](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/7ca60c07c1368286cab055d920b4764411b8085d))
+* update schema ([9e42e4e](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/9e42e4e032893153f6522843c29a2bfbac1ec541))
+
+### 🚨 Tests
+
+* add company tests ([ef025f6](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/ef025f6441edc761791e11a0382bb5a3fa0191f7))
+
 ## [1.31.2](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.31.1...v1.31.2) (2026-01-15)
 
 ### 🐛 Bug Fixes

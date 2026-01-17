@@ -1,3 +1,9 @@
+## [1.32.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.32.0...v1.32.1) (2026-01-17)
+
+### 🐛 Bug Fixes
+
+* add proration details and immediate charge to subscription line items ([c6b3a29](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/c6b3a29748ce32309f4a6040c2753e6d93b8cf24))
+
 ## [1.32.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.31.2...v1.32.0) (2026-01-17)
 
 ### 🚀 Features

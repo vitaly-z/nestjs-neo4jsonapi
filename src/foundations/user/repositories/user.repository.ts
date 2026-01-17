@@ -5,6 +5,7 @@ import { RoleId } from "../../../common/constants/system.roles";
 import { JsonApiCursorInterface } from "../../../core/jsonapi/interfaces/jsonapi.cursor.interface";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { companyMeta } from "../../company/entities/company.meta";
+import { featureMeta } from "../../feature/entities/feature.meta";
 import { ModuleModel } from "../../module/entities/module.model";
 import { adminModuleQuery, featureModuleQuery } from "../../module/queries/feature.module.query";
 import { roleMeta } from "../../role/entities/role.meta";
@@ -79,8 +80,11 @@ export class UserRepository implements OnModuleInit {
       OPTIONAL MATCH (user)-[:MEMBER_OF]->(user_role:Role)
       OPTIONAL MATCH (user)-[:BELONGS_TO]->(user_company:Company)
       OPTIONAL MATCH (user_company)-[:HAS_CONFIGURATION]->(user_company_configuration:Configuration)
-      OPTIONAL MATCH (user_company)-[:HAS_FEATURE]->(user_company_feature:Feature)
-      RETURN user, user_role, user_company, user_company_feature
+      MATCH (${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
+      WHERE ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}.isCore = true 
+      OR EXISTS {((${userMeta.nodeName}_${companyMeta.nodeName})-[:HAS_FEATURE]->(${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}))}
+      
+      RETURN user, user_role, user_company, ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}
     `;
 
     const user = await this.neo4j.readOne(query);
@@ -131,7 +135,12 @@ export class UserRepository implements OnModuleInit {
       MATCH (user:User {id: $userId})-[:BELONGS_TO]->(company)
       OPTIONAL MATCH (user)-[:MEMBER_OF]->(user_role:Role) 
       OPTIONAL MATCH (user)-[:BELONGS_TO]->(user_company:Company)
-      RETURN user, user_role, user_company
+
+      MATCH (${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
+      WHERE ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}.isCore = true 
+      OR EXISTS {((${userMeta.nodeName}_${companyMeta.nodeName})-[:HAS_FEATURE]->(${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}))}
+
+      RETURN user, user_role, user_company, ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);
@@ -151,7 +160,14 @@ export class UserRepository implements OnModuleInit {
       
       OPTIONAL MATCH (${userMeta.nodeName})-[:MEMBER_OF]->(${userMeta.nodeName}_${roleMeta.nodeName}:${roleMeta.labelName}) 
       OPTIONAL MATCH (${userMeta.nodeName})-[:BELONGS_TO]->(${userMeta.nodeName}_${companyMeta.nodeName}:${companyMeta.labelName})
-      RETURN ${userMeta.nodeName}, ${userMeta.nodeName}_${roleMeta.nodeName}, ${userMeta.nodeName}_${companyMeta.nodeName}
+
+      MATCH (${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
+      WHERE ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}.isCore = true 
+      OR EXISTS {((${userMeta.nodeName}_${companyMeta.nodeName})-[:HAS_FEATURE]->(${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}))}
+      RETURN ${userMeta.nodeName}, 
+        ${userMeta.nodeName}_${roleMeta.nodeName}, 
+        ${userMeta.nodeName}_${companyMeta.nodeName}, 
+        ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);

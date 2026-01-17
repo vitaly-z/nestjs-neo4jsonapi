@@ -11,7 +11,7 @@ import { JsonApiDataInterface } from "../../../core/jsonapi/interfaces/jsonapi.d
 import { JsonApiPaginator } from "../../../core/jsonapi/serialisers/jsonapi.paginator";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { UserPatchRateDataDTO } from "../../user/dtos/user.patch.rate.dto";
-import { UserDescriptor, User } from "../../user/entities/user";
+import { User, UserDescriptor } from "../../user/entities/user";
 import { UserRepository } from "../repositories/user.repository";
 
 @Injectable()

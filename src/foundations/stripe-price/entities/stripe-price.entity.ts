@@ -23,6 +23,7 @@ export type StripePrice = Entity & {
   description?: string;
   features?: string; // JSON array stored as string
   token?: number; // Neo4j only, not synced to Stripe
+  isTrial?: boolean; // Marks this price as the trial subscription plan (Neo4j only)
 
   stripeProduct: StripeProduct;
   feature?: Feature[]; // HAS_FEATURE relationship (naming follows Company pattern)

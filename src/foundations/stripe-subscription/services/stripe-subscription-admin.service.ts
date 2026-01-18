@@ -120,7 +120,8 @@ export class StripeSubscriptionAdminService {
    * @param params.companyId - Company identifier
    * @param params.priceId - Price ID to subscribe to
    * @param params.paymentMethodId - Optional payment method ID
-   * @param params.trialPeriodDays - Optional trial period in days
+   * @param params.trialPeriodDays - Optional trial period in days (ignored if trialEnd is set)
+   * @param params.trialEnd - Optional Unix timestamp for trial end (takes precedence over trialPeriodDays)
    * @param params.quantity - Optional quantity (default: 1)
    * @returns JSON:API formatted subscription data
    * @throws {HttpException} NOT_FOUND if customer or price not found
@@ -141,6 +142,7 @@ export class StripeSubscriptionAdminService {
     priceId: string;
     paymentMethodId?: string;
     trialPeriodDays?: number;
+    trialEnd?: number; // Unix timestamp - takes precedence over trialPeriodDays
     quantity?: number;
   }): Promise<CreateSubscriptionResult> {
     const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
@@ -172,8 +174,10 @@ export class StripeSubscriptionAdminService {
     }
 
     // Validate and auto-select payment method
+    // For trial subscriptions, payment method is optional
+    const isTrial = params.trialPeriodDays || params.trialEnd;
     let paymentMethodId = params.paymentMethodId;
-    if (!paymentMethodId) {
+    if (!paymentMethodId && !isTrial) {
       const paymentMethods = await this.stripeCustomerApiService.listPaymentMethods(customer.stripeCustomerId);
       if (paymentMethods.length === 0) {
         throw new HttpException(
@@ -202,6 +206,7 @@ export class StripeSubscriptionAdminService {
       priceId: price.stripePriceId,
       paymentMethodId,
       trialPeriodDays: params.trialPeriodDays,
+      trialEnd: params.trialEnd,
       metadata: {
         companyId: params.companyId,
         priceId: params.priceId,

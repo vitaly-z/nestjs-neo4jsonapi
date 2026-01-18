@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Trial is Ending Soon</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  {{> header}}
+
+  <div style="padding: 20px; font-family: Arial, sans-serif; color: #333;">
+    <h1 style="color: #f0ad4e;">Your Trial is Ending Soon</h1>
+
+    <p>Hi {{customerName}},</p>
+
+    <p>We wanted to let you know that your free trial will end on <strong>{{trialEndDate}}</strong>.</p>
+
+    <p>To continue using all features without interruption, please upgrade to a paid plan before your trial expires.</p>
+
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f0ad4e;">
+      <p style="margin: 0;"><strong>What happens when your trial ends?</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+        <li>Your access to premium features will be disabled</li>
+        <li>Your data will be preserved for 30 days</li>
+        <li>You can upgrade at any time to restore access</li>
+      </ul>
+    </div>
+
+    {{#if upgradeUrl}}
+    <p style="margin: 30px 0;">
+      <a href="{{upgradeUrl}}" style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+        Upgrade Now
+      </a>
+    </p>
+    {{/if}}
+
+    <p style="margin-top: 30px;">
+      Thank you for trying our service!
+    </p>
+
+    <p style="color: #6c757d; font-size: 14px; margin-top: 40px;">
+      If you have any questions about upgrading, please contact our support team.
+    </p>
+  </div>
+
+  {{> footer}}
+</body>
+</html>

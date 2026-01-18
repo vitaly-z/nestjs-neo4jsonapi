@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   Equals,
   IsArray,
+  IsBoolean,
   IsDefined,
   IsEnum,
   IsInt,
@@ -87,6 +88,10 @@ export class StripePricePostAttributesDTO {
   @IsInt()
   @Min(0)
   token?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 }
 
 // Feature relationship item DTO (for JSON:API relationships)
@@ -158,6 +163,10 @@ export class StripePricePutAttributesDTO {
   @IsInt()
   @Min(0)
   token?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isTrial?: boolean;
 }
 
 // Relationships DTO for PUT requests

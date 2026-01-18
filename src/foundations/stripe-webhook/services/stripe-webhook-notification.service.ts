@@ -28,6 +28,12 @@ export interface StripeWebhookPaymentSuccessNotificationParams {
   isOneTimePurchase?: boolean;
 }
 
+export interface StripeWebhookTrialEndingNotificationParams {
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  trialEndDate: Date;
+}
+
 /**
  * StripeWebhookNotificationService
  *
@@ -285,6 +291,57 @@ export class StripeWebhookNotificationService {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.logger.error(`Failed to queue payment success admin notification: ${errorMsg}`);
+      // Don't throw - notification failure shouldn't block webhook processing
+    }
+  }
+
+  /**
+   * Send trial ending reminder to company admins
+   * Sent 3 days before trial expires
+   */
+  async sendTrialEndingReminderEmail(params: StripeWebhookTrialEndingNotificationParams): Promise<void> {
+    const { stripeCustomerId, stripeSubscriptionId, trialEndDate } = params;
+
+    try {
+      await this.cls.run(async () => {
+        const companyAdmins = await this.userRepository.findCompanyAdminsByStripeCustomerId({ stripeCustomerId });
+
+        if (companyAdmins.length === 0) {
+          this.logger.warn(`No company admins found for Stripe customer ${stripeCustomerId} - skipping trial reminder`);
+          return;
+        }
+
+        for (const admin of companyAdmins) {
+          await this.emailQueue.add(
+            "billing-notification",
+            {
+              jobType: "trial-ending-reminder" as const,
+              payload: {
+                to: admin.email,
+                customerName: admin.name || "Customer",
+                stripeCustomerId,
+                stripeSubscriptionId,
+                trialEndDate: trialEndDate.toISOString(),
+                locale: "en",
+              },
+            },
+            {
+              attempts: 3,
+              backoff: {
+                type: "exponential",
+                delay: 5000,
+              },
+            },
+          );
+        }
+
+        this.logger.log(
+          `Queued trial ending reminder for ${companyAdmins.length} company admin(s) (customer: ${stripeCustomerId})`,
+        );
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      this.logger.error(`Failed to queue trial ending reminder: ${errorMsg}`);
       // Don't throw - notification failure shouldn't block webhook processing
     }
   }

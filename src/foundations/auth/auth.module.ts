@@ -1,8 +1,10 @@
+import { BullModule } from "@nestjs/bullmq";
 import { Module, OnModuleInit } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { AuthController } from "./controllers/auth.controller";
 
 import { modelRegistry } from "../../common/registries/registry";
+import { QueueId } from "../../config/enums/queue.id";
 import { CompanyModule } from "../company/company.module";
 import { DiscordUserModule } from "../discord-user/discord-user.module";
 import { GoogleUserModule } from "../google-user/google-user.module";
@@ -17,6 +19,7 @@ import { AuthDiscordService } from "./services/auth.discord.service";
 import { AuthGoogleService } from "./services/auth.google.service";
 import { AuthService } from "./services/auth.service";
 import { PendingRegistrationService } from "./services/pending-registration.service";
+import { TrialQueueService } from "./services/trial-queue.service";
 
 @Module({
   controllers: [AuthController, AuthDiscordController, AuthGoogleController],
@@ -27,9 +30,17 @@ import { PendingRegistrationService } from "./services/pending-registration.serv
     AuthDiscordService,
     AuthGoogleService,
     PendingRegistrationService,
+    TrialQueueService,
   ],
-  exports: [AuthService, PendingRegistrationService],
-  imports: [UserModule, JwtModule, CompanyModule, DiscordUserModule, GoogleUserModule],
+  exports: [AuthService, PendingRegistrationService, TrialQueueService],
+  imports: [
+    UserModule,
+    JwtModule,
+    CompanyModule,
+    DiscordUserModule,
+    GoogleUserModule,
+    BullModule.registerQueue({ name: QueueId.TRIAL }),
+  ],
 })
 export class AuthModule implements OnModuleInit {
   onModuleInit() {

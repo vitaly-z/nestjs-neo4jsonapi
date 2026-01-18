@@ -354,6 +354,50 @@ describe("StripePriceRepository", () => {
     });
   });
 
+  describe("findTrialPrice", () => {
+    it("should query for active trial recurring price", async () => {
+      const mockTrialPrice = {
+        id: "price-trial-123",
+        active: true,
+        isTrial: true,
+        priceType: "recurring",
+      };
+      const mockQuery = createMockQuery();
+      neo4jService.initQuery.mockReturnValue(mockQuery);
+      neo4jService.readOne.mockResolvedValue(mockTrialPrice as any);
+
+      const result = await repository.findTrialPrice();
+
+      expect(neo4jService.initQuery).toHaveBeenCalledWith({
+        serialiser: expect.anything(),
+      });
+      expect(mockQuery.query).toContain("active: true, isTrial: true, priceType: 'recurring'");
+      expect(mockQuery.query).toContain("LIMIT 1");
+      expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
+      expect(result).toEqual(mockTrialPrice);
+    });
+
+    it("should return null if no trial price found", async () => {
+      const mockQuery = createMockQuery();
+      neo4jService.initQuery.mockReturnValue(mockQuery);
+      neo4jService.readOne.mockResolvedValue(null);
+
+      const result = await repository.findTrialPrice();
+
+      expect(result).toBeNull();
+      expect(neo4jService.readOne).toHaveBeenCalledWith(mockQuery);
+    });
+
+    it("should handle database errors", async () => {
+      const mockQuery = createMockQuery();
+      neo4jService.initQuery.mockReturnValue(mockQuery);
+      const error = new Error("Database error");
+      neo4jService.readOne.mockRejectedValue(error);
+
+      await expect(repository.findTrialPrice()).rejects.toThrow("Database error");
+    });
+  });
+
   describe("create", () => {
     describe("one-time prices", () => {
       const validOneTimeParams = {

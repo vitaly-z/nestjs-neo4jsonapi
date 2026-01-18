@@ -241,21 +241,14 @@ export class AuthRepository implements OnModuleInit {
         CREATE (auth:Auth {id: $authId, token: $token, expiration: $expiration, createdAt: datetime(), updatedAt: datetime()}) 
         CREATE (auth_user)-[:HAS_AUTH]->(auth)
 
-        OPTIONAL MATCH (auth_user)-[:BELONGS_TO]->(auth_user_company:Company)
-        MATCH (auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
-        WHERE auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}.isCore = true 
-        OR EXISTS {((auth_${userMeta.nodeName}_${companyMeta.nodeName})-[:HAS_FEATURE]->(auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}))}
-
-
-
-        WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}
+        WITH auth, auth_user
         OPTIONAL MATCH (auth_user)-[:MEMBER_OF]->(auth_user_role:Role)
         OPTIONAL MATCH (auth_user_role)-[perm:HAS_PERMISSIONS]->(module:Module)
-        WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module, apoc.convert.fromJsonList(module.permissions) AS modPerms, collect(perm) AS rolePerms
+        WITH auth, auth_user, auth_user_role, module, apoc.convert.fromJsonList(module.permissions) AS modPerms, collect(perm) AS rolePerms
 
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module, apoc.convert.fromJsonList(module.permissions) AS modPerms
+WITH auth, auth_user, auth_user_role, module, apoc.convert.fromJsonList(module.permissions) AS modPerms
 
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module, 
+WITH auth, auth_user, auth_user_role, module, 
 CASE 
     WHEN head([p IN modPerms WHERE p.type = "create"]) IS NULL THEN false 
     ELSE head([p IN modPerms WHERE p.type = "create"]).value 
@@ -274,18 +267,18 @@ CASE
   END AS defaultDelete
 
 OPTIONAL MATCH (auth_user_role)-[perm:HAS_PERMISSIONS]->(module)
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module, defaultCreate, defaultRead, defaultUpdate, defaultDelete, collect(perm) AS rolePerms
+WITH auth, auth_user, auth_user_role, module, defaultCreate, defaultRead, defaultUpdate, defaultDelete, collect(perm) AS rolePerms
 
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module, defaultCreate, defaultRead, defaultUpdate, defaultDelete, apoc.coll.flatten([p IN rolePerms | apoc.convert.fromJsonList(p.permissions)]) AS rolePermsParsed
+WITH auth, auth_user, auth_user_role, module, defaultCreate, defaultRead, defaultUpdate, defaultDelete, apoc.coll.flatten([p IN rolePerms | apoc.convert.fromJsonList(p.permissions)]) AS rolePermsParsed
 
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}, auth_user_role, module,
+WITH auth, auth_user, auth_user_role, module,
      defaultCreate, defaultRead, defaultUpdate, defaultDelete, rolePermsParsed,
      [defaultCreate] + [r IN rolePermsParsed WHERE r.type="create" | r.value] AS createValues,
      [defaultRead]   + [r IN rolePermsParsed WHERE r.type="read"   | r.value] AS readValues,
      [defaultUpdate] + [r IN rolePermsParsed WHERE r.type="update" | r.value] AS updateValues,
      [defaultDelete] + [r IN rolePermsParsed WHERE r.type="delete" | r.value] AS deleteValues
 
-WITH auth, auth_user, auth_user_company, auth_${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName},  auth_user_role, module,
+WITH auth, auth_user,  auth_user_role, module,
      CASE 
        WHEN any(x IN createValues WHERE x = true) THEN true
        WHEN any(x IN createValues WHERE x <> true AND x <> false) THEN head([x IN createValues WHERE x <> true AND x <> false])

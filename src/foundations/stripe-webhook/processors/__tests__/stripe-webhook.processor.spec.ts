@@ -27,6 +27,7 @@ vi.mock("@carlonicora/nestjs-neo4jsonapi", () => {
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { Job } from "bullmq";
+import { ClsService } from "nestjs-cls";
 import Stripe from "stripe";
 import { StripeWebhookProcessor, StripeWebhookJobData } from "../stripe-webhook.processor";
 import { StripeWebhookEventRepository } from "../../repositories/stripe-webhook-event.repository";
@@ -151,6 +152,13 @@ describe("StripeWebhookProcessor", () => {
       syncInvoiceFromStripe: vi.fn().mockResolvedValue({}),
     };
 
+    const mockClsService = {
+      run: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
+      get: vi.fn(),
+      set: vi.fn(),
+      has: vi.fn().mockReturnValue(false),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StripeWebhookProcessor,
@@ -205,6 +213,10 @@ describe("StripeWebhookProcessor", () => {
         {
           provide: AppLoggingService,
           useValue: mockLogger,
+        },
+        {
+          provide: ClsService,
+          useValue: mockClsService,
         },
       ],
     }).compile();

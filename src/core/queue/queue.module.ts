@@ -38,9 +38,10 @@ export class QueueModule {
             };
           },
         }),
-        // Always register the library's CHUNK queue
+        // Always register the library's core queues
         BullModule.registerQueue({ name: QueueId.CHUNK }),
         BullModule.registerQueue({ name: QueueId.COMPANY }),
+        BullModule.registerQueue({ name: QueueId.TRIAL }),
       ],
       providers: [
         // Provider that registers app-specific queues dynamically
@@ -70,7 +71,7 @@ export class QueueModule {
    * Use this when you need to explicitly specify which queues to register.
    */
   static forRootWithQueues(queueIds: string[]): DynamicModule {
-    const allQueueIds = new Set([QueueId.CHUNK, QueueId.COMPANY, ...queueIds]);
+    const allQueueIds = new Set([QueueId.CHUNK, QueueId.COMPANY, QueueId.TRIAL, ...queueIds]);
 
     return {
       module: QueueModule,

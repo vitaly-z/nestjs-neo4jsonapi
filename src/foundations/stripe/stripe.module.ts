@@ -1,7 +1,6 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { StripeCustomerModule } from "../stripe-customer/stripe-customer.module";
 import { StripeInvoiceModule } from "../stripe-invoice/stripe-invoice.module";
-import { StripeSubscriptionModule } from "../stripe-subscription/stripe-subscription.module";
 import { StripeUsageModule } from "../stripe-usage/stripe-usage.module";
 import { StripeWebhookModule } from "../stripe-webhook/stripe-webhook.module";
 import { BillingController } from "./controllers/billing.controller";
@@ -22,7 +21,6 @@ import { StripeService } from "./services/stripe.service";
  * Dependencies:
  * - StripeCustomerModule (customer management)
  * - StripeInvoiceModule (invoice management)
- * - StripeSubscriptionModule (subscription management)
  * - StripeUsageModule (usage-based billing)
  * - StripeWebhookModule (webhook processing)
  */
@@ -30,7 +28,6 @@ import { StripeService } from "./services/stripe.service";
   imports: [
     forwardRef(() => StripeCustomerModule),
     forwardRef(() => StripeInvoiceModule),
-    forwardRef(() => StripeSubscriptionModule),
     forwardRef(() => StripeUsageModule),
     forwardRef(() => StripeWebhookModule),
   ],

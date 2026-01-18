@@ -29,7 +29,8 @@ export class StripeSubscriptionApiService {
    * @param params.stripeCustomerId - The Stripe customer ID
    * @param params.priceId - The Stripe price ID to subscribe to
    * @param params.paymentMethodId - Default payment method ID (optional)
-   * @param params.trialPeriodDays - Number of trial days (optional)
+   * @param params.trialPeriodDays - Number of trial days (optional, ignored if trialEnd is set)
+   * @param params.trialEnd - Unix timestamp for trial end (optional, takes precedence over trialPeriodDays)
    * @param params.metadata - Additional metadata (optional)
    * @returns Promise resolving to the created subscription with expanded invoice and payment intent
    * @throws {StripeError} If subscription creation fails
@@ -49,6 +50,7 @@ export class StripeSubscriptionApiService {
     priceId: string;
     paymentMethodId?: string;
     trialPeriodDays?: number;
+    trialEnd?: number; // Unix timestamp - takes precedence over trialPeriodDays
     metadata?: Record<string, string>;
   }): Promise<Stripe.Subscription> {
     const stripe = this.stripeService.getClient();
@@ -65,7 +67,10 @@ export class StripeSubscriptionApiService {
     if (params.paymentMethodId) {
       subscriptionParams.default_payment_method = params.paymentMethodId;
     }
-    if (params.trialPeriodDays) {
+    // trialEnd takes precedence over trialPeriodDays (useful for testing with short trials)
+    if (params.trialEnd) {
+      subscriptionParams.trial_end = params.trialEnd;
+    } else if (params.trialPeriodDays) {
       subscriptionParams.trial_period_days = params.trialPeriodDays;
     }
 

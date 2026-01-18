@@ -1,5 +1,6 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
+import { ClsService } from "nestjs-cls";
 import Stripe from "stripe";
 import { QueueId } from "../../../config/enums/queue.id";
 import { AppLoggingService } from "../../../core/logging";
@@ -39,6 +40,7 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly companyRepository: CompanyRepository,
     private readonly stripeInvoiceAdminService: StripeInvoiceAdminService,
     private readonly logger: AppLoggingService,
+    private readonly cls: ClsService,
   ) {
     super();
   }
@@ -63,32 +65,35 @@ export class StripeWebhookProcessor extends WorkerHost {
   async process(job: Job<StripeWebhookJobData>): Promise<void> {
     const { webhookEventId, eventType, payload } = job.data;
 
-    try {
-      await this.stripeWebhookEventRepository.updateStatus({
-        id: webhookEventId,
-        status: "processing",
-      });
+    // Wrap in CLS context for repository operations that require it
+    await this.cls.run(async () => {
+      try {
+        await this.stripeWebhookEventRepository.updateStatus({
+          id: webhookEventId,
+          status: "processing",
+        });
 
-      await this.handleEvent(eventType, payload);
+        await this.handleEvent(eventType, payload);
 
-      await this.stripeWebhookEventRepository.updateStatus({
-        id: webhookEventId,
-        status: "completed",
-        processedAt: new Date(),
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.error(`Failed to process webhook ${eventType}: ${errorMessage}`);
+        await this.stripeWebhookEventRepository.updateStatus({
+          id: webhookEventId,
+          status: "completed",
+          processedAt: new Date(),
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        this.logger.error(`Failed to process webhook ${eventType}: ${errorMessage}`);
 
-      await this.stripeWebhookEventRepository.updateStatus({
-        id: webhookEventId,
-        status: "failed",
-        error: errorMessage,
-        incrementRetryCount: true,
-      });
+        await this.stripeWebhookEventRepository.updateStatus({
+          id: webhookEventId,
+          status: "failed",
+          error: errorMessage,
+          incrementRetryCount: true,
+        });
 
-      throw error;
-    }
+        throw error;
+      }
+    });
   }
 
   private async handleEvent(eventType: string, payload: Record<string, any>): Promise<void> {
@@ -97,6 +102,10 @@ export class StripeWebhookProcessor extends WorkerHost {
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
         await this.handleSubscriptionEvent(payload as Stripe.Subscription);
+        break;
+
+      case "customer.subscription.trial_will_end":
+        await this.handleTrialWillEndEvent(payload as Stripe.Subscription);
         break;
 
       case "invoice.created":
@@ -131,6 +140,7 @@ export class StripeWebhookProcessor extends WorkerHost {
 
     // Get current price ID from Stripe subscription
     const currentStripePriceId = subscription.items?.data?.[0]?.price?.id;
+    const priceAmount = subscription.items?.data?.[0]?.price?.unit_amount;
 
     // Sync subscription from Stripe
     await this.subscriptionService.syncSubscriptionFromStripe({
@@ -157,23 +167,45 @@ export class StripeWebhookProcessor extends WorkerHost {
             // The subscription should only be marked active when payment is confirmed (invoice.paid).
             // The TokenAllocationService.allocateTokensOnPayment handles setting isActiveSubscription=true.
 
-            if (subscription.status === "canceled") {
+            // Handle subscription end states: canceled, past_due, unpaid, incomplete_expired
+            const isEndState = ["canceled", "past_due", "unpaid", "incomplete_expired"].includes(subscription.status);
+
+            // Detect trial-to-active transition with $0 price (trial ended without valid paid subscription)
+            // When a trial ends with a $0 price, Stripe transitions status from 'trialing' to 'active'
+            // but this doesn't represent a valid paid subscription - it's just the trial ending
+            const wasTrialing = previousSubscription?.status === "trialing";
+            const isNowActive = subscription.status === "active";
+            const isTrialEndedWithoutPayment =
+              wasTrialing && isNowActive && (priceAmount === 0 || priceAmount === null || priceAmount === undefined);
+
+            // Deactivate subscription if it's an end state OR if trial ended without valid payment
+            const shouldDeactivate = isEndState || isTrialEndedWithoutPayment;
+            const deactivationReason = isEndState ? subscription.status : "trial_ended_without_payment";
+
+            if (shouldDeactivate) {
               await this.companyRepository.markSubscriptionStatus({
                 companyId: company.id,
                 isActiveSubscription: false,
               });
-              this.logger.debug(`Company ${company.id} subscription marked inactive (canceled)`);
+              this.logger.log(`Company ${company.id} subscription marked inactive (reason: ${deactivationReason})`);
+
+              // Reset tokens to 0
+              await this.companyRepository.updateTokens({
+                companyId: company.id,
+                monthlyTokens: 0,
+                availableMonthlyTokens: 0,
+              });
+              this.logger.log(`Company ${company.id} tokens reset to 0 (reason: ${deactivationReason})`);
 
               // Remove features (non-blocking, smart removal)
               try {
                 const featureResult = await this.featureSyncService.removeFeaturesOnSubscriptionEnd({
                   stripeSubscriptionId: subscription.id,
                 });
-                if (featureResult.success && featureResult.featuresRemoved?.length) {
-                  this.logger.debug(
-                    `Feature removal: ${featureResult.featuresRemoved.length} features removed for subscription ${subscription.id}`,
-                  );
-                }
+                this.logger.log(
+                  `Feature removal for subscription ${subscription.id}: ` +
+                    `${featureResult.featuresRemoved?.length ?? 0} features removed (reason: ${deactivationReason})`,
+                );
               } catch (error) {
                 this.logger.error(
                   `Feature removal failed for ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -237,6 +269,37 @@ export class StripeWebhookProcessor extends WorkerHost {
           );
         }
       }
+    }
+  }
+
+  private async handleTrialWillEndEvent(subscription: Stripe.Subscription): Promise<void> {
+    const stripeCustomerId =
+      typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+
+    if (!stripeCustomerId) {
+      this.logger.warn(`Trial ending subscription ${subscription.id} has no customer ID`);
+      return;
+    }
+
+    const trialEnd = subscription.trial_end;
+    if (!trialEnd) {
+      this.logger.warn(`Trial ending subscription ${subscription.id} has no trial_end date`);
+      return;
+    }
+
+    this.logger.log(`Trial ending in 3 days for subscription ${subscription.id} (customer: ${stripeCustomerId})`);
+
+    // Send reminder notification (non-blocking)
+    try {
+      await this.notificationService.sendTrialEndingReminderEmail({
+        stripeCustomerId,
+        stripeSubscriptionId: subscription.id,
+        trialEndDate: new Date(trialEnd * 1000),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send trial ending reminder for ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
@@ -349,26 +412,29 @@ export class StripeWebhookProcessor extends WorkerHost {
       }
 
       // Send payment success notifications (non-blocking)
-      try {
-        await this.notificationService.sendPaymentSuccessToCompanyAdmins({
-          stripeCustomerId,
-          stripeInvoiceId: invoice.id,
-          amount: invoice.amount_paid / 100, // Convert cents to dollars
-          currency: invoice.currency,
-          isOneTimePurchase: false,
-        });
-        await this.notificationService.sendPaymentSuccessToPlatformAdmins({
-          stripeCustomerId,
-          stripeInvoiceId: invoice.id,
-          amount: invoice.amount_paid / 100,
-          currency: invoice.currency,
-          isOneTimePurchase: false,
-        });
-      } catch (error) {
-        this.logger.error(
-          `Failed to send payment success notifications for invoice ${invoice.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-        // Don't throw - notification failure should not fail webhook processing
+      // Skip for $0 invoices (trials, free tiers)
+      if (invoice.amount_paid > 0) {
+        try {
+          await this.notificationService.sendPaymentSuccessToCompanyAdmins({
+            stripeCustomerId,
+            stripeInvoiceId: invoice.id,
+            amount: invoice.amount_paid / 100, // Convert cents to dollars
+            currency: invoice.currency,
+            isOneTimePurchase: false,
+          });
+          await this.notificationService.sendPaymentSuccessToPlatformAdmins({
+            stripeCustomerId,
+            stripeInvoiceId: invoice.id,
+            amount: invoice.amount_paid / 100,
+            currency: invoice.currency,
+            isOneTimePurchase: false,
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to send payment success notifications for invoice ${invoice.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+          // Don't throw - notification failure should not fail webhook processing
+        }
       }
     }
   }

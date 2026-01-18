@@ -18,13 +18,14 @@ import { Auth } from "../../auth/entities/auth.entity";
 import { AuthModel } from "../../auth/entities/auth.model";
 import { AuthRepository } from "../../auth/repositories/auth.repository";
 import { CompanyRepository } from "../../company/repositories/company.repository";
+import { DiscordUserService } from "../../discord-user/services/discord-user.service";
+import { GoogleUserService } from "../../google-user/services/google-user.service";
 import { Role } from "../../role/entities/role";
 import { User } from "../../user/entities/user";
 import { UserRepository } from "../../user/repositories/user.repository";
 import { UserService } from "../../user/services/user.service";
 import { PendingRegistrationService } from "./pending-registration.service";
-import { DiscordUserService } from "../../discord-user/services/discord-user.service";
-import { GoogleUserService } from "../../google-user/services/google-user.service";
+import { TrialQueueService } from "./trial-queue.service";
 
 @Injectable()
 export class AuthService {
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly pendingRegistrationService: PendingRegistrationService,
     private readonly discordUserService: DiscordUserService,
     private readonly googleUserService: GoogleUserService,
+    private readonly trialQueueService: TrialQueueService,
   ) {}
 
   private get appConfig(): ConfigAppInterface {
@@ -207,6 +209,12 @@ export class AuthService {
       termsAcceptedAt: params.data.attributes.termsAcceptedAt,
       marketingConsent: params.data.attributes.marketingConsent,
       marketingConsentAt: params.data.attributes.marketingConsentAt,
+    });
+
+    // Queue trial creation (async, non-blocking)
+    await this.trialQueueService.queueTrialCreation({
+      companyId: company.id,
+      userId: user.id,
     });
 
     const link: string = `${this.appConfig.url}en/activation/${user.code}`;
@@ -376,6 +384,12 @@ export class AuthService {
     // Set CLS context
     this.clsService.set("companyId", companyId);
     this.clsService.set("userId", userId);
+
+    // Queue trial creation (async, non-blocking)
+    await this.trialQueueService.queueTrialCreation({
+      companyId: companyId,
+      userId: userId,
+    });
 
     // Delete pending registration
     await this.pendingRegistrationService.delete(params.pendingId);

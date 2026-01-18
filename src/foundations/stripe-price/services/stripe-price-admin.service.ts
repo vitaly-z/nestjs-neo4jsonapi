@@ -158,6 +158,7 @@ export class StripePriceAdminService {
       description: params.data.attributes.description,
       features: params.data.attributes.features,
       token: params.data.attributes.token,
+      isTrial: params.data.attributes.isTrial,
       featureIds, // Pass featureIds to repository for Neo4j relationship creation
     });
 
@@ -203,6 +204,7 @@ export class StripePriceAdminService {
       description: params.data.attributes?.description,
       features: params.data.attributes?.features,
       token: params.data.attributes?.token,
+      isTrial: params.data.attributes?.isTrial,
       featureIds, // Pass featureIds to repository for Neo4j relationship update (already filtered for recurring)
       priceType: existingPrice.priceType, // Pass priceType for repository validation
     });

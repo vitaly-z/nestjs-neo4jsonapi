@@ -151,6 +151,28 @@ export class StripePriceRepository implements OnModuleInit {
   }
 
   /**
+   * Find the trial price
+   *
+   * Returns the active recurring price marked as the trial plan.
+   * There should only be one trial price configured at a time.
+   *
+   * @returns StripePrice if found, null otherwise
+   */
+  async findTrialPrice(): Promise<StripePrice | null> {
+    const query = this.neo4j.initQuery({ serialiser: StripePriceModel });
+
+    query.query = `
+      MATCH (${stripePriceMeta.nodeName}:${stripePriceMeta.labelName} {active: true, isTrial: true, priceType: 'recurring'})
+      -[:BELONGS_TO]->(${stripeProductMeta.nodeName}:${stripeProductMeta.labelName})
+      OPTIONAL MATCH (${stripePriceMeta.nodeName})-[:HAS_FEATURE]->(${stripePriceMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
+      RETURN ${stripePriceMeta.nodeName}, ${stripeProductMeta.nodeName}, ${stripePriceMeta.nodeName}_${featureMeta.nodeName}
+      LIMIT 1
+    `;
+
+    return this.neo4j.readOne(query);
+  }
+
+  /**
    * Create a new price
    *
    * Creates a StripePrice node and establishes BELONGS_TO relationship with StripeProduct.
@@ -188,6 +210,7 @@ export class StripePriceRepository implements OnModuleInit {
     description?: string;
     features?: string;
     token?: number;
+    isTrial?: boolean;
     featureIds?: string[];
   }): Promise<StripePrice> {
     const query = this.neo4j.initQuery({ serialiser: StripePriceModel });
@@ -221,6 +244,7 @@ export class StripePriceRepository implements OnModuleInit {
       description: params.description ?? null,
       features: params.features ?? null,
       token: params.token ?? null,
+      isTrial: params.isTrial ?? null,
       featureIds: params.featureIds ?? [],
     };
 
@@ -242,6 +266,7 @@ export class StripePriceRepository implements OnModuleInit {
         description: $description,
         features: $features,
         token: $token,
+        isTrial: $isTrial,
         createdAt: datetime(),
         updatedAt: datetime()
       })
@@ -295,6 +320,7 @@ export class StripePriceRepository implements OnModuleInit {
     description?: string;
     features?: string;
     token?: number;
+    isTrial?: boolean;
     featureIds?: string[];
     priceType?: StripePriceType;
   }): Promise<StripePrice> {
@@ -331,6 +357,9 @@ export class StripePriceRepository implements OnModuleInit {
     if (params.token !== undefined) {
       setParams.push(`${stripePriceMeta.nodeName}.token = $token`);
     }
+    if (params.isTrial !== undefined) {
+      setParams.push(`${stripePriceMeta.nodeName}.isTrial = $isTrial`);
+    }
 
     query.queryParams = {
       id: params.id,
@@ -340,6 +369,7 @@ export class StripePriceRepository implements OnModuleInit {
       description: params.description,
       features: params.features,
       token: params.token,
+      isTrial: params.isTrial,
       featureIds: params.featureIds ?? [],
     };
 

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Trial Has Ended</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  {{> header}}
+
+  <div style="padding: 20px; font-family: Arial, sans-serif; color: #333;">
+    <h1 style="color: #dc3545;">Your Trial Has Ended</h1>
+
+    <p>Hi {{customerName}},</p>
+
+    <p>Your free trial for <strong>{{companyName}}</strong> ended on <strong>{{trialEndDate}}</strong>.</p>
+
+    <p>Your account access is now limited, but you can subscribe at any time to restore full access and continue using all features.</p>
+
+    <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #dc3545;">
+      <p style="margin: 0;"><strong>Important: Your data will be removed on {{dataRemovalDate}}</strong></p>
+      <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+        <li>All your photographs, albums, and settings will be permanently deleted</li>
+        <li>Client galleries and contact sheets will no longer be accessible</li>
+        <li>This action cannot be undone after the removal date</li>
+      </ul>
+    </div>
+
+    <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745;">
+      <p style="margin: 0;"><strong>Subscribe now to keep your data</strong></p>
+      <p style="margin: 10px 0 0 0;">Upgrade to a paid plan before {{dataRemovalDate}} to retain all your work and continue using the platform.</p>
+    </div>
+
+    {{#if upgradeUrl}}
+    <p style="margin: 30px 0; text-align: center;">
+      <a href="{{upgradeUrl}}" style="background: #28a745; color: white; padding: 14px 32px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold; font-size: 16px;">
+        Subscribe Now
+      </a>
+    </p>
+    {{/if}}
+
+    <p style="margin-top: 30px;">
+      We hope to see you back soon!
+    </p>
+
+    <p style="color: #6c757d; font-size: 14px; margin-top: 40px;">
+      If you have any questions about our plans or need assistance, please contact our support team.
+    </p>
+  </div>
+
+  {{> footer}}
+</body>
+</html>

@@ -7,13 +7,13 @@ import { AppLoggingService } from "../../../core/logging";
 import { CompanyRepository } from "../../company/repositories/company.repository";
 import { StripeCustomerRepository } from "../../stripe-customer/repositories/stripe-customer.repository";
 import { StripeInvoiceRepository } from "../../stripe-invoice/repositories/stripe-invoice.repository";
+import { StripeInvoiceAdminService } from "../../stripe-invoice/services/stripe-invoice-admin.service";
 import { StripePriceRepository } from "../../stripe-price/repositories/stripe-price.repository";
 import { StripeSubscriptionRepository } from "../../stripe-subscription/repositories/stripe-subscription.repository";
-import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { FeatureSyncService } from "../../stripe-subscription/services/feature-sync.service";
+import { StripeSubscriptionAdminService } from "../../stripe-subscription/services/stripe-subscription-admin.service";
 import { TokenAllocationService } from "../../stripe-subscription/services/token-allocation.service";
 import { StripeService } from "../../stripe/services/stripe.service";
-import { StripeInvoiceAdminService } from "../../stripe-invoice/services/stripe-invoice-admin.service";
 import { StripeWebhookEventRepository } from "../repositories/stripe-webhook-event.repository";
 import { StripeWebhookNotificationService } from "../services/stripe-webhook-notification.service";
 
@@ -211,6 +211,25 @@ export class StripeWebhookProcessor extends WorkerHost {
                   `Feature removal failed for ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
                 );
                 // Don't throw - feature removal failure should not fail webhook
+              }
+
+              // Send trial ended notification (only for trial expirations, not other end states)
+              if (isTrialEndedWithoutPayment) {
+                try {
+                  const trialEndDate = subscription.trial_end ? new Date(subscription.trial_end * 1000) : new Date();
+
+                  await this.notificationService.sendTrialEndedEmail({
+                    stripeCustomerId,
+                    stripeSubscriptionId: subscription.id,
+                    companyName: company.name ?? "Your company",
+                    trialEndDate,
+                  });
+                } catch (error) {
+                  this.logger.error(
+                    `Failed to send trial ended notification for ${subscription.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+                  );
+                  // Don't throw - notification failure shouldn't block webhook processing
+                }
               }
             }
           } else {

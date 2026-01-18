@@ -34,6 +34,13 @@ export interface StripeWebhookTrialEndingNotificationParams {
   trialEndDate: Date;
 }
 
+export interface StripeWebhookTrialEndedNotificationParams {
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  companyName: string;
+  trialEndDate: Date;
+}
+
 /**
  * StripeWebhookNotificationService
  *
@@ -342,6 +349,63 @@ export class StripeWebhookNotificationService {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       this.logger.error(`Failed to queue trial ending reminder: ${errorMsg}`);
+      // Don't throw - notification failure shouldn't block webhook processing
+    }
+  }
+
+  /**
+   * Send trial ended notification to company admins
+   * Sent when trial expires without payment, warning about 30-day data removal
+   */
+  async sendTrialEndedEmail(params: StripeWebhookTrialEndedNotificationParams): Promise<void> {
+    const { stripeCustomerId, stripeSubscriptionId, companyName, trialEndDate } = params;
+
+    try {
+      await this.cls.run(async () => {
+        const companyAdmins = await this.userRepository.findCompanyAdminsByStripeCustomerId({ stripeCustomerId });
+
+        if (companyAdmins.length === 0) {
+          this.logger.warn(`No company admins found for Stripe customer ${stripeCustomerId} - skipping trial ended notification`);
+          return;
+        }
+
+        // Calculate data removal date (30 days from trial end)
+        const dataRemovalDate = new Date(trialEndDate);
+        dataRemovalDate.setDate(dataRemovalDate.getDate() + 30);
+
+        for (const admin of companyAdmins) {
+          await this.emailQueue.add(
+            "billing-notification",
+            {
+              jobType: "trial-ended" as const,
+              payload: {
+                to: admin.email,
+                customerName: admin.name || "Customer",
+                companyName,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                trialEndDate: trialEndDate.toISOString(),
+                dataRemovalDate: dataRemovalDate.toISOString(),
+                locale: "en",
+              },
+            },
+            {
+              attempts: 3,
+              backoff: {
+                type: "exponential",
+                delay: 5000,
+              },
+            },
+          );
+        }
+
+        this.logger.log(
+          `Queued trial ended notification for ${companyAdmins.length} company admin(s) (customer: ${stripeCustomerId})`,
+        );
+      });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      this.logger.error(`Failed to queue trial ended notification: ${errorMsg}`);
       // Don't throw - notification failure shouldn't block webhook processing
     }
   }

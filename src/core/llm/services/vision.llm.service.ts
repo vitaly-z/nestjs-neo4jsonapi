@@ -320,9 +320,7 @@ export class VisionLLMService {
             throw fallbackError;
           }
 
-          throw new Error(
-            `Vision LLM service error: ${errorMessage}. ` + `Fallback error: ${fallbackErrorMessage}`,
-          );
+          throw new Error(`Vision LLM service error: ${errorMessage}. ` + `Fallback error: ${fallbackErrorMessage}`);
         }
       }
 

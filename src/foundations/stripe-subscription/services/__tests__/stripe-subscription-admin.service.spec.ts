@@ -1181,6 +1181,7 @@ describe("StripeSubscriptionAdminService", () => {
         immediateCharge: 550, // 999 + (-449) = 550
         currency: "usd",
         prorationDate: expect.any(Date),
+        isTrialUpgrade: false,
         lines: [
           {
             description: "Remaining time on 1 × Monthly Plan (at $9.99 / month)",

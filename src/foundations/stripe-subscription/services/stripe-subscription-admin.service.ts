@@ -144,7 +144,11 @@ export class StripeSubscriptionAdminService {
     trialPeriodDays?: number;
     trialEnd?: number; // Unix timestamp - takes precedence over trialPeriodDays
     quantity?: number;
+    promotionCode?: string;
   }): Promise<CreateSubscriptionResult> {
+    console.log("[StripeSubscriptionAdminService] createSubscription params:", JSON.stringify(params, null, 2));
+    console.log("[StripeSubscriptionAdminService] promotionCode:", params.promotionCode);
+
     const customer = await this.stripeCustomerRepository.findByCompanyId({ companyId: params.companyId });
     if (!customer) {
       throw new HttpException("Stripe customer not found for this company", HttpStatus.NOT_FOUND);
@@ -211,6 +215,7 @@ export class StripeSubscriptionAdminService {
         companyId: params.companyId,
         priceId: params.priceId,
       },
+      promotionCode: params.promotionCode,
     });
 
     // Extract payment intent details for SCA confirmation
@@ -399,7 +404,12 @@ export class StripeSubscriptionAdminService {
    * });
    * ```
    */
-  async changePlan(params: { id: string; companyId: string; newPriceId: string }): Promise<JsonApiDataInterface> {
+  async changePlan(params: {
+    id: string;
+    companyId: string;
+    newPriceId: string;
+    promotionCode?: string;
+  }): Promise<JsonApiDataInterface> {
     const subscription = await this.subscriptionRepository.findById({ id: params.id });
 
     if (!subscription) {
@@ -416,10 +426,24 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
     }
 
+    // Check if subscription is in trial status
+    const isTrialUpgrade = subscription.status === "trialing";
+
+    // For trial upgrades, require a payment method
+    if (isTrialUpgrade) {
+      const paymentMethods = await this.stripeCustomerApiService.listPaymentMethods(customer.stripeCustomerId);
+      if (paymentMethods.length === 0) {
+        throw new HttpException("A payment method is required to upgrade from trial", HttpStatus.PAYMENT_REQUIRED);
+      }
+    }
+
+    // Update with trial_end: 'now' for trial upgrades
     const stripeSubscription: Stripe.Subscription = await this.stripeSubscriptionApiService.updateSubscription({
       subscriptionId: subscription.stripeSubscriptionId,
       priceId: newPrice.stripePriceId,
-      prorationBehavior: "create_prorations",
+      prorationBehavior: isTrialUpgrade ? "none" : "create_prorations",
+      promotionCode: params.promotionCode,
+      trialEnd: isTrialUpgrade ? "now" : undefined,
     });
 
     await this.subscriptionRepository.updatePrice({
@@ -478,6 +502,42 @@ export class StripeSubscriptionAdminService {
       throw new HttpException("Price not found", HttpStatus.NOT_FOUND);
     }
 
+    // Check if subscription is in trial status
+    const isTrialUpgrade = subscription.status === "trialing";
+
+    // For trial upgrades, return full price (not proration)
+    if (isTrialUpgrade) {
+      const fullPrice = newPrice.unitAmount ?? 0;
+
+      // Calculate period end based on billing interval
+      const now = new Date();
+      const periodEnd = new Date(now);
+      if (newPrice.recurringInterval === "year") {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      }
+
+      return {
+        subtotal: fullPrice,
+        total: fullPrice,
+        amountDue: fullPrice,
+        immediateCharge: fullPrice,
+        currency: newPrice.currency,
+        prorationDate: now,
+        isTrialUpgrade: true,
+        lines: [
+          {
+            description: `${newPrice.stripeProduct?.name ?? "Subscription"} - Full price (trial ends)`,
+            amount: fullPrice,
+            proration: false,
+            period: { start: now, end: periodEnd },
+          },
+        ],
+      };
+    }
+
+    // Existing proration logic for non-trial subscriptions
     const prorationPreview: Stripe.UpcomingInvoice = await this.stripeSubscriptionApiService.previewProration(
       subscription.stripeSubscriptionId,
       newPrice.stripePriceId,
@@ -496,6 +556,7 @@ export class StripeSubscriptionAdminService {
       immediateCharge,
       currency: prorationPreview.currency,
       prorationDate: new Date(),
+      isTrialUpgrade: false,
       lines: prorationPreview.lines.data.map((line: Stripe.InvoiceLineItem) => ({
         description: line.description,
         amount: line.amount,

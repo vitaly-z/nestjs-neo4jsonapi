@@ -57,12 +57,17 @@ export class StripeSubscriptionController {
     @Res() reply: FastifyReply,
     @Body() body: StripeSubscriptionPostDTO,
   ) {
+    console.log("[StripeSubscriptionController] createSubscription body:", JSON.stringify(body, null, 2));
+    console.log("[StripeSubscriptionController] body.data.attributes:", JSON.stringify(body.data.attributes, null, 2));
+    console.log("[StripeSubscriptionController] promotionCode from body:", body.data.attributes?.promotionCode);
+
     const result = await this.subscriptionService.createSubscription({
       companyId: req.user.companyId,
       priceId: body.data.relationships.stripePrice.data.id,
       paymentMethodId: body.data.attributes?.paymentMethodId,
       trialPeriodDays: body.data.attributes?.trialPeriodDays,
       quantity: body.data.attributes?.quantity,
+      promotionCode: body.data.attributes?.promotionCode,
     });
 
     const response = {
@@ -145,6 +150,7 @@ export class StripeSubscriptionController {
       id: subscriptionId,
       companyId: req.user.companyId,
       newPriceId: body.data.attributes.priceId,
+      promotionCode: body.data.attributes.promotionCode,
     });
 
     reply.send(response);

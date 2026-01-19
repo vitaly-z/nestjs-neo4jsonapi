@@ -40,6 +40,10 @@ export class StripeSubscriptionPostAttributesDTO {
   @IsInt()
   @IsPositive()
   quantity?: number;
+
+  @IsOptional()
+  @IsString()
+  promotionCode?: string;
 }
 
 // Relationship DTOs for stripePrice
@@ -133,6 +137,10 @@ export class StripeSubscriptionChangePlanAttributesDTO {
   @IsInt()
   @IsPositive()
   quantity?: number;
+
+  @IsOptional()
+  @IsString()
+  promotionCode?: string;
 }
 
 export class StripeSubscriptionChangePlanDataDTO {

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import Stripe from "stripe";
-import { StripeService } from "../../stripe/services/stripe.service";
 import { HandleStripeErrors } from "../../stripe/errors/stripe.errors";
+import { StripeService } from "../../stripe/services/stripe.service";
 
 /**
  * Stripe Subscription API Service
@@ -52,7 +52,11 @@ export class StripeSubscriptionApiService {
     trialPeriodDays?: number;
     trialEnd?: number; // Unix timestamp - takes precedence over trialPeriodDays
     metadata?: Record<string, string>;
+    promotionCode?: string;
   }): Promise<Stripe.Subscription> {
+    console.log("[StripeSubscriptionApiService] createSubscription params:", JSON.stringify(params, null, 2));
+    console.log("[StripeSubscriptionApiService] promotionCode:", params.promotionCode);
+
     const stripe = this.stripeService.getClient();
 
     const subscriptionParams: Stripe.SubscriptionCreateParams = {
@@ -74,6 +78,15 @@ export class StripeSubscriptionApiService {
       subscriptionParams.trial_period_days = params.trialPeriodDays;
     }
 
+    if (params.promotionCode) {
+      subscriptionParams.discounts = [{ promotion_code: params.promotionCode }];
+      console.log("[StripeSubscriptionApiService] Adding discount with promotion_code:", params.promotionCode);
+    }
+
+    console.log(
+      "[StripeSubscriptionApiService] Final subscriptionParams:",
+      JSON.stringify(subscriptionParams, null, 2),
+    );
     return stripe.subscriptions.create(subscriptionParams);
   }
 
@@ -123,6 +136,8 @@ export class StripeSubscriptionApiService {
     priceId?: string;
     prorationBehavior?: Stripe.SubscriptionUpdateParams.ProrationBehavior;
     metadata?: Record<string, string>;
+    promotionCode?: string;
+    trialEnd?: "now";
   }): Promise<Stripe.Subscription> {
     const stripe = this.stripeService.getClient();
     const updateParams: Stripe.SubscriptionUpdateParams = {};
@@ -141,6 +156,14 @@ export class StripeSubscriptionApiService {
 
     if (params.metadata) {
       updateParams.metadata = params.metadata;
+    }
+
+    if (params.promotionCode) {
+      updateParams.discounts = [{ promotion_code: params.promotionCode }];
+    }
+
+    if (params.trialEnd === "now") {
+      updateParams.trial_end = "now";
     }
 
     return stripe.subscriptions.update(params.subscriptionId, updateParams);

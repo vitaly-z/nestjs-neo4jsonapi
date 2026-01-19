@@ -20,6 +20,7 @@ import { S3Module } from "./s3/s3.module";
 import { StripeInvoiceModule } from "./stripe-invoice/stripe-invoice.module";
 import { StripePriceModule } from "./stripe-price";
 import { StripeProductModule } from "./stripe-product";
+import { StripePromotionCodeModule } from "./stripe-promotion-code";
 import { StripeSubscriptionModule } from "./stripe-subscription";
 import { StripeUsageModule } from "./stripe-usage/stripe-usage.module";
 import { StripeWebhookModule } from "./stripe-webhook/stripe-webhook.module";
@@ -60,6 +61,7 @@ const STATIC_FOUNDATION_MODULES = [
   TokenUsageModule,
   UserModule,
   StripeModule,
+  StripePromotionCodeModule,
   StripeSubscriptionModule,
   StripePriceModule,
   StripeProductModule,

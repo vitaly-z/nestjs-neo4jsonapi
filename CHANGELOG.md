@@ -1,3 +1,18 @@
+## [1.34.2](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.34.1...v1.34.2) (2026-01-19)
+
+### 🐛 Bug Fixes
+
+* update ESLint config to ignore caught errors with underscore pattern ([de291c7](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/de291c736743acc3130d96c5fbd634b41187c9e8))
+
+### 📚 Documentation
+
+* Enhance README with new features and modules ([280ecc1](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/280ecc123b2fda2659275c250d2bda847af80803))
+
+### 🚨 Tests
+
+* add tests and fix linting ([d5c2237](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d5c22378aa722fa04181fd1dec29029cd2c0764a))
+* add tests and fix linting ([64d72f3](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/64d72f3414f93489cde6c8ef40220af1a301b1fb))
+
 ## [1.34.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.34.0...v1.34.1) (2026-01-19)
 
 ### 🐛 Bug Fixes

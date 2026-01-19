@@ -1,3 +1,14 @@
+## [1.34.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.33.0...v1.34.0) (2026-01-19)
+
+### 🚀 Features
+
+* add company deletion ([077277f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/077277f61975b8370826c06f1b9b4ce710d39653))
+
+### 📦 Code Refactoring
+
+* add fallback for gemini and moderation ([571de88](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/571de88a6d4694ee730a3c6d714c356cafe6bf0f))
+* simplify error throwing in VisionLLMService ([64851ac](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/64851ac551d2ebb8e99b3cebfc2ef85e24068425))
+
 ## [1.33.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.32.1...v1.33.0) (2026-01-18)
 
 ### 🚀 Features

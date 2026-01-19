@@ -181,31 +181,17 @@ export class CompanyService {
    * @param companyName - Company name for audit logging (optional)
    */
   async deleteImmediate(params: { companyId: string; companyName?: string }): Promise<void> {
-    console.log("[CompanyService.deleteImmediate] Called with params:", JSON.stringify(params));
-    console.log("[CompanyService.deleteImmediate] deletionHandler available:", !!this.deletionHandler);
-
     if (this.deletionHandler) {
       const name =
         params.companyName ??
         (await this.companyRepository.findByCompanyId({ companyId: params.companyId }))?.name ??
         "Unknown";
-      console.log("[CompanyService.deleteImmediate] Resolved company name:", name);
-      console.log("[CompanyService.deleteImmediate] Calling deletionHandler.deleteCompany...");
-
-      try {
-        await this.deletionHandler.deleteCompany(params.companyId, name, {
-          sendEmail: true,
-          reason: "immediate_deletion",
-        });
-        console.log("[CompanyService.deleteImmediate] deletionHandler.deleteCompany completed successfully");
-      } catch (error) {
-        console.error("[CompanyService.deleteImmediate] deletionHandler.deleteCompany FAILED:", error);
-        throw error;
-      }
+      await this.deletionHandler.deleteCompany(params.companyId, name, {
+        sendEmail: true,
+        reason: "immediate_deletion",
+      });
     } else {
-      console.log("[CompanyService.deleteImmediate] No deletionHandler, using direct repository delete");
       await this.companyRepository.delete({ companyId: params.companyId });
-      console.log("[CompanyService.deleteImmediate] Repository delete completed");
     }
   }
 

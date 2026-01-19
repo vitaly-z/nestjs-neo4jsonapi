@@ -11,50 +11,50 @@ This document lists all testable files that do not yet have associated test file
 - [x] `src/agents/community.detector/services/community.detector.service.ts`
 - [x] `src/agents/community.summariser/services/community.summariser.service.ts`
 - [x] `src/agents/contextualiser/services/contextualiser.service.ts`
-- [ ] `src/agents/drift/services/drift.migration.service.ts`
-- [ ] `src/agents/drift/services/drift.search.service.ts`
-- [ ] `src/agents/graph.creator/services/graph.creator.service.ts`
-- [ ] `src/agents/responder/services/responder.service.ts`
-- [ ] `src/agents/summariser/services/summariser.service.ts`
+- [x] `src/agents/drift/services/drift.migration.service.ts`
+- [x] `src/agents/drift/services/drift.search.service.ts`
+- [x] `src/agents/graph.creator/services/graph.creator.service.ts`
+- [x] `src/agents/responder/services/responder.service.ts`
+- [x] `src/agents/summariser/services/summariser.service.ts`
 
 ### Auth Services
 
-- [ ] `src/foundations/auth/services/auth.discord.service.ts`
-- [ ] `src/foundations/auth/services/auth.google.service.ts`
-- [ ] `src/foundations/auth/services/auth.service.ts`
-- [ ] `src/foundations/auth/services/pending-registration.service.ts`
-- [ ] `src/foundations/auth/services/trial-queue.service.ts`
+- [x] `src/foundations/auth/services/auth.discord.service.ts`
+- [x] `src/foundations/auth/services/auth.google.service.ts`
+- [x] `src/foundations/auth/services/auth.service.ts`
+- [x] `src/foundations/auth/services/pending-registration.service.ts`
+- [x] `src/foundations/auth/services/trial-queue.service.ts`
 
 ### Chunker Services
 
-- [ ] `src/foundations/chunker/services/chunker.service.ts`
+- [x] `src/foundations/chunker/services/chunker.service.ts`
 
 ### Foundation Services
 
-- [ ] `src/foundations/atomicfact/services/atomicfact.service.ts`
-- [ ] `src/foundations/audit/services/audit.service.ts`
-- [ ] `src/foundations/chunk/services/chunk.service.ts`
-- [ ] `src/foundations/community/services/community.service.ts`
-- [ ] `src/foundations/content/services/content.service.ts`
-- [ ] `src/foundations/content/services/content.cypher.service.ts`
-- [ ] `src/foundations/discord-user/services/discord-user.service.ts`
-- [ ] `src/foundations/discord/services/discord.service.ts`
-- [ ] `src/foundations/feature/services/feature.service.ts`
-- [ ] `src/foundations/google-user/services/google-user.service.ts`
-- [ ] `src/foundations/keyconcept/services/keyconcept.service.ts`
-- [ ] `src/foundations/notification/services/notification.service.ts`
-- [ ] `src/foundations/push/services/push.service.ts`
-- [ ] `src/foundations/relevancy/services/relevancy.service.ts`
-- [ ] `src/foundations/role/services/role.service.ts`
-- [ ] `src/foundations/s3/services/s3.service.ts`
-- [ ] `src/foundations/tokenusage/services/tokenusage.service.ts`
-- [ ] `src/foundations/user/services/user.service.ts`
-- [ ] `src/foundations/user/services/user.cypher.service.ts`
+- [x] `src/foundations/atomicfact/services/atomicfact.service.ts`
+- [x] `src/foundations/audit/services/audit.service.ts`
+- [x] `src/foundations/chunk/services/chunk.service.ts`
+- [x] `src/foundations/community/services/community.service.ts`
+- [x] `src/foundations/content/services/content.service.ts`
+- [x] `src/foundations/content/services/content.cypher.service.ts`
+- [x] `src/foundations/discord-user/services/discord-user.service.ts`
+- [x] `src/foundations/discord/services/discord.service.ts`
+- [x] `src/foundations/feature/services/feature.service.ts`
+- [x] `src/foundations/google-user/services/google-user.service.ts`
+- [x] `src/foundations/keyconcept/services/keyconcept.service.ts`
+- [x] `src/foundations/notification/services/notification.service.ts`
+- [x] `src/foundations/push/services/push.service.ts`
+- [x] `src/foundations/relevancy/services/relevancy.service.ts`
+- [x] `src/foundations/role/services/role.service.ts`
+- [x] `src/foundations/s3/services/s3.service.ts`
+- [x] `src/foundations/tokenusage/services/tokenusage.service.ts`
+- [x] `src/foundations/user/services/user.service.ts`
+- [x] `src/foundations/user/services/user.cypher.service.ts`
 
 ### Stripe Services
 
-- [ ] `src/foundations/stripe-customer/services/stripe-customer-admin.service.ts`
-- [ ] `src/foundations/stripe-trial/services/trial.service.ts`
+- [x] `src/foundations/stripe-customer/services/stripe-customer-admin.service.ts`
+- [x] `src/foundations/stripe-trial/services/trial.service.ts`
 
 ---
 

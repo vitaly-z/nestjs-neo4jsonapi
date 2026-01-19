@@ -2,18 +2,6 @@
 
 You are implementing unit tests for all files in `@packages/nestjs-neo4jsonapi/TEST-COVERAGE-GAPS.md`.
 
----
-
-## COMPLETION CRITERIA
-
-**The loop terminates when one of these conditions is met:**
-
-1. **ALL TESTS COMPLETE** - No unchecked `- [ ]` items remain in the checklist
-2. **BLOCKED** - Same error occurs 3 times for one file
-3. **MAX ITERATIONS** - Safety limit reached
-
----
-
 ## Step 1: Check Progress
 
 Read `@packages/nestjs-neo4jsonapi/TEST-COVERAGE-GAPS.md` and find the **FIRST** line with `- [ ]` (unchecked item).
@@ -286,24 +274,6 @@ to ensure no errors have been left behind
 When all tests pass, update `@packages/nestjs-neo4jsonapi/TEST-COVERAGE-GAPS.md`:
 
 - Change `- [ ]` to `- [x]` for the completed file
-
----
-
-## Step 10: Clear Context (MANDATORY)
-
-**CRITICAL: Execute `/clear` after EACH file is completed.**
-
-This is NOT optional. Context bloat will crash the system.
-
-After marking the file complete, your FINAL action MUST be:
-
-```
-/clear
-```
-
-Do NOT continue reasoning. Do NOT explain anything else. Just run `/clear`.
-
-The Ralph loop will automatically feed this prompt back after the clear.
 
 ---
 

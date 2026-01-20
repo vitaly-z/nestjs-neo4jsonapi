@@ -556,4 +556,27 @@ export class S3Service {
       throw error;
     }
   }
+
+  async uploadToS3(params: { buffer: Buffer; key: string; contentType: string; isPublic?: boolean }): Promise<void> {
+    await this._loadConfiguration();
+    if (!this._endpoint) return;
+
+    if (this._storageType === "azure") {
+      const blobClient = this.containerClient.getBlockBlobClient(params.key);
+      await blobClient.upload(params.buffer, params.buffer.length, {
+        blobHTTPHeaders: { blobContentType: params.contentType },
+      });
+      return;
+    }
+
+    const command = new PutObjectCommand({
+      Bucket: this._bucket,
+      Key: params.key,
+      Body: params.buffer,
+      ContentType: params.contentType,
+      ACL: params.isPublic ? "public-read" : undefined,
+    });
+
+    await this.s3Client.send(command);
+  }
 }

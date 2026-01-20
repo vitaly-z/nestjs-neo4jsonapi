@@ -29,7 +29,6 @@ export class OAuthTokenController {
   @Header("Cache-Control", "no-store")
   @Header("Pragma", "no-cache")
   async token(@Body() body: OAuthTokenRequestDto): Promise<OAuthTokenResponseDto> {
-    console.log("[OAuth Token] Full request body:", JSON.stringify(body, null, 2));
     switch (body.grant_type) {
       case "authorization_code":
         return this.oauthService.exchangeAuthorizationCode({

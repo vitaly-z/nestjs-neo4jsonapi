@@ -39,6 +39,21 @@ export type OAuthScopeType = (typeof OAuth2Scopes)[keyof typeof OAuth2Scopes];
 export const VALID_OAUTH_SCOPES: string[] = Object.values(OAuth2Scopes);
 
 /**
+ * Human-readable names for each scope.
+ * Used in consent screens as short labels.
+ */
+export const OAuthScopeNames: Record<OAuthScopeType, string> = {
+  [OAuth2Scopes.READ]: "Read Access",
+  [OAuth2Scopes.WRITE]: "Write Access",
+  [OAuth2Scopes.PHOTOGRAPHS_READ]: "View Photographs",
+  [OAuth2Scopes.PHOTOGRAPHS_WRITE]: "Upload Photographs",
+  [OAuth2Scopes.ROLLS_READ]: "View Rolls",
+  [OAuth2Scopes.ROLLS_WRITE]: "Manage Rolls",
+  [OAuth2Scopes.PROFILE]: "View Profile",
+  [OAuth2Scopes.ADMIN]: "Administrative Access",
+};
+
+/**
  * Human-readable descriptions for each scope.
  * Used in consent screens to explain what access is being granted.
  */

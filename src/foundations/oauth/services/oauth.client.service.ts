@@ -15,7 +15,7 @@ export interface CreateClientParams {
   accessTokenLifetime?: number;
   refreshTokenLifetime?: number;
   ownerId: string;
-  companyId: string;
+  companyId?: string;
 }
 
 export interface UpdateClientParams {
@@ -50,7 +50,13 @@ export class OAuthClientService {
     // Validate redirect URIs
     for (const uri of params.redirectUris) {
       if (!this.isValidRedirectUri(uri)) {
-        throw new HttpException(createOAuthError(OAuthErrorCodes.INVALID_REQUEST, `Invalid redirect URI: ${uri}`), 400);
+        throw new HttpException(
+          createOAuthError(
+            OAuthErrorCodes.INVALID_REQUEST,
+            `Invalid redirect URI: ${uri}. HTTP URLs are only allowed for localhost, 127.0.0.1, [::1], or domains ending in .test, .localhost, or .local`,
+          ),
+          400,
+        );
       }
     }
 
@@ -190,7 +196,10 @@ export class OAuthClientService {
       for (const uri of params.redirectUris) {
         if (!this.isValidRedirectUri(uri)) {
           throw new HttpException(
-            createOAuthError(OAuthErrorCodes.INVALID_REQUEST, `Invalid redirect URI: ${uri}`),
+            createOAuthError(
+              OAuthErrorCodes.INVALID_REQUEST,
+              `Invalid redirect URI: ${uri}. HTTP URLs are only allowed for localhost, 127.0.0.1, [::1], or domains ending in .test, .localhost, or .local`,
+            ),
             400,
           );
         }
@@ -252,7 +261,8 @@ export class OAuthClientService {
    *
    * Allowed formats:
    * - https:// URLs (required for production)
-   * - http://localhost or http://127.0.0.1 (development only)
+   * - http://localhost, http://127.0.0.1, http://[::1] (development only)
+   * - http://*.test, http://*.localhost, http://*.local (RFC 6761 reserved TLDs for development)
    * - Custom schemes (myapp://callback)
    *
    * Not allowed:
@@ -275,10 +285,24 @@ export class OAuthClientService {
         return url.host.length > 0 || url.pathname.length > 0;
       }
 
-      // For http, only allow localhost
+      // For http, only allow local development URLs
       if (url.protocol === "http:") {
-        const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
-        return isLocalhost;
+        const hostname = url.hostname.toLowerCase();
+
+        // Standard localhost variants
+        if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
+          return true;
+        }
+
+        // RFC 6761 reserved TLDs for local development
+        // .test - Reserved for testing
+        // .localhost - Reserved for localhost
+        // .local - Common for mDNS/Bonjour local development
+        if (hostname.endsWith(".test") || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+          return true;
+        }
+
+        return false;
       }
 
       // https is always allowed

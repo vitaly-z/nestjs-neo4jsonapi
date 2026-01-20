@@ -3,7 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import * as crypto from "crypto";
 import { BaseConfigInterface } from "../../../config/interfaces/base.config.interface";
 import { OAuthErrorCodes, createOAuthError } from "../constants/oauth.errors";
-import { parseScopes, validateScopes as validateScopesUtil } from "../constants/oauth.scopes";
+import {
+  OAuthScopeDescriptions,
+  OAuthScopeNames,
+  OAuthScopeType,
+  parseScopes,
+  validateScopes as validateScopesUtil,
+} from "../constants/oauth.scopes";
 import { OAuthRepository } from "../repositories/oauth.repository";
 import { OAuthClientService } from "./oauth.client.service";
 import { OAuthPkceService } from "./oauth.pkce.service";
@@ -64,6 +70,43 @@ export interface IntrospectParams {
   tokenTypeHint?: "access_token" | "refresh_token";
   clientId: string;
   clientSecret: string;
+}
+
+export interface ConsentInfoParams {
+  clientId: string;
+  redirectUri: string;
+  scope?: string;
+}
+
+export interface ConsentInfoResponse {
+  client: {
+    id: string;
+    type: "oauth-clients";
+    attributes: {
+      name: string;
+      description?: string;
+    };
+  };
+  scopes: Array<{
+    scope: string;
+    name: string;
+    description: string;
+  }>;
+}
+
+export interface ConsentApproveParams {
+  clientId: string;
+  redirectUri: string;
+  scope?: string;
+  state?: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
+  userId: string;
+}
+
+export interface ConsentDenyParams {
+  redirectUri: string;
+  state?: string;
 }
 
 /**
@@ -157,7 +200,6 @@ export class OAuthService {
     const code = crypto.randomBytes(32).toString("base64url");
     const codeLifetime = this.configService.get("oauth.authorizationCodeLifetime", { infer: true }) ?? 600;
     const expiresAt = new Date(Date.now() + codeLifetime * 1000);
-
     // Store authorization code
     await this.oauthRepository.createAuthorizationCode({
       code,
@@ -239,6 +281,9 @@ export class OAuthService {
       throw new HttpException(createOAuthError(OAuthErrorCodes.INVALID_GRANT, "Authorization code already used"), 400);
     }
 
+    // Look up user's company for proper scoping
+    const companyId = await this.oauthRepository.findCompanyIdForUser(storedCode.userId);
+
     // Generate tokens
     const {
       token: accessToken,
@@ -247,6 +292,7 @@ export class OAuthService {
     } = await this.tokenService.generateAccessToken({
       clientId: params.clientId,
       userId: storedCode.userId,
+      companyId: companyId ?? undefined,
       scope: storedCode.scope,
       grantType: "authorization_code",
       lifetimeSeconds: client.accessTokenLifetime,
@@ -255,6 +301,7 @@ export class OAuthService {
     const { token: refreshToken } = await this.tokenService.generateRefreshToken({
       clientId: params.clientId,
       userId: storedCode.userId,
+      companyId: companyId ?? undefined,
       scope: storedCode.scope,
       accessTokenId,
       lifetimeSeconds: client.refreshTokenLifetime,
@@ -465,5 +512,112 @@ export class OAuthService {
     }
 
     return result;
+  }
+
+  // ============================================
+  // CONSENT FLOW METHODS
+  // ============================================
+
+  /**
+   * Gets client information for the consent screen.
+   *
+   * Validates the client and redirect URI, then returns the client info
+   * and scope descriptions for display on the consent screen.
+   */
+  async getConsentInfo(params: ConsentInfoParams): Promise<ConsentInfoResponse> {
+    // Validate client
+    const client = await this.clientService.getClient(params.clientId);
+    if (!client || !client.isActive) {
+      throw new HttpException(createOAuthError(OAuthErrorCodes.INVALID_CLIENT, "Unknown client"), 401);
+    }
+
+    // Validate redirect URI
+    if (!this.clientService.validateRedirectUri(client, params.redirectUri)) {
+      throw new HttpException(createOAuthError(OAuthErrorCodes.INVALID_REQUEST, "Invalid redirect_uri"), 400);
+    }
+
+    // Validate grant type
+    if (!this.clientService.validateGrantType(client, "authorization_code")) {
+      throw new HttpException(
+        createOAuthError(OAuthErrorCodes.UNAUTHORIZED_CLIENT, "Client not authorized for authorization_code grant"),
+        400,
+      );
+    }
+
+    // Parse and validate scopes
+    const requestedScopes = params.scope ? parseScopes(params.scope) : client.allowedScopes;
+    if (!validateScopesUtil(requestedScopes)) {
+      throw new HttpException(createOAuthError(OAuthErrorCodes.INVALID_SCOPE), 400);
+    }
+    if (!this.clientService.validateScopes(client, requestedScopes)) {
+      throw new HttpException(
+        createOAuthError(OAuthErrorCodes.INVALID_SCOPE, "Requested scopes exceed allowed scopes"),
+        400,
+      );
+    }
+
+    // Build scope info for consent screen
+    const scopeInfo = requestedScopes.map((scope) => ({
+      scope,
+      name: OAuthScopeNames[scope as OAuthScopeType] || scope,
+      description: OAuthScopeDescriptions[scope as OAuthScopeType] || `Access to ${scope}`,
+    }));
+
+    return {
+      client: {
+        id: client.clientId,
+        type: "oauth-clients",
+        attributes: {
+          name: client.name,
+          description: client.description,
+        },
+      },
+      scopes: scopeInfo,
+    };
+  }
+
+  /**
+   * Approves the authorization request and issues an authorization code.
+   *
+   * Called after the user has consented to the authorization.
+   * Returns a redirect URL with the authorization code.
+   */
+  async approveAuthorization(params: ConsentApproveParams): Promise<{ redirectUrl: string }> {
+    // Use existing initiateAuthorization logic
+    const { code, state } = await this.initiateAuthorization({
+      responseType: "code",
+      clientId: params.clientId,
+      redirectUri: params.redirectUri,
+      scope: params.scope,
+      state: params.state,
+      codeChallenge: params.codeChallenge,
+      codeChallengeMethod: params.codeChallengeMethod,
+      userId: params.userId,
+    });
+
+    // Build redirect URL with code
+    const redirectUrl = new URL(params.redirectUri);
+    redirectUrl.searchParams.set("code", code);
+    if (state) {
+      redirectUrl.searchParams.set("state", state);
+    }
+
+    return { redirectUrl: redirectUrl.toString() };
+  }
+
+  /**
+   * Denies the authorization request.
+   *
+   * Returns a redirect URL with an access_denied error.
+   */
+  async denyAuthorization(params: ConsentDenyParams): Promise<{ redirectUrl: string }> {
+    const redirectUrl = new URL(params.redirectUri);
+    redirectUrl.searchParams.set("error", OAuthErrorCodes.ACCESS_DENIED);
+    redirectUrl.searchParams.set("error_description", "The user denied the authorization request");
+    if (params.state) {
+      redirectUrl.searchParams.set("state", params.state);
+    }
+
+    return { redirectUrl: redirectUrl.toString() };
   }
 }

@@ -4,10 +4,13 @@ import * as crypto from "crypto";
 import { randomUUID } from "crypto";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { OAuthAccessToken } from "../entities/oauth.access.token.entity";
+import { OAuthAccessTokenModel } from "../entities/oauth.access.token.model";
 import { OAuthAuthorizationCode } from "../entities/oauth.authorization.code.entity";
+import { OAuthAuthorizationCodeModel } from "../entities/oauth.authorization.code.model";
 import { OAuthClient } from "../entities/oauth.client.entity";
 import { OAuthClientModel } from "../entities/oauth.client.model";
 import { OAuthRefreshToken } from "../entities/oauth.refresh.token.entity";
+import { OAuthRefreshTokenModel } from "../entities/oauth.refresh.token.model";
 
 @Injectable()
 export class OAuthRepository implements OnModuleInit {
@@ -56,7 +59,7 @@ export class OAuthRepository implements OnModuleInit {
     accessTokenLifetime?: number;
     refreshTokenLifetime?: number;
     ownerId: string;
-    companyId: string;
+    companyId?: string;
   }): Promise<{ client: OAuthClient; clientSecret?: string }> {
     const id = randomUUID();
     const clientId = randomUUID();
@@ -84,34 +87,62 @@ export class OAuthRepository implements OnModuleInit {
       accessTokenLifetime: params.accessTokenLifetime ?? 3600,
       refreshTokenLifetime: params.refreshTokenLifetime ?? 604800,
       ownerId: params.ownerId,
-      companyId: params.companyId,
+      companyId: params.companyId ?? null,
     };
 
-    query.query = `
-      MATCH (owner:User {id: $ownerId})
-      MATCH (company:Company {id: $companyId})
-      CREATE (oauthclient:OAuthClient {
-        id: $id,
-        clientId: $clientId,
-        clientSecretHash: $clientSecretHash,
-        name: $name,
-        description: $description,
-        redirectUris: $redirectUris,
-        allowedScopes: $allowedScopes,
-        allowedGrantTypes: $allowedGrantTypes,
-        isConfidential: $isConfidential,
-        isActive: $isActive,
-        accessTokenLifetime: $accessTokenLifetime,
-        refreshTokenLifetime: $refreshTokenLifetime,
-        ownerId: $ownerId,
-        companyId: $companyId,
-        createdAt: datetime(),
-        updatedAt: datetime()
-      })
-      CREATE (owner)-[:OWNS_CLIENT]->(oauthclient)
-      CREATE (company)-[:HAS_OAUTH_CLIENT]->(oauthclient)
-      RETURN oauthclient
-    `;
+    // Build query conditionally based on whether companyId is provided
+    if (params.companyId) {
+      query.query = `
+        MATCH (owner:User {id: $ownerId})
+        MATCH (company:Company {id: $companyId})
+        CREATE (oauthclient:OAuthClient {
+          id: $id,
+          clientId: $clientId,
+          clientSecretHash: $clientSecretHash,
+          name: $name,
+          description: $description,
+          redirectUris: $redirectUris,
+          allowedScopes: $allowedScopes,
+          allowedGrantTypes: $allowedGrantTypes,
+          isConfidential: $isConfidential,
+          isActive: $isActive,
+          accessTokenLifetime: $accessTokenLifetime,
+          refreshTokenLifetime: $refreshTokenLifetime,
+          ownerId: $ownerId,
+          companyId: $companyId,
+          createdAt: datetime(),
+          updatedAt: datetime()
+        })
+        CREATE (owner)-[:OWNS_CLIENT]->(oauthclient)
+        CREATE (company)-[:HAS_OAUTH_CLIENT]->(oauthclient)
+        RETURN oauthclient
+      `;
+    } else {
+      // No company - create OAuth client without company relationship (admin use case)
+      query.query = `
+        MATCH (owner:User {id: $ownerId})
+        CREATE (oauthclient:OAuthClient {
+          id: $id,
+          clientId: $clientId,
+          clientSecretHash: $clientSecretHash,
+          name: $name,
+          description: $description,
+          redirectUris: $redirectUris,
+          allowedScopes: $allowedScopes,
+          allowedGrantTypes: $allowedGrantTypes,
+          isConfidential: $isConfidential,
+          isActive: $isActive,
+          accessTokenLifetime: $accessTokenLifetime,
+          refreshTokenLifetime: $refreshTokenLifetime,
+          ownerId: $ownerId,
+          companyId: null,
+          createdAt: datetime(),
+          updatedAt: datetime()
+        })
+        CREATE (owner)-[:OWNS_CLIENT]->(oauthclient)
+        RETURN oauthclient
+      `;
+    }
 
     const client = await this.neo4j.writeOne(query);
     return { client, clientSecret };
@@ -284,36 +315,20 @@ export class OAuthRepository implements OnModuleInit {
       })
       CREATE (client)-[:ISSUED_CODE]->(code)
       CREATE (user)-[:AUTHORIZED_CODE]->(code)
+      RETURN code
     `;
     await this.neo4j.writeOne(query);
   }
 
   async findAuthorizationCodeByHash(codeHash: string): Promise<OAuthAuthorizationCode | null> {
-    const query = this.neo4j.initQuery();
+    const query = this.neo4j.initQuery({ serialiser: OAuthAuthorizationCodeModel });
     query.queryParams = { codeHash };
     query.query = `
-      MATCH (code:OAuthAuthorizationCode {codeHash: $codeHash})
-      RETURN code
+      MATCH (oauthauthorizationcode:OAuthAuthorizationCode {codeHash: $codeHash})
+      RETURN oauthauthorizationcode
     `;
     try {
-      const result = await this.neo4j.readOne(query);
-      const data = result.code?.properties ?? result.code ?? result;
-      return {
-        id: data.id,
-        type: "oauth-authorization-codes",
-        codeHash: data.codeHash,
-        redirectUri: data.redirectUri,
-        scope: data.scope,
-        state: data.state,
-        codeChallenge: data.codeChallenge,
-        codeChallengeMethod: data.codeChallengeMethod,
-        isUsed: data.isUsed,
-        clientId: data.clientId,
-        userId: data.userId,
-        expiresAt: new Date(data.expiresAt),
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt ?? data.createdAt),
-      };
+      return await this.neo4j.readOne(query);
     } catch {
       return null;
     }
@@ -391,37 +406,22 @@ export class OAuthRepository implements OnModuleInit {
       })
       CREATE (client)-[:ISSUED_ACCESS_TOKEN]->(token)
       ${params.userId ? "WITH token MATCH (user:User {id: $userId}) CREATE (user)-[:HAS_ACCESS_TOKEN]->(token)" : ""}
-      RETURN token.id AS tokenId
+      RETURN token
     `;
 
-    const result = await this.neo4j.writeOne(query);
-    return result.tokenId ?? id;
+    await this.neo4j.writeOne(query);
+    return id;
   }
 
   async findAccessTokenByHash(tokenHash: string): Promise<OAuthAccessToken | null> {
-    const query = this.neo4j.initQuery();
+    const query = this.neo4j.initQuery({ serialiser: OAuthAccessTokenModel });
     query.queryParams = { tokenHash };
     query.query = `
-      MATCH (token:OAuthAccessToken {tokenHash: $tokenHash})
-      RETURN token
+      MATCH (oauthaccesstoken:OAuthAccessToken {tokenHash: $tokenHash})
+      RETURN oauthaccesstoken
     `;
     try {
-      const result = await this.neo4j.readOne(query);
-      const data = result.token?.properties ?? result.token ?? result;
-      return {
-        id: data.id,
-        type: "oauth-access-tokens",
-        tokenHash: data.tokenHash,
-        scope: data.scope,
-        expiresAt: new Date(data.expiresAt),
-        isRevoked: data.isRevoked,
-        grantType: data.grantType,
-        clientId: data.clientId,
-        userId: data.userId,
-        companyId: data.companyId,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt ?? data.createdAt),
-      };
+      return await this.neo4j.readOne(query);
     } catch {
       return null;
     }
@@ -482,38 +482,22 @@ export class OAuthRepository implements OnModuleInit {
         updatedAt: datetime()
       })
       CREATE (at)-[:LINKED_REFRESH]->(rt)
-      RETURN rt.id AS tokenId
+      RETURN rt
     `;
 
-    const result = await this.neo4j.writeOne(query);
-    return result.tokenId ?? id;
+    await this.neo4j.writeOne(query);
+    return id;
   }
 
   async findRefreshTokenByHash(tokenHash: string): Promise<OAuthRefreshToken | null> {
-    const query = this.neo4j.initQuery();
+    const query = this.neo4j.initQuery({ serialiser: OAuthRefreshTokenModel });
     query.queryParams = { tokenHash };
     query.query = `
-      MATCH (token:OAuthRefreshToken {tokenHash: $tokenHash})
-      RETURN token
+      MATCH (oauthrefreshtoken:OAuthRefreshToken {tokenHash: $tokenHash})
+      RETURN oauthrefreshtoken
     `;
     try {
-      const result = await this.neo4j.readOne(query);
-      const data = result.token?.properties ?? result.token ?? result;
-      return {
-        id: data.id,
-        type: "oauth-refresh-tokens",
-        tokenHash: data.tokenHash,
-        scope: data.scope,
-        expiresAt: new Date(data.expiresAt),
-        isRevoked: data.isRevoked,
-        rotationCounter: data.rotationCounter,
-        clientId: data.clientId,
-        userId: data.userId,
-        companyId: data.companyId,
-        accessTokenId: data.accessTokenId,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt ?? data.createdAt),
-      };
+      return await this.neo4j.readOne(query);
     } catch {
       return null;
     }
@@ -551,5 +535,31 @@ export class OAuthRepository implements OnModuleInit {
       DETACH DELETE at, rt
     `;
     await this.neo4j.writeOne(query);
+  }
+
+  // ============================================
+  // USER LOOKUP METHODS
+  // ============================================
+
+  /**
+   * Looks up the company ID for a user.
+   * Used to include companyId in OAuth tokens for proper scoping.
+   * Uses raw Neo4j query to avoid circular dependency with CompanyDescriptor.
+   */
+  async findCompanyIdForUser(userId: string): Promise<string | null> {
+    const query = `
+      MATCH (user:User {id: $userId})-[:BELONGS_TO]->(company:Company)
+      RETURN company.id AS companyId
+    `;
+    try {
+      const result = await this.neo4j.read(query, { userId });
+      if (result.records.length === 0) {
+        return null;
+      }
+      const companyId = result.records[0].get("companyId");
+      return companyId ?? null;
+    } catch {
+      return null;
+    }
   }
 }

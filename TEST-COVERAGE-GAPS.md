@@ -4,90 +4,13 @@ This document lists all testable files that do not yet have associated test file
 
 ---
 
-## Services
-
-### Agent Services
-
-- [x] `src/agents/community.detector/services/community.detector.service.ts`
-- [x] `src/agents/community.summariser/services/community.summariser.service.ts`
-- [x] `src/agents/contextualiser/services/contextualiser.service.ts`
-- [x] `src/agents/drift/services/drift.migration.service.ts`
-- [x] `src/agents/drift/services/drift.search.service.ts`
-- [x] `src/agents/graph.creator/services/graph.creator.service.ts`
-- [x] `src/agents/responder/services/responder.service.ts`
-- [x] `src/agents/summariser/services/summariser.service.ts`
-
-### Auth Services
-
-- [x] `src/foundations/auth/services/auth.discord.service.ts`
-- [x] `src/foundations/auth/services/auth.google.service.ts`
-- [x] `src/foundations/auth/services/auth.service.ts`
-- [x] `src/foundations/auth/services/pending-registration.service.ts`
-- [x] `src/foundations/auth/services/trial-queue.service.ts`
-
-### Chunker Services
-
-- [x] `src/foundations/chunker/services/chunker.service.ts`
-
-### Foundation Services
-
-- [x] `src/foundations/atomicfact/services/atomicfact.service.ts`
-- [x] `src/foundations/audit/services/audit.service.ts`
-- [x] `src/foundations/chunk/services/chunk.service.ts`
-- [x] `src/foundations/community/services/community.service.ts`
-- [x] `src/foundations/content/services/content.service.ts`
-- [x] `src/foundations/content/services/content.cypher.service.ts`
-- [x] `src/foundations/discord-user/services/discord-user.service.ts`
-- [x] `src/foundations/discord/services/discord.service.ts`
-- [x] `src/foundations/feature/services/feature.service.ts`
-- [x] `src/foundations/google-user/services/google-user.service.ts`
-- [x] `src/foundations/keyconcept/services/keyconcept.service.ts`
-- [x] `src/foundations/notification/services/notification.service.ts`
-- [x] `src/foundations/push/services/push.service.ts`
-- [x] `src/foundations/relevancy/services/relevancy.service.ts`
-- [x] `src/foundations/role/services/role.service.ts`
-- [x] `src/foundations/s3/services/s3.service.ts`
-- [x] `src/foundations/tokenusage/services/tokenusage.service.ts`
-- [x] `src/foundations/user/services/user.service.ts`
-- [x] `src/foundations/user/services/user.cypher.service.ts`
-
-### Stripe Services
-
-- [x] `src/foundations/stripe-customer/services/stripe-customer-admin.service.ts`
-- [x] `src/foundations/stripe-trial/services/trial.service.ts`
-
----
-
-## Repositories
-
-- [ ] `src/core/neo4j/abstracts/abstract.repository.ts`
-- [ ] `src/foundations/atomicfact/repositories/atomicfact.repository.ts`
-- [ ] `src/foundations/audit/repositories/audit.repository.ts`
-- [ ] `src/foundations/auth/repositories/auth.repository.ts`
-- [ ] `src/foundations/chunk/repositories/chunk.repository.ts`
-- [ ] `src/foundations/community/repositories/community.repository.ts`
-- [ ] `src/foundations/content/repositories/content.repository.ts`
-- [ ] `src/foundations/discord-user/repositories/discord-user.repository.ts`
-- [ ] `src/foundations/feature/repositories/feature.repository.ts`
-- [ ] `src/foundations/google-user/repositories/google-user.repository.ts`
-- [ ] `src/foundations/keyconcept/repositories/keyconcept.repository.ts`
-- [ ] `src/foundations/module/repositories/module.repository.ts`
-- [ ] `src/foundations/notification/repositories/notification.repository.ts`
-- [ ] `src/foundations/oauth/repositories/oauth.repository.ts`
-- [ ] `src/foundations/push/repositories/push.repository.ts`
-- [ ] `src/foundations/relevancy/repositories/relevancy.repository.ts`
-- [ ] `src/foundations/role/repositories/role.repository.ts`
-- [ ] `src/foundations/tokenusage/repositories/tokenusage.repository.ts`
-
----
-
 ## Guards
 
-- [ ] `src/common/guards/jwt.auth.admin.guard.ts`
-- [ ] `src/common/guards/jwt.auth.guard.ts`
-- [ ] `src/common/guards/jwt.auth.optional.guard.ts`
-- [ ] `src/common/guards/jwt.or.oauth.guard.ts`
-- [ ] `src/core/websocket/guards/ws.jwt.auth.guard.ts`
+- [x] `src/common/guards/jwt.auth.admin.guard.ts`
+- [x] `src/common/guards/jwt.auth.guard.ts`
+- [x] `src/common/guards/jwt.auth.optional.guard.ts`
+- [x] `src/common/guards/jwt.or.oauth.guard.ts`
+- [x] `src/core/websocket/guards/ws.jwt.auth.guard.ts`
 - [ ] `src/foundations/oauth/guards/oauth.token.guard.ts`
 
 ---

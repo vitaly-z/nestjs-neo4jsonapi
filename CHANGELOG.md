@@ -1,3 +1,9 @@
+## [1.36.2](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.1...v1.36.2) (2026-01-20)
+
+### 🐛 Bug Fixes
+
+* rename url ([b7f4ed9](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/b7f4ed9e61f74cc16188ed74ccefc8735c6d418a))
+
 ## [1.36.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.0...v1.36.1) (2026-01-20)
 
 ### 🚨 Tests

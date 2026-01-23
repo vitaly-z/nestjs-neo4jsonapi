@@ -1,3 +1,9 @@
+## [1.36.4](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.3...v1.36.4) (2026-01-23)
+
+### 📦 Code Refactoring
+
+* improve injection token resolution in conditional providers ([4b4602a](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/4b4602af81039697e367163b53145db0d7ce9a99))
+
 ## [1.36.3](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.2...v1.36.3) (2026-01-20)
 
 ### 🚨 Tests

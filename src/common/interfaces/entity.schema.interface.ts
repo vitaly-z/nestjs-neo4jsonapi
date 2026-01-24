@@ -37,6 +37,8 @@ export interface FieldDef {
   meta?: boolean;
   /** Async transformer function for serialisation - receives data and injected services */
   transform?: FieldTransformFn;
+  /** If true, field is excluded from JSONAPI serialization entirely (default: false) */
+  excludeFromJsonApi?: boolean;
 }
 
 /**
@@ -57,6 +59,8 @@ export interface ComputedFieldDef<T = any> {
   compute: ComputedFieldFn<T>;
   /** If true, field goes to JSON:API meta instead of attributes (default: false) */
   meta?: boolean;
+  /** If true, field is excluded from JSONAPI serialization entirely (default: false) */
+  excludeFromJsonApi?: boolean;
 }
 
 /**
@@ -71,6 +75,8 @@ export interface VirtualFieldDef {
   compute: ComputedFieldFn<any>;
   /** If true, field goes to JSON:API meta instead of attributes (default: false) */
   meta?: boolean;
+  /** If true, field is excluded from JSONAPI serialization entirely (default: false) */
+  excludeFromJsonApi?: boolean;
 }
 
 /**

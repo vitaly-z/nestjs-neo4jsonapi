@@ -51,10 +51,10 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
   }
 
   create(): JsonApiDataInterface {
-    // 1. Build attributes from fields (non-meta)
+    // 1. Build attributes from fields (non-meta, non-excluded)
     const attributes: Record<string, any> = {};
     for (const [fieldName, fieldDef] of Object.entries(this.descriptor.fields || {})) {
-      if (!fieldDef.meta) {
+      if (!fieldDef.meta && !fieldDef.excludeFromJsonApi) {
         if (fieldDef.transform) {
           // Wrap transformer with injected services
           const transformer = fieldDef.transform;
@@ -68,19 +68,19 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
         }
       }
     }
-    // 1b. Add virtual fields to attributes (or meta if specified)
+    // 1b. Add virtual fields to attributes (or meta if specified, not excluded)
     for (const [fieldName, virtualDef] of Object.entries(this.descriptor.virtualFields || {})) {
-      if (!virtualDef.meta) {
+      if (!virtualDef.meta && !virtualDef.excludeFromJsonApi) {
         // Virtual field value already computed by mapper, direct mapping
         attributes[fieldName] = fieldName;
       }
     }
     this.attributes = attributes;
 
-    // 2. Build meta from fields + computed (where meta: true)
+    // 2. Build meta from fields + computed (where meta: true, not excluded)
     const meta: Record<string, any> = {};
     for (const [fieldName, fieldDef] of Object.entries(this.descriptor.fields || {})) {
-      if (fieldDef.meta) {
+      if (fieldDef.meta && !fieldDef.excludeFromJsonApi) {
         if (fieldDef.transform) {
           const transformer = fieldDef.transform;
           const services = this.injectedServices;
@@ -93,14 +93,14 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
       }
     }
     for (const [fieldName, computedDef] of Object.entries(this.descriptor.computed || {})) {
-      if (computedDef.meta) {
+      if (computedDef.meta && !computedDef.excludeFromJsonApi) {
         // Computed value already calculated by mapper
         meta[fieldName] = fieldName;
       }
     }
-    // Add virtual fields with meta: true to meta section
+    // Add virtual fields with meta: true to meta section (not excluded)
     for (const [fieldName, virtualDef] of Object.entries(this.descriptor.virtualFields || {})) {
-      if (virtualDef.meta) {
+      if (virtualDef.meta && !virtualDef.excludeFromJsonApi) {
         meta[fieldName] = fieldName;
       }
     }

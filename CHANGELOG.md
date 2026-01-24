@@ -1,3 +1,9 @@
+## [1.37.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.5...v1.37.0) (2026-01-24)
+
+### 🚀 Features
+
+* add excludeFromJson to entity ([f9af31f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/f9af31f43b57bdf9496a2d701c9731b698c145c9))
+
 ## [1.36.5](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.36.4...v1.36.5) (2026-01-23)
 
 ### 📦 Code Refactoring

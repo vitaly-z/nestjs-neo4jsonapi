@@ -286,8 +286,64 @@ describe("AuthDiscordService", () => {
 
         const result = await service.handleDiscordLogin({ userDetails: mockDiscordUserDetails });
 
-        expect(result).toBe("http://app.example.com/auth?error=registration_disabled");
+        expect(result).toBe("http://app.example.com/oauth/error?error=registration_disabled");
         expect(pendingRegistrationService.create).not.toHaveBeenCalled();
+      });
+
+      it("should return error URL when registration is closed", async () => {
+        discordUserRepository.findByDiscordId.mockResolvedValue(null);
+        configService.get.mockImplementation((key: string) => {
+          if (key === "auth") {
+            return { allowRegistration: true, registrationMode: "closed" };
+          }
+          return mockConfig[key as keyof typeof mockConfig];
+        });
+
+        const result = await service.handleDiscordLogin({ userDetails: mockDiscordUserDetails });
+
+        expect(result).toBe("http://app.example.com/oauth/error?error=registration_closed");
+        expect(pendingRegistrationService.create).not.toHaveBeenCalled();
+      });
+
+      it("should return error URL when waitlist mode is enabled and no invite code", async () => {
+        discordUserRepository.findByDiscordId.mockResolvedValue(null);
+        configService.get.mockImplementation((key: string) => {
+          if (key === "auth") {
+            return { allowRegistration: true, registrationMode: "waitlist" };
+          }
+          return mockConfig[key as keyof typeof mockConfig];
+        });
+
+        const result = await service.handleDiscordLogin({ userDetails: mockDiscordUserDetails });
+
+        expect(result).toBe("http://app.example.com/oauth/error?error=waitlist_required");
+        expect(pendingRegistrationService.create).not.toHaveBeenCalled();
+      });
+
+      it("should proceed to consent page when waitlist mode is enabled with invite code", async () => {
+        discordUserRepository.findByDiscordId.mockResolvedValue(null);
+        configService.get.mockImplementation((key: string) => {
+          if (key === "auth") {
+            return { allowRegistration: true, registrationMode: "waitlist" };
+          }
+          return mockConfig[key as keyof typeof mockConfig];
+        });
+        pendingRegistrationService.create.mockResolvedValue(TEST_IDS.pendingId);
+
+        const result = await service.handleDiscordLogin({
+          userDetails: mockDiscordUserDetails,
+          inviteCode: "valid-invite-code",
+        });
+
+        expect(pendingRegistrationService.create).toHaveBeenCalledWith({
+          provider: "discord",
+          providerUserId: mockDiscordUserDetails.id,
+          email: mockDiscordUserDetails.email,
+          name: mockDiscordUserDetails.username,
+          avatar: mockDiscordUserDetails.avatar,
+          inviteCode: "valid-invite-code",
+        });
+        expect(result).toBe(`http://app.example.com/auth/consent?pending=${TEST_IDS.pendingId}`);
       });
     });
   });

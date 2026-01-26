@@ -26,7 +26,12 @@ export class AuthDiscordController {
   }
 
   @Get(`${authMeta.endpoint}/callback/discord`)
-  async callbackDiscord(@Res() reply: FastifyReply, @Req() request: any, @Query("code") code: string, @Query("state") state?: string) {
+  async callbackDiscord(
+    @Res() reply: FastifyReply,
+    @Req() request: any,
+    @Query("code") code: string,
+    @Query("state") state?: string,
+  ) {
     // Parse invite code from state if present
     const inviteCode = state ? this.authDiscordService.parseInviteCodeFromState(state) : undefined;
 

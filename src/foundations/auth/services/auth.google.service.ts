@@ -85,9 +85,18 @@ export class AuthGoogleService {
       return `${this.config.get<ConfigAppInterface>("app").url}auth?code=${authCodeId}`;
     }
 
-    // New user - redirect to consent page
+    // New user - check registration permissions
     if (!this.authConfig.allowRegistration) {
-      return `${this.config.get<ConfigAppInterface>("app").url}auth?error=registration_disabled`;
+      return `${this.config.get<ConfigAppInterface>("app").url}oauth/error?error=registration_disabled`;
+    }
+
+    // Check registration mode before proceeding to consent
+    const registrationMode = this.authConfig.registrationMode ?? "open";
+    if (registrationMode === "closed") {
+      return `${this.config.get<ConfigAppInterface>("app").url}oauth/error?error=registration_closed`;
+    }
+    if (registrationMode === "waitlist" && !params.inviteCode) {
+      return `${this.config.get<ConfigAppInterface>("app").url}oauth/error?error=waitlist_required`;
     }
 
     // Store pending registration in Redis (include invite code if present)

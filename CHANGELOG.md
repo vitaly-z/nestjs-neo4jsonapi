@@ -1,3 +1,15 @@
+## [1.40.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.39.0...v1.40.0) (2026-01-27)
+
+### 🚀 Features
+
+* add 2fa ([cf118c5](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/cf118c553fd2c172fa09b468ddace5966e4e767f))
+* add 2fa ([0673fd8](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/0673fd8b2b02b176c3a6605c108f8a68451dfe39))
+
+### 🐛 Bug Fixes
+
+* correct 2fa ([ceec62c](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/ceec62c63f140b51a6326e6be406572446077c23))
+* remove console logs ([9dfa453](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/9dfa453a07868783bd893f9d7a0d07f95fe77894))
+
 ## [1.39.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.38.0...v1.39.0) (2026-01-27)
 
 ### 🚀 Features

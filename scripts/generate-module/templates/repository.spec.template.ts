@@ -130,7 +130,7 @@ export function generateRepositorySpecFile(data: TemplateData): string {
     )
     .join("\n");
 
-  return `import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+  return `import { vi, describe, it, expect, beforeEach, afterEach, Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ClsService } from "nestjs-cls";
 import { HttpException } from "@nestjs/common";
@@ -140,9 +140,9 @@ import { Neo4jService, SecurityService } from "@carlonicora/nestjs-neo4jsonapi";
 
 describe("${names.pascalCase}Repository", () => {
   let repository: ${names.pascalCase}Repository;
-  let neo4jService: vi.Mocked<Neo4jService>;
-  let securityService: vi.Mocked<SecurityService>;
-  let clsService: vi.Mocked<ClsService>;
+  let neo4jService: Mocked<Neo4jService>;
+  let _securityService: Mocked<SecurityService>;
+  let clsService: Mocked<ClsService>;
 
   ${testIdsCode}
 
@@ -189,9 +189,9 @@ describe("${names.pascalCase}Repository", () => {
     }).compile();
 
     repository = module.get<${names.pascalCase}Repository>(${names.pascalCase}Repository);
-    neo4jService = module.get<Neo4jService>(Neo4jService) as vi.Mocked<Neo4jService>;
-    securityService = module.get<SecurityService>(SecurityService) as vi.Mocked<SecurityService>;
-    clsService = module.get<ClsService>(ClsService) as vi.Mocked<ClsService>;
+    neo4jService = module.get<Neo4jService>(Neo4jService) as Mocked<Neo4jService>;
+    _securityService = module.get<SecurityService>(SecurityService) as Mocked<SecurityService>;
+    clsService = module.get<ClsService>(ClsService) as Mocked<ClsService>;
 
     // Default CLS context
     clsService.get.mockImplementation((key: string) => {

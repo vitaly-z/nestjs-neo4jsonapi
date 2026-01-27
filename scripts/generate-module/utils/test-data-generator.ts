@@ -167,12 +167,14 @@ export function generateMockPostDTOCode(entityName: string, fields: TemplateFiel
     attributeValues.push(`${field.name}: ${mockValue}`);
   }
 
+  // Handle empty attributes case (no required fields)
+  const attributesContent =
+    attributeValues.length > 0 ? `\n        ${attributeValues.join(",\n        ")},\n      ` : "";
+
   return `const MOCK_POST_DTO = {
     data: {
       type: "${endpoint}",
-      attributes: {
-        ${attributeValues.join(",\n        ")},
-      },
+      attributes: {${attributesContent}},
     },
   };`;
 }
@@ -189,13 +191,15 @@ export function generateMockPutDTOCode(entityName: string, fields: TemplateField
     attributeValues.push(`${field.name}: ${mockValue}`);
   }
 
+  // Handle empty attributes case (no fields)
+  const attributesContent =
+    attributeValues.length > 0 ? `\n        ${attributeValues.join(",\n        ")},\n      ` : "";
+
   return `const MOCK_PUT_DTO = {
     data: {
       type: "${endpoint}",
       id: TEST_IDS.${camelCase}Id,
-      attributes: {
-        ${attributeValues.join(",\n        ")},
-      },
+      attributes: {${attributesContent}},
     },
   };`;
 }

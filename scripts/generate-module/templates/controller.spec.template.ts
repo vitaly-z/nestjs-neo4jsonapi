@@ -153,20 +153,20 @@ export function generateControllerSpecFile(data: TemplateData): string {
     })
     .join("\n");
 
-  return `import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+  return `import { vi, describe, it, expect, beforeEach, afterEach, Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { PreconditionFailedException } from "@nestjs/common";
 import { ${names.pascalCase}Controller } from "./${names.kebabCase}.controller";
 import { ${names.pascalCase}Service } from "../services/${names.kebabCase}.service";
 import { ${names.pascalCase}Descriptor } from "../entities/${names.kebabCase}";
-import { AuditService, CacheService, AuthenticatedRequest } from "@carlonicora/nestjs-neo4jsonapi";
+import { AuditService, CacheService, AuthenticatedRequest, JwtAuthGuard } from "@carlonicora/nestjs-neo4jsonapi";
 import { FastifyReply } from "fastify";
 
 describe("${names.pascalCase}Controller", () => {
   let controller: ${names.pascalCase}Controller;
-  let ${names.camelCase}Service: vi.Mocked<${names.pascalCase}Service>;
-  let cacheService: vi.Mocked<CacheService>;
-  let auditService: vi.Mocked<AuditService>;
+  let ${names.camelCase}Service: Mocked<${names.pascalCase}Service>;
+  let cacheService: Mocked<CacheService>;
+  let auditService: Mocked<AuditService>;
 
   ${testIdsCode}
 
@@ -229,14 +229,17 @@ describe("${names.pascalCase}Controller", () => {
           useValue: mockAuditService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<${names.pascalCase}Controller>(${names.pascalCase}Controller);
     ${names.camelCase}Service = module.get<${names.pascalCase}Service>(
       ${names.pascalCase}Service,
-    ) as vi.Mocked<${names.pascalCase}Service>;
-    cacheService = module.get<CacheService>(CacheService) as vi.Mocked<CacheService>;
-    auditService = module.get<AuditService>(AuditService) as vi.Mocked<AuditService>;
+    ) as Mocked<${names.pascalCase}Service>;
+    cacheService = module.get<CacheService>(CacheService) as Mocked<CacheService>;
+    auditService = module.get<AuditService>(AuditService) as Mocked<AuditService>;
   });
 
   afterEach(() => {

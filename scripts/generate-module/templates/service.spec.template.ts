@@ -134,7 +134,7 @@ export function generateServiceSpecFile(data: TemplateData): string {
     )
     .join("\n");
 
-  return `import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+  return `import { vi, describe, it, expect, beforeEach, afterEach, Mocked } from "vitest";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ClsService } from "nestjs-cls";
 import { NotFoundException, ForbiddenException } from "@nestjs/common";
@@ -145,9 +145,9 @@ import { JsonApiService } from "@carlonicora/nestjs-neo4jsonapi";
 
 describe("${names.pascalCase}Service", () => {
   let service: ${names.pascalCase}Service;
-  let repository: vi.Mocked<${names.pascalCase}Repository>;
-  let jsonApiService: vi.Mocked<JsonApiService>;
-  let clsService: vi.Mocked<ClsService>;
+  let repository: Mocked<${names.pascalCase}Repository>;
+  let jsonApiService: Mocked<JsonApiService>;
+  let clsService: Mocked<ClsService>;
 
   ${testIdsCode}
 
@@ -201,9 +201,9 @@ describe("${names.pascalCase}Service", () => {
     service = module.get<${names.pascalCase}Service>(${names.pascalCase}Service);
     repository = module.get<${names.pascalCase}Repository>(
       ${names.pascalCase}Repository,
-    ) as vi.Mocked<${names.pascalCase}Repository>;
-    jsonApiService = module.get<JsonApiService>(JsonApiService) as vi.Mocked<JsonApiService>;
-    clsService = module.get<ClsService>(ClsService) as vi.Mocked<ClsService>;
+    ) as Mocked<${names.pascalCase}Repository>;
+    jsonApiService = module.get<JsonApiService>(JsonApiService) as Mocked<JsonApiService>;
+    clsService = module.get<ClsService>(ClsService) as Mocked<ClsService>;
 
     // Default CLS context
     clsService.get.mockImplementation((key: string) => {

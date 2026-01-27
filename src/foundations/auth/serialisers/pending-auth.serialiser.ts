@@ -28,9 +28,8 @@ export class PendingAuthSerialiser extends AbstractJsonApiSerialiser implements 
 
   create(): JsonApiDataInterface {
     this.attributes = {
-      pendingId: "pendingId",
-      token: "token",
-      expiration: "expiration",
+      pendingToken: "token",
+      expiresAt: "expiration",
       availableMethods: "availableMethods",
       preferredMethod: "preferredMethod",
     };

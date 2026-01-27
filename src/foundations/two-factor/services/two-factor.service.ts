@@ -68,7 +68,10 @@ export class TwoFactorService {
    * @returns The user's TwoFactorConfig, or null if not configured
    */
   async getConfig(userId: string): Promise<TwoFactorConfig | null> {
-    return this.twoFactorConfigRepository.findByUserId({ userId });
+    console.log("[TwoFactorService.getConfig] Looking up config for userId:", userId);
+    const config = await this.twoFactorConfigRepository.findByUserId({ userId });
+    console.log("[TwoFactorService.getConfig] Result:", config);
+    return config;
   }
 
   /**
@@ -112,13 +115,17 @@ export class TwoFactorService {
    * @returns JSON:API response with the 2FA config
    */
   async enable(userId: string, preferredMethod: TwoFactorMethod = "totp"): Promise<any> {
+    console.log("[TwoFactorService.enable] Enabling 2FA for userId:", userId, "preferredMethod:", preferredMethod);
+
     // Check that at least one method is available
     const [hasTotp, hasPasskey] = await Promise.all([
       this.totpService.hasVerifiedAuthenticator({ userId }),
       this.passkeyService.hasPasskeys({ userId }),
     ]);
+    console.log("[TwoFactorService.enable] Available methods:", { hasTotp, hasPasskey });
 
     if (!hasTotp && !hasPasskey) {
+      console.log("[TwoFactorService.enable] ERROR: No methods available");
       throw new BadRequestException("Cannot enable 2FA without at least one configured method (TOTP or Passkey)");
     }
 

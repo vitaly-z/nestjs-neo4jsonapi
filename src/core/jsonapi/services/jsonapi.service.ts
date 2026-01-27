@@ -171,7 +171,9 @@ export class JsonApiService {
         if (typeof builder.attributes[attribute] === "function") {
           serialisedData.attributes[attribute] = await builder.attributes[attribute](data);
         } else {
-          serialisedData.attributes[attribute] = (data as any)[attribute];
+          // Use the mapped property name to read from data
+          const dataProperty = builder.attributes[attribute];
+          serialisedData.attributes[attribute] = (data as any)[dataProperty];
         }
       }
     }

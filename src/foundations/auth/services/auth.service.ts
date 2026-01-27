@@ -188,27 +188,40 @@ export class AuthService {
     if (!user.isActive) throw new HttpException("The account has not been activated yet", HttpStatus.FORBIDDEN);
 
     // Check if user has 2FA enabled
+    console.log("[AuthService.login] Checking 2FA for userId:", user.id);
     const twoFactorConfig = await this.twoFactorService.getConfig(user.id);
+    console.log("[AuthService.login] 2FA Config:", {
+      exists: !!twoFactorConfig,
+      isEnabled: twoFactorConfig?.isEnabled,
+      preferredMethod: twoFactorConfig?.preferredMethod,
+    });
 
     if (twoFactorConfig?.isEnabled) {
       // User has 2FA enabled - return pending auth response
+      console.log("[AuthService.login] 2FA is enabled, creating pending session");
       const pendingSession = await this.twoFactorService.createPendingSession(user.id);
+      console.log("[AuthService.login] Pending session created:", pendingSession);
+
       const availableMethods = await this.twoFactorService.getAvailableMethods(user.id);
+      console.log("[AuthService.login] Available methods:", availableMethods);
 
       // Generate a pending JWT with limited access
       const pendingToken = this.security.signPendingJwt({
         userId: user.id,
         pendingId: pendingSession.pendingId,
       });
+      console.log("[AuthService.login] Pending token generated");
 
       // Return pending auth response requiring 2FA verification
-      return await this.builder.buildSingle(PendingAuthModel, {
+      const response = await this.builder.buildSingle(PendingAuthModel, {
         pendingId: pendingSession.pendingId,
         token: pendingToken,
         expiration: pendingSession.expiration,
         availableMethods: availableMethods,
         preferredMethod: twoFactorConfig.preferredMethod,
       });
+      console.log("[AuthService.login] Returning 2FA challenge response:", JSON.stringify(response, null, 2));
+      return response;
     }
 
     // No 2FA - proceed with normal login

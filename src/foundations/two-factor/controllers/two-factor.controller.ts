@@ -1,15 +1,25 @@
-import { Body, Controller, forwardRef, Get, HttpCode, HttpStatus, Inject, Post, Req, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  forwardRef,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { FastifyReply } from "fastify";
 
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { JsonApiService } from "../../../core/jsonapi/services/jsonapi.service";
 import { AuthService } from "../../auth/services/auth.service";
-import { BackupCodeVerifyDTO } from "../dtos/two-factor-verify.dto";
-import { TwoFactorChallengeDTO } from "../dtos/two-factor-verify.dto";
-import { TwoFactorEnableDTO } from "../dtos/two-factor-verify.dto";
-import { TotpVerifyDTO } from "../dtos/totp-verify.dto";
 import { PasskeyAuthenticationVerifyDTO } from "../dtos/passkey-verify.dto";
+import { TotpVerifyDTO } from "../dtos/totp-verify.dto";
+import { BackupCodeVerifyDTO, TwoFactorChallengeDTO, TwoFactorEnableDTO } from "../dtos/two-factor-verify.dto";
 import { TwoFactorChallengeDescriptor } from "../entities/two-factor-challenge";
 import { TwoFactorVerificationDescriptor } from "../entities/two-factor-verification";
 import { PendingAuthGuard, PendingAuthPayload } from "../guards/pending-auth.guard";

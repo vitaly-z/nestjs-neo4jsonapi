@@ -18,6 +18,7 @@ import { DiscordUserService } from "../../../discord-user/services/discord-user.
 import { GoogleUserService } from "../../../google-user/services/google-user.service";
 import { TrialQueueService } from "../trial-queue.service";
 import { WaitlistService } from "../../../waitlist/services/waitlist.service";
+import { TwoFactorService } from "../../../two-factor/services/two-factor.service";
 import { Auth } from "../../entities/auth.entity";
 import { AuthCode } from "../../entities/auth.code.entity";
 import { User } from "../../../user/entities/user";
@@ -197,6 +198,12 @@ describe("AuthService", () => {
     markAsRegistered: vi.fn(),
   });
 
+  const createMockTwoFactorService = () => ({
+    getConfig: vi.fn().mockResolvedValue(null),
+    createPendingSession: vi.fn(),
+    getAvailableMethods: vi.fn().mockResolvedValue([]),
+  });
+
   beforeEach(async () => {
     vi.clearAllMocks();
 
@@ -219,6 +226,7 @@ describe("AuthService", () => {
         { provide: GoogleUserService, useValue: createMockGoogleUserService() },
         { provide: TrialQueueService, useValue: createMockTrialQueueService() },
         { provide: WaitlistService, useValue: createMockWaitlistService() },
+        { provide: TwoFactorService, useValue: createMockTwoFactorService() },
       ],
     }).compile();
 

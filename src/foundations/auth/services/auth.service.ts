@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ModuleRef } from "@nestjs/core";
 import { randomUUID } from "crypto";
@@ -16,10 +16,12 @@ import { AuthPostRegisterDataDTO } from "../../auth/dtos/auth.post.register.dto"
 import { AuthCode } from "../../auth/entities/auth.code.entity";
 import { Auth } from "../../auth/entities/auth.entity";
 import { AuthModel } from "../../auth/entities/auth.model";
+import { PendingAuthModel } from "../../auth/entities/pending-auth.model";
 import { AuthRepository } from "../../auth/repositories/auth.repository";
 import { CompanyRepository } from "../../company/repositories/company.repository";
 import { DiscordUserService } from "../../discord-user/services/discord-user.service";
 import { GoogleUserService } from "../../google-user/services/google-user.service";
+import { TwoFactorService } from "../../two-factor/services/two-factor.service";
 import { Role } from "../../role/entities/role";
 import { User } from "../../user/entities/user";
 import { UserRepository } from "../../user/repositories/user.repository";
@@ -47,6 +49,8 @@ export class AuthService {
     private readonly googleUserService: GoogleUserService,
     private readonly trialQueueService: TrialQueueService,
     private readonly waitlistService: WaitlistService,
+    @Inject(forwardRef(() => TwoFactorService))
+    private readonly twoFactorService: TwoFactorService,
   ) {}
 
   private get appConfig(): ConfigAppInterface {
@@ -181,6 +185,50 @@ export class AuthService {
     if (!isValidPassword)
       throw new HttpException("The email or password you entered is incorrect.", HttpStatus.UNAUTHORIZED);
 
+    if (!user.isActive) throw new HttpException("The account has not been activated yet", HttpStatus.FORBIDDEN);
+
+    // Check if user has 2FA enabled
+    const twoFactorConfig = await this.twoFactorService.getConfig(user.id);
+
+    if (twoFactorConfig?.isEnabled) {
+      // User has 2FA enabled - return pending auth response
+      const pendingSession = await this.twoFactorService.createPendingSession(user.id);
+      const availableMethods = await this.twoFactorService.getAvailableMethods(user.id);
+
+      // Generate a pending JWT with limited access
+      const pendingToken = this.security.signPendingJwt({
+        userId: user.id,
+        pendingId: pendingSession.pendingId,
+      });
+
+      // Return pending auth response requiring 2FA verification
+      return await this.builder.buildSingle(PendingAuthModel, {
+        pendingId: pendingSession.pendingId,
+        token: pendingToken,
+        expiration: pendingSession.expiration,
+        availableMethods: availableMethods,
+        preferredMethod: twoFactorConfig.preferredMethod,
+      });
+    }
+
+    // No 2FA - proceed with normal login
+    await this.repository.setLastLogin({ userId: user.id });
+
+    return await this.createToken({ user: user });
+  }
+
+  /**
+   * Complete the 2FA login after successful verification.
+   * Called by the 2FA controller after verifying TOTP, passkey, or backup code.
+   *
+   * @param userId - The user's ID (extracted from pending session)
+   * @returns Full auth token response
+   */
+  async completeTwoFactorLogin(userId: string): Promise<JsonApiDataInterface> {
+    const user: User = await this.users.findByUserId({ userId });
+
+    if (!user) throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    if (user.isDeleted) throw new HttpException("The account has been deleted", HttpStatus.FORBIDDEN);
     if (!user.isActive) throw new HttpException("The account has not been activated yet", HttpStatus.FORBIDDEN);
 
     await this.repository.setLastLogin({ userId: user.id });

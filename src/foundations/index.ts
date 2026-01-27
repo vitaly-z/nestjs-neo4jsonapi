@@ -26,4 +26,5 @@ export * from "./role";
 export * from "./s3";
 export * from "./stripe";
 export * from "./tokenusage";
+export * from "./two-factor";
 export * from "./user";

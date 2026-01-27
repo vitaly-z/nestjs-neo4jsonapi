@@ -27,6 +27,7 @@ import { StripeWebhookModule } from "./stripe-webhook/stripe-webhook.module";
 import { StripeModule } from "./stripe/stripe.module";
 import { StripeTrialModule } from "./stripe-trial/stripe-trial.module";
 import { TokenUsageModule } from "./tokenusage/tokenusage.module";
+import { TwoFactorModule } from "./two-factor/two-factor.module";
 import { UserModule } from "./user/user.module";
 import { WaitlistModule } from "./waitlist/waitlist.module";
 
@@ -60,6 +61,7 @@ const STATIC_FOUNDATION_MODULES = [
   RoleModule,
   S3Module,
   TokenUsageModule,
+  TwoFactorModule,
   UserModule,
   WaitlistModule,
   StripeModule,

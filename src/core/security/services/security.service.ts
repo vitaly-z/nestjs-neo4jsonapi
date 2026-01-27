@@ -70,4 +70,45 @@ export class SecurityService {
   userHasAccess(params: { validator: (params?: any) => string }): string {
     return params.validator();
   }
+
+  /**
+   * Generate a pending JWT for 2FA flows.
+   * This token has limited access and a short TTL (5 minutes).
+   * It includes the userId and indicates that 2FA verification is required.
+   *
+   * @param params - The parameters for the pending JWT
+   * @param params.userId - The user's ID
+   * @param params.pendingId - The pending 2FA session ID
+   * @returns The signed pending JWT
+   */
+  signPendingJwt(params: { userId: string; pendingId: string }): string {
+    const expiration = new Date(new Date().getTime() + 5 * 60 * 1000); // 5 minutes
+
+    return this.jwtService.sign({
+      userId: params.userId,
+      pendingId: params.pendingId,
+      pending: true,
+      type: "pending_2fa",
+      expiration: expiration,
+    });
+  }
+
+  /**
+   * Check if a JWT payload is a pending 2FA token.
+   * Pending tokens have limited access and require 2FA verification
+   * before being exchanged for a full access token.
+   *
+   * @param payload - The decoded JWT payload
+   * @returns true if this is a pending 2FA token
+   */
+  isPendingToken(payload: any): boolean {
+    return payload?.pending === true && payload?.type === "pending_2fa";
+  }
+
+  /**
+   * Get the expiration time for pending 2FA tokens (5 minutes).
+   */
+  get pendingTokenExpiration(): Date {
+    return new Date(new Date().getTime() + 5 * 60 * 1000);
+  }
 }

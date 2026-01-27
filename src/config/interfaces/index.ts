@@ -28,4 +28,5 @@ export * from "./config.redis.interface";
 export * from "./config.s3.interface";
 export * from "./config.stripe.interface";
 export * from "./config.tempo.interface";
+export * from "./config.two.factor.interface";
 export * from "./config.vapid.interface";

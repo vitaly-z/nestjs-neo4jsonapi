@@ -22,6 +22,7 @@ import { ConfigRedisInterface } from "./config.redis.interface";
 import { ConfigS3Interface } from "./config.s3.interface";
 import { ConfigStripeInterface } from "./config.stripe.interface";
 import { ConfigTempoInterface } from "./config.tempo.interface";
+import { ConfigTwoFactorInterface } from "./config.two.factor.interface";
 import { ConfigVapidInterface } from "./config.vapid.interface";
 
 export interface BaseConfigInterface {
@@ -50,4 +51,5 @@ export interface BaseConfigInterface {
   discord: ConfigDiscordInterface;
   google: ConfigGoogleInterface;
   oauth: ConfigOAuthInterface;
+  twoFactor?: ConfigTwoFactorInterface;
 }

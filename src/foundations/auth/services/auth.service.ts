@@ -242,7 +242,10 @@ export class AuthService {
    * @returns Full auth token response
    */
   async completeTwoFactorLogin(userId: string): Promise<JsonApiDataInterface> {
-    const user: User = await this.users.findByUserId({ userId });
+    console.log("[AuthService.completeTwoFactorLogin] userId:", userId);
+    // Use findForTwoFactorLogin - doesn't require companyId in CLS, retrieves user with roles/company/features
+    const user: User = await this.users.findForTwoFactorLogin({ userId });
+    console.log("[AuthService.completeTwoFactorLogin] user found:", !!user);
 
     if (!user) throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     if (user.isDeleted) throw new HttpException("The account has been deleted", HttpStatus.FORBIDDEN);

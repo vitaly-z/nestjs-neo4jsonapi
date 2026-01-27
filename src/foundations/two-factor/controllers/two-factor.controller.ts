@@ -137,6 +137,7 @@ export class TwoFactorController {
   @Post("two-factor/verify/totp")
   async verifyTotp(@Req() req: PendingAuthRequest, @Res() reply: FastifyReply, @Body() body: TotpVerifyDTO) {
     const { pendingId, userId } = req.pendingAuth;
+    console.log("[TwoFactorController.verifyTotp] pendingAuth:", JSON.stringify(req.pendingAuth, null, 2));
     const verificationResult = await this.twoFactorService.verifyTotp(pendingId, body.data.attributes.code);
 
     // Check if verification was successful

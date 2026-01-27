@@ -58,9 +58,40 @@ export class UserRepository implements OnModuleInit {
     query.query = `
       MATCH (user:User {id: $userId})
 
-      OPTIONAL MATCH (user)-[:MEMBER_OF]->(user_role:Role) 
+      OPTIONAL MATCH (user)-[:MEMBER_OF]->(user_role:Role)
       OPTIONAL MATCH (user)-[:BELONGS_TO]->(user_company:Company)
       RETURN user, user_role, user_company
+    `;
+
+    return this.neo4j.readOne(query);
+  }
+
+  /**
+   * Find user for 2FA login completion.
+   * Does NOT require companyId in CLS - finds company through user relationship.
+   * Returns user with roles, company, and features needed for token creation.
+   */
+  async findForTwoFactorLogin(params: { userId: string }): Promise<User> {
+    const query = this.neo4j.initQuery({ serialiser: UserDescriptor.model });
+
+    query.queryParams = {
+      userId: params.userId,
+    };
+
+    query.query = `
+      MATCH (${userMeta.nodeName}:User {id: $userId})
+
+      OPTIONAL MATCH (${userMeta.nodeName})-[:MEMBER_OF]->(${userMeta.nodeName}_${roleMeta.nodeName}:${roleMeta.labelName})
+      OPTIONAL MATCH (${userMeta.nodeName})-[:BELONGS_TO]->(${userMeta.nodeName}_${companyMeta.nodeName}:${companyMeta.labelName})
+
+      OPTIONAL MATCH (${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}:${featureMeta.labelName})
+      WHERE ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}.isCore = true
+      OR EXISTS {((${userMeta.nodeName}_${companyMeta.nodeName})-[:HAS_FEATURE]->(${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}))}
+
+      RETURN ${userMeta.nodeName},
+        ${userMeta.nodeName}_${roleMeta.nodeName},
+        ${userMeta.nodeName}_${companyMeta.nodeName},
+        ${userMeta.nodeName}_${companyMeta.nodeName}_${featureMeta.nodeName}
     `;
 
     return this.neo4j.readOne(query);

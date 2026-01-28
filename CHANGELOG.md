@@ -1,3 +1,9 @@
+## [1.43.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.42.0...v1.43.0) (2026-01-28)
+
+### 🚀 Features
+
+* add unit tests for CRUD and relationship handlers ([09c7653](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/09c7653a79d6717be0502c2ad92399570af682e1))
+
 ## [1.42.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.41.0...v1.42.0) (2026-01-28)
 
 ### 🚀 Features

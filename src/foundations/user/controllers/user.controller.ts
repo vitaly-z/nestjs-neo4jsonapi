@@ -17,6 +17,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { RoleId } from "../../../common/constants/system.roles";
+import { CacheInvalidate } from "../../../common/decorators/cache-invalidate.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { SecurityService } from "../../../core/security/services/security.service";
 
@@ -134,6 +135,7 @@ export class UserController {
 
   @Post(userMeta.endpoint)
   @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
+  @CacheInvalidate(userMeta)
   async createUser(
     @Req() request: any,
     @Body() body: UserPostDTO,
@@ -165,11 +167,10 @@ export class UserController {
     });
 
     reply.send(response);
-
-    await this.cacheService.invalidateByType(userMeta.endpoint);
   }
 
   @Put(`${userMeta.endpoint}/:userId`)
+  @CacheInvalidate(userMeta, "userId")
   async put(
     @Request() request: any,
     @Param("userId") userId: string,
@@ -189,22 +190,20 @@ export class UserController {
       isCurrentUser: request.user.userId === userId,
     });
     reply.send(response);
-
-    await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
   }
 
   @Patch(`${userMeta.endpoint}/:userId`)
+  @CacheInvalidate(userMeta, "userId")
   async reactivateUser(@Request() request: any, @Param("userId") userId: string, @Res() reply: FastifyReply) {
     this.security.validateAdmin({ user: request.user });
 
     const response = await this.users.reactivate({ userId: userId });
     reply.send(response);
-
-    await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
   }
 
   @Patch(`${userMeta.endpoint}/:userId/rates`)
   @Roles(RoleId.CompanyAdministrator)
+  @CacheInvalidate(userMeta, "userId")
   async updateUserRates(
     @Request() request: any,
     @Param("userId") userId: string,
@@ -213,26 +212,23 @@ export class UserController {
   ) {
     const response = await this.users.patchRate({ data: body.data });
     reply.send(response);
-
-    await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post(`${userMeta.endpoint}/:userId/send-invitation-email`)
+  @CacheInvalidate(userMeta, "userId")
   async sendInvitationEmail(@Request() request: any, @Param("userId") userId: string) {
     this.security.validateAdmin({ user: request.user });
     await this.users.sendInvitationEmail({ userId: userId });
-
-    await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(`${userMeta.endpoint}/:userId`)
+  @CacheInvalidate(userMeta, "userId")
   async delete(@Param("userId") userId: string) {
     await this.users.delete({
       userId: userId,
     });
-    await this.cacheService.invalidateByElement(userMeta.endpoint, userId);
   }
 
   @UseGuards(JwtAuthGuard)

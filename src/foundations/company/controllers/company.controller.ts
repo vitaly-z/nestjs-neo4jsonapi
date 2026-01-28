@@ -20,6 +20,7 @@ import { Roles } from "../../../common/decorators/roles.decorator";
 import { AdminJwtAuthGuard } from "../../../common/guards/jwt.auth.admin.guard";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 
+import { CacheInvalidate } from "../../../common/decorators/cache-invalidate.decorator";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
 import { CacheService } from "../../../core/cache/services/cache.service";
 import { CompanyPostDTO } from "../../company/dtos/company.post.dto";
@@ -65,16 +66,16 @@ export class CompanyController {
   @UseGuards(AdminJwtAuthGuard)
   @Roles(RoleId.Administrator)
   @Post(companyMeta.endpoint)
+  @CacheInvalidate(companyMeta)
   async create(@Req() request: AuthenticatedRequest, @Res() reply: FastifyReply, @Body() body: CompanyPostDTO) {
     const response = await this.companyService.createForController({ data: body.data });
     reply.send(response);
-
-    await this.cacheService.invalidateByType(companyMeta.endpoint);
   }
 
   @UseGuards(JwtAuthGuard)
   @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
   @Put(`${companyMeta.endpoint}/:companyId`)
+  @CacheInvalidate(companyMeta, "companyId")
   async update(
     @Req() request: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -89,13 +90,12 @@ export class CompanyController {
 
     const response = await this.companyService.update({ data: body.data });
     reply.send(response);
-
-    await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Roles(RoleId.Administrator, RoleId.CompanyAdministrator)
   @Put(`${companyMeta.endpoint}/:companyId/configurations`)
+  @CacheInvalidate(companyMeta, "companyId")
   async updateConfigurations(
     @Req() request: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -110,14 +110,13 @@ export class CompanyController {
 
     const response = await this.companyService.updateConfigurations({ data: body.data });
     reply.send(response);
-
-    await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Roles(RoleId.Administrator)
   @Delete(`${companyMeta.endpoint}/:companyId`)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CacheInvalidate(companyMeta, "companyId")
   async delete(
     @Req() request: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -125,14 +124,13 @@ export class CompanyController {
   ) {
     await this.companyService.deleteImmediate({ companyId });
     reply.send();
-
-    await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Roles(RoleId.CompanyAdministrator)
   @Delete(`${companyMeta.endpoint}/:companyId/self-delete`)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CacheInvalidate(companyMeta, "companyId")
   async selfDelete(
     @Req() request: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -149,7 +147,5 @@ export class CompanyController {
     // Delete company using immediate full deletion
     await this.companyService.deleteImmediate({ companyId, companyName: company.name });
     reply.send();
-
-    await this.cacheService.invalidateByElement(companyMeta.endpoint, companyId);
   }
 }

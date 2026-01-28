@@ -13,14 +13,21 @@ import {
   UseGuards,
 } from "@nestjs/common";
 
+import { Audit, CacheInvalidate } from "../../../common/decorators";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
+import { CacheService } from "../../../core/cache/services/cache.service";
+import { AuditService } from "../../audit/services/audit.service";
 import { RolePostDTO } from "../../role/dtos/role.post.dto";
 import { roleMeta } from "../../role/entities/role.meta";
 import { RoleService } from "../services/role.service";
 
 @Controller(roleMeta.endpoint)
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(
+    private readonly roleService: RoleService,
+    private readonly auditService: AuditService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   // @Roles(UserRole.Administrator, UserRole.CompanyAdministrator)
@@ -32,12 +39,14 @@ export class RoleController {
   @UseGuards(JwtAuthGuard)
   // @Roles(UserRole.Administrator, UserRole.CompanyAdministrator)
   @Get(":roleId")
+  @Audit(roleMeta, "roleId")
   async findById(@Param("roleId") roleId: string) {
     return await this.roleService.findById({ roleId: roleId });
   }
 
   @UseGuards(JwtAuthGuard)
   @Post()
+  @CacheInvalidate(roleMeta)
   async create(@Body() body: RolePostDTO) {
     await this.roleService.expectNotExists({
       name: body.data.attributes.name,
@@ -50,6 +59,7 @@ export class RoleController {
 
   @UseGuards(JwtAuthGuard)
   @Put(":roleId")
+  @CacheInvalidate(roleMeta, "roleId")
   async update(@Body() body: RolePostDTO, @Param("roleId") roleId: string) {
     if (roleId !== body.data.id)
       throw new HttpException("Role id does not match the {json:api} id", HttpStatus.PRECONDITION_FAILED);
@@ -62,6 +72,7 @@ export class RoleController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(":roleId")
+  @CacheInvalidate(roleMeta, "roleId")
   async delete(@Param("roleId") roleId: string) {
     await this.roleService.delete({
       roleId: roleId,

@@ -1,10 +1,13 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Req, Res, UseGuards } from "@nestjs/common";
 import { FastifyReply } from "fastify";
 
+import { CacheInvalidate } from "../../../common/decorators/cache-invalidate.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
+import { CacheService } from "../../../core/cache/services/cache.service";
 import { TotpSetupDTO } from "../dtos/totp-setup.dto";
 import { TotpSetupVerifyDTO } from "../dtos/totp-verify.dto";
+import { totpAuthenticatorMeta } from "../entities/totp-authenticator.meta";
 import { TotpService } from "../services/totp.service";
 import { TwoFactorService } from "../services/two-factor.service";
 
@@ -20,6 +23,7 @@ export class TotpController {
   constructor(
     private readonly totpService: TotpService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -81,6 +85,7 @@ export class TotpController {
    */
   @Delete("authenticators/:authenticatorId")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CacheInvalidate(totpAuthenticatorMeta, "authenticatorId")
   async deleteAuthenticator(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,

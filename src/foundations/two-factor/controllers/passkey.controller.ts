@@ -14,10 +14,13 @@ import {
 } from "@nestjs/common";
 import { FastifyReply } from "fastify";
 
+import { CacheInvalidate } from "../../../common/decorators/cache-invalidate.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt.auth.guard";
 import { AuthenticatedRequest } from "../../../common/interfaces/authenticated.request.interface";
+import { CacheService } from "../../../core/cache/services/cache.service";
 import { PasskeyRegistrationOptionsDTO } from "../dtos/passkey-options.dto";
 import { PasskeyRegistrationVerifyDTO, PasskeyRenameDTO } from "../dtos/passkey-verify.dto";
+import { passkeyMeta } from "../entities/passkey.meta";
 import { PasskeyService } from "../services/passkey.service";
 import { TwoFactorService } from "../services/two-factor.service";
 
@@ -33,6 +36,7 @@ export class PasskeyController {
   constructor(
     private readonly passkeyService: PasskeyService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly cacheService: CacheService,
   ) {}
 
   /**
@@ -103,6 +107,7 @@ export class PasskeyController {
    */
   @Delete("passkeys/:passkeyId")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CacheInvalidate(passkeyMeta, "passkeyId")
   async deletePasskey(
     @Req() req: AuthenticatedRequest,
     @Res() reply: FastifyReply,
@@ -124,6 +129,7 @@ export class PasskeyController {
    */
   @Patch("passkeys/:passkeyId")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @CacheInvalidate(passkeyMeta, "passkeyId")
   async renamePasskey(
     @Res() reply: FastifyReply,
     @Param("passkeyId") passkeyId: string,

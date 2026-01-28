@@ -1,5 +1,5 @@
 export { AuditModule } from "./audit.module";
-export { Audit } from "./entities/audit.entity";
+export type { Audit as AuditEntity } from "./entities/audit.entity";
 export { auditMeta } from "./entities/audit.meta";
 export { auditModel } from "./entities/audit.model";
 export { AuditRepository } from "./repositories/audit.repository";

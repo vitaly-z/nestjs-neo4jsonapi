@@ -1,3 +1,5 @@
+export * from "./audit.decorator";
+export * from "./cache-invalidate.decorator";
 export * from "./conditional-service.decorator";
 export * from "./module.decorator";
 export * from "./oauth.scopes.decorator";

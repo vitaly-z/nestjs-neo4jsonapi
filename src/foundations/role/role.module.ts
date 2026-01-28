@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from "@nestjs/common";
 
 import { modelRegistry } from "../../common/registries/registry";
+import { AuditModule } from "../audit/audit.module";
 import { RoleUserController } from "./controllers/role.user.controller";
 import { RoleDescriptor } from "./entities/role";
 import { RoleController } from "./controllers/role.controller";
@@ -11,7 +12,7 @@ import { RoleService } from "./services/role.service";
   controllers: [RoleController, RoleUserController],
   providers: [RoleRepository, RoleService, RoleDescriptor.model.serialiser],
   exports: [RoleRepository],
-  imports: [],
+  imports: [AuditModule],
 })
 export class RoleModule implements OnModuleInit {
   onModuleInit() {

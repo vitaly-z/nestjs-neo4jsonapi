@@ -579,4 +579,47 @@ export class S3Service {
 
     await this.s3Client.send(command);
   }
+
+  async getObjectContent(params: { key: string }): Promise<string> {
+    await this._loadConfiguration();
+    if (!this._endpoint) return null;
+
+    if (this._storageType === "azure") {
+      return await this._getAzureObjectContent(params);
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: this._bucket,
+      Key: params.key,
+    });
+
+    try {
+      const response = await this.s3Client.send(command);
+      const stream = response.Body as NodeJS.ReadableStream;
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks).toString("utf-8");
+    } catch (error) {
+      console.error(`Failed to get object content for key ${params.key}:`, error);
+      throw error;
+    }
+  }
+
+  private async _getAzureObjectContent(params: { key: string }): Promise<string> {
+    try {
+      const blobClient = this.containerClient.getBlobClient(params.key);
+      const downloadResponse = await blobClient.download();
+      const stream = downloadResponse.readableStreamBody as NodeJS.ReadableStream;
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks).toString("utf-8");
+    } catch (error) {
+      console.error(`Failed to get Azure object content for key ${params.key}:`, error);
+      throw error;
+    }
+  }
 }

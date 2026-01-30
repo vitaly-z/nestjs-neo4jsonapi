@@ -1,3 +1,9 @@
+## [1.43.1](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.43.0...v1.43.1) (2026-01-30)
+
+### 📚 Documentation
+
+* add claude.md files ([85f2c5f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/85f2c5f2a7852bde6eaf6c40ff73c36f2829de1e))
+
 ## [1.43.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.42.0...v1.43.0) (2026-01-28)
 
 ### 🚀 Features

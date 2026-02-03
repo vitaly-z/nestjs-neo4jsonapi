@@ -208,6 +208,51 @@ describe("AuthDiscordService", () => {
       const stateData = JSON.parse(Buffer.from(stateMatch![1], "base64url").toString());
       expect(stateData.invite).toBe("test-invite-code");
     });
+
+    it("should include referral code in state when provided", () => {
+      const result = service.generateLoginUrl(undefined, "test-referral");
+
+      const stateMatch = result.match(/state=([^&]+)/);
+      expect(stateMatch).toBeTruthy();
+      const stateData = JSON.parse(Buffer.from(stateMatch![1], "base64url").toString());
+      expect(stateData.referral).toBe("test-referral");
+    });
+
+    it("should include both invite and referral in state when both provided", () => {
+      const result = service.generateLoginUrl("invite-code", "referral-code");
+
+      const stateMatch = result.match(/state=([^&]+)/);
+      expect(stateMatch).toBeTruthy();
+      const stateData = JSON.parse(Buffer.from(stateMatch![1], "base64url").toString());
+      expect(stateData.invite).toBe("invite-code");
+      expect(stateData.referral).toBe("referral-code");
+    });
+  });
+
+  describe("parseStateData", () => {
+    it("should extract invite and referral codes from valid state", () => {
+      const stateData = { nonce: "abc", invite: "inv-1", referral: "ref-2" };
+      const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
+
+      const result = service.parseStateData(state);
+
+      expect(result).toEqual({ invite: "inv-1", referral: "ref-2" });
+    });
+
+    it("should return undefined for invite/referral when not present in state", () => {
+      const stateData = { nonce: "abc" };
+      const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
+
+      const result = service.parseStateData(state);
+
+      expect(result).toEqual({ invite: undefined, referral: undefined });
+    });
+
+    it("should return undefined for invalid state", () => {
+      const result = service.parseStateData("invalid-state");
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe("handleDiscordLogin", () => {
@@ -368,6 +413,54 @@ describe("AuthDiscordService", () => {
           name: mockDiscordUserDetails.username,
           avatar: mockDiscordUserDetails.avatar,
           inviteCode: "valid-invite-code",
+        });
+        expect(result).toBe(`http://app.example.com/auth/consent?pending=${TEST_IDS.pendingId}`);
+      });
+
+      it("should pass referral code to pending registration", async () => {
+        discordUserRepository.findByDiscordId.mockResolvedValue(null);
+        pendingRegistrationService.create.mockResolvedValue(TEST_IDS.pendingId);
+
+        const result = await service.handleDiscordLogin({
+          userDetails: mockDiscordUserDetails,
+          referralCode: "test-referral",
+        });
+
+        expect(pendingRegistrationService.create).toHaveBeenCalledWith({
+          provider: "discord",
+          providerUserId: mockDiscordUserDetails.id,
+          email: mockDiscordUserDetails.email,
+          name: mockDiscordUserDetails.username,
+          avatar: mockDiscordUserDetails.avatar,
+          referralCode: "test-referral",
+        });
+        expect(result).toBe(`http://app.example.com/auth/consent?pending=${TEST_IDS.pendingId}`);
+      });
+
+      it("should pass both invite and referral codes to pending registration", async () => {
+        discordUserRepository.findByDiscordId.mockResolvedValue(null);
+        configService.get.mockImplementation((key: string) => {
+          if (key === "auth") {
+            return { allowRegistration: true, registrationMode: "waitlist" };
+          }
+          return mockConfig[key as keyof typeof mockConfig];
+        });
+        pendingRegistrationService.create.mockResolvedValue(TEST_IDS.pendingId);
+
+        const result = await service.handleDiscordLogin({
+          userDetails: mockDiscordUserDetails,
+          inviteCode: "valid-invite-code",
+          referralCode: "test-referral",
+        });
+
+        expect(pendingRegistrationService.create).toHaveBeenCalledWith({
+          provider: "discord",
+          providerUserId: mockDiscordUserDetails.id,
+          email: mockDiscordUserDetails.email,
+          name: mockDiscordUserDetails.username,
+          avatar: mockDiscordUserDetails.avatar,
+          inviteCode: "valid-invite-code",
+          referralCode: "test-referral",
         });
         expect(result).toBe(`http://app.example.com/auth/consent?pending=${TEST_IDS.pendingId}`);
       });

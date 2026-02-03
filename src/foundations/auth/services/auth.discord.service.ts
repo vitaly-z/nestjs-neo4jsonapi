@@ -31,11 +31,12 @@ export class AuthDiscordService {
     return this.config.get<ConfigAuthInterface>("auth");
   }
 
-  generateLoginUrl(inviteCode?: string): string {
-    // Encode invite code in state parameter if present
+  generateLoginUrl(inviteCode?: string, referralCode?: string): string {
+    // Encode invite code AND referral code in state parameter
     const stateData = {
       nonce: randomUUID(),
       ...(inviteCode && { invite: inviteCode }),
+      ...(referralCode && { referral: referralCode }),
     };
     const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
 
@@ -50,16 +51,20 @@ export class AuthDiscordService {
     return `${this._discordApiUrl}oauth2/authorize?${params.toString()}`;
   }
 
-  parseInviteCodeFromState(state: string): string | undefined {
+  parseStateData(state: string): { invite?: string; referral?: string } | undefined {
     try {
       const stateData = JSON.parse(Buffer.from(state, "base64url").toString());
-      return stateData.invite;
+      return { invite: stateData.invite, referral: stateData.referral };
     } catch {
       return undefined;
     }
   }
 
-  async handleDiscordLogin(params: { userDetails: discordUser; inviteCode?: string }): Promise<string> {
+  async handleDiscordLogin(params: {
+    userDetails: discordUser;
+    inviteCode?: string;
+    referralCode?: string;
+  }): Promise<string> {
     const discordUser: DiscordUser = await this.discordUserRepository.findByDiscordId({
       discordId: params.userDetails.id,
     });
@@ -73,7 +78,9 @@ export class AuthDiscordService {
         });
       }
 
-      const token: any = await this.authService.createToken({ user: discordUser.user });
+      const token = (await this.authService.createToken({ user: discordUser.user })) as unknown as {
+        data: { attributes: { refreshToken: string } };
+      };
       const authCodeId = randomUUID();
 
       await this.authService.createCode({
@@ -98,7 +105,7 @@ export class AuthDiscordService {
       return `${this.config.get<ConfigAppInterface>("app").url}oauth/error?error=waitlist_required`;
     }
 
-    // Store pending registration in Redis (include invite code if present)
+    // Store pending registration in Redis (include invite code AND referral code if present)
     const pendingId = await this.pendingRegistrationService.create({
       provider: "discord",
       providerUserId: params.userDetails.id,
@@ -106,6 +113,7 @@ export class AuthDiscordService {
       name: params.userDetails.username,
       avatar: params.userDetails.avatar,
       inviteCode: params.inviteCode,
+      referralCode: params.referralCode,
     });
 
     return `${this.config.get<ConfigAppInterface>("app").url}auth/consent?pending=${pendingId}`;

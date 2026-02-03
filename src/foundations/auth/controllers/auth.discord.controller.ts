@@ -1,4 +1,4 @@
-import { Controller, Get, HttpException, HttpStatus, Query, Req, Res } from "@nestjs/common";
+import { Controller, Get, HttpException, HttpStatus, Query, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { FastifyReply } from "fastify";
 import { authMeta } from "..";
@@ -18,22 +18,23 @@ export class AuthDiscordController {
   }
 
   @Get(`${authMeta.endpoint}/discord`)
-  async loginWithDiscord(@Res() reply: FastifyReply, @Query("invite") inviteCode?: string) {
+  async loginWithDiscord(
+    @Res() reply: FastifyReply,
+    @Query("invite") inviteCode?: string,
+    @Query("referral") referralCode?: string,
+  ) {
     if (!this.discordConfig.clientId || !this.discordConfig.clientSecret)
       throw new HttpException("Login with Discord is not available", HttpStatus.NOT_IMPLEMENTED);
 
-    reply.redirect(this.authDiscordService.generateLoginUrl(inviteCode), 302);
+    reply.redirect(this.authDiscordService.generateLoginUrl(inviteCode, referralCode), 302);
   }
 
   @Get(`${authMeta.endpoint}/callback/discord`)
-  async callbackDiscord(
-    @Res() reply: FastifyReply,
-    @Req() request: any,
-    @Query("code") code: string,
-    @Query("state") state?: string,
-  ) {
-    // Parse invite code from state if present
-    const inviteCode = state ? this.authDiscordService.parseInviteCodeFromState(state) : undefined;
+  async callbackDiscord(@Res() reply: FastifyReply, @Query("code") code: string, @Query("state") state?: string) {
+    // Parse invite code and referral code from state if present
+    const stateData = state ? this.authDiscordService.parseStateData(state) : undefined;
+    const inviteCode = stateData?.invite;
+    const referralCode = stateData?.referral;
 
     const accessToken = await this.authDiscordService.exchangeCodeForToken(code);
     const userDetails = await this.authDiscordService.fetchUserDetails(accessToken);
@@ -41,6 +42,7 @@ export class AuthDiscordController {
     const redirectUrl = await this.authDiscordService.handleDiscordLogin({
       userDetails: userDetails as discordUser,
       inviteCode,
+      referralCode,
     });
 
     reply.redirect(redirectUrl, 302);

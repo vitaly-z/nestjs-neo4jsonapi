@@ -31,11 +31,12 @@ export class AuthGoogleService {
     return this.config.get<ConfigAuthInterface>("auth");
   }
 
-  generateLoginUrl(inviteCode?: string): string {
-    // Encode invite code in state parameter if present
+  generateLoginUrl(inviteCode?: string, referralCode?: string): string {
+    // Encode invite code AND referral code in state parameter
     const stateData = {
       nonce: randomUUID(),
       ...(inviteCode && { invite: inviteCode }),
+      ...(referralCode && { referral: referralCode }),
     };
     const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
 
@@ -51,16 +52,20 @@ export class AuthGoogleService {
     return `${this._googleAuthUrl}?${params.toString()}`;
   }
 
-  parseInviteCodeFromState(state: string): string | undefined {
+  parseStateData(state: string): { invite?: string; referral?: string } | undefined {
     try {
       const stateData = JSON.parse(Buffer.from(state, "base64url").toString());
-      return stateData.invite;
+      return { invite: stateData.invite, referral: stateData.referral };
     } catch {
       return undefined;
     }
   }
 
-  async handleGoogleLogin(params: { userDetails: googleUser; inviteCode?: string }): Promise<string> {
+  async handleGoogleLogin(params: {
+    userDetails: googleUser;
+    inviteCode?: string;
+    referralCode?: string;
+  }): Promise<string> {
     const googleUser: GoogleUser = await this.googleUserRepository.findByGoogleId({
       googleId: params.userDetails.id,
     });
@@ -74,7 +79,9 @@ export class AuthGoogleService {
         });
       }
 
-      const token: any = await this.authService.createToken({ user: googleUser.user });
+      const token = (await this.authService.createToken({ user: googleUser.user })) as unknown as {
+        data: { attributes: { refreshToken: string } };
+      };
       const authCodeId = randomUUID();
 
       await this.authService.createCode({
@@ -99,7 +106,7 @@ export class AuthGoogleService {
       return `${this.config.get<ConfigAppInterface>("app").url}oauth/error?error=waitlist_required`;
     }
 
-    // Store pending registration in Redis (include invite code if present)
+    // Store pending registration in Redis (include invite code AND referral code if present)
     const pendingId = await this.pendingRegistrationService.create({
       provider: "google",
       providerUserId: params.userDetails.id,
@@ -107,6 +114,7 @@ export class AuthGoogleService {
       name: params.userDetails.name,
       avatar: params.userDetails.picture,
       inviteCode: params.inviteCode,
+      referralCode: params.referralCode,
     });
 
     return `${this.config.get<ConfigAppInterface>("app").url}auth/consent?pending=${pendingId}`;

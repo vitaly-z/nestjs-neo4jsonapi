@@ -4,7 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 vi.mock("../services/auth.google.service", () => ({
   AuthGoogleService: vi.fn().mockImplementation(() => ({
     generateLoginUrl: vi.fn(),
-    parseInviteCodeFromState: vi.fn(),
+    parseStateData: vi.fn(),
     exchangeCodeForToken: vi.fn(),
     fetchUserDetails: vi.fn(),
     handleGoogleLogin: vi.fn(),
@@ -52,7 +52,7 @@ describe("AuthGoogleController", () => {
   beforeEach(async () => {
     const mockAuthGoogleService = {
       generateLoginUrl: vi.fn(),
-      parseInviteCodeFromState: vi.fn(),
+      parseStateData: vi.fn(),
       exchangeCodeForToken: vi.fn(),
       fetchUserDetails: vi.fn(),
       handleGoogleLogin: vi.fn(),
@@ -118,6 +118,7 @@ describe("AuthGoogleController", () => {
 
   describe("GET /auth/callback/google (callbackGoogle)", () => {
     const mockCode = "google-auth-code-123";
+    const mockState = "encoded-state";
     const mockAccessToken = "google-access-token-456";
     const mockUserDetails = {
       id: "google-user-id",
@@ -130,48 +131,104 @@ describe("AuthGoogleController", () => {
 
     it("should handle Google callback and redirect to success URL", async () => {
       const redirectUrl = "http://app.example.com/auth?code=success-code";
+      authGoogleService.parseStateData.mockReturnValue(undefined);
       authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authGoogleService.handleGoogleLogin.mockResolvedValue(redirectUrl);
 
-      await controller.callbackGoogle(mockReply, mockCode);
+      await controller.callbackGoogle(mockReply, mockCode, mockState);
 
       expect(authGoogleService.exchangeCodeForToken).toHaveBeenCalledWith(mockCode);
       expect(authGoogleService.fetchUserDetails).toHaveBeenCalledWith(mockAccessToken);
-      expect(authGoogleService.handleGoogleLogin).toHaveBeenCalledWith({ userDetails: mockUserDetails });
+      expect(authGoogleService.handleGoogleLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: undefined,
+        referralCode: undefined,
+      });
       expect(mockReply.redirect).toHaveBeenCalledWith(redirectUrl, 302);
     });
 
     it("should pass code to exchange for token", async () => {
       const customCode = "custom-google-code";
+      authGoogleService.parseStateData.mockReturnValue(undefined);
       authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authGoogleService.handleGoogleLogin.mockResolvedValue("http://redirect.url");
 
-      await controller.callbackGoogle(mockReply, customCode);
+      await controller.callbackGoogle(mockReply, customCode, mockState);
 
       expect(authGoogleService.exchangeCodeForToken).toHaveBeenCalledWith(customCode);
     });
 
+    it("should parse state and pass invite code to handleGoogleLogin", async () => {
+      authGoogleService.parseStateData.mockReturnValue({ invite: "test-invite", referral: undefined });
+      authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authGoogleService.handleGoogleLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackGoogle(mockReply, mockCode, mockState);
+
+      expect(authGoogleService.parseStateData).toHaveBeenCalledWith(mockState);
+      expect(authGoogleService.handleGoogleLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: "test-invite",
+        referralCode: undefined,
+      });
+    });
+
+    it("should parse state and pass referral code to handleGoogleLogin", async () => {
+      authGoogleService.parseStateData.mockReturnValue({ invite: undefined, referral: "test-referral" });
+      authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authGoogleService.handleGoogleLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackGoogle(mockReply, mockCode, mockState);
+
+      expect(authGoogleService.parseStateData).toHaveBeenCalledWith(mockState);
+      expect(authGoogleService.handleGoogleLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: undefined,
+        referralCode: "test-referral",
+      });
+    });
+
+    it("should parse state and pass both invite and referral codes to handleGoogleLogin", async () => {
+      authGoogleService.parseStateData.mockReturnValue({ invite: "test-invite", referral: "test-referral" });
+      authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authGoogleService.handleGoogleLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackGoogle(mockReply, mockCode, mockState);
+
+      expect(authGoogleService.handleGoogleLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: "test-invite",
+        referralCode: "test-referral",
+      });
+    });
+
     it("should handle token exchange failure", async () => {
+      authGoogleService.parseStateData.mockReturnValue(undefined);
       authGoogleService.exchangeCodeForToken.mockRejectedValue(new Error("Invalid code"));
 
-      await expect(controller.callbackGoogle(mockReply, mockCode)).rejects.toThrow("Invalid code");
+      await expect(controller.callbackGoogle(mockReply, mockCode, mockState)).rejects.toThrow("Invalid code");
     });
 
     it("should handle user details fetch failure", async () => {
+      authGoogleService.parseStateData.mockReturnValue(undefined);
       authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authGoogleService.fetchUserDetails.mockRejectedValue(new Error("Failed to fetch user"));
 
-      await expect(controller.callbackGoogle(mockReply, mockCode)).rejects.toThrow("Failed to fetch user");
+      await expect(controller.callbackGoogle(mockReply, mockCode, mockState)).rejects.toThrow("Failed to fetch user");
     });
 
     it("should handle login processing failure", async () => {
+      authGoogleService.parseStateData.mockReturnValue(undefined);
       authGoogleService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authGoogleService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authGoogleService.handleGoogleLogin.mockRejectedValue(new Error("Login failed"));
 
-      await expect(controller.callbackGoogle(mockReply, mockCode)).rejects.toThrow("Login failed");
+      await expect(controller.callbackGoogle(mockReply, mockCode, mockState)).rejects.toThrow("Login failed");
     });
   });
 

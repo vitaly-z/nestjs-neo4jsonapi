@@ -4,6 +4,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 vi.mock("../services/auth.discord.service", () => ({
   AuthDiscordService: vi.fn().mockImplementation(() => ({
     generateLoginUrl: vi.fn(),
+    parseStateData: vi.fn(),
     exchangeCodeForToken: vi.fn(),
     fetchUserDetails: vi.fn(),
     handleDiscordLogin: vi.fn(),
@@ -51,6 +52,7 @@ describe("AuthDiscordController", () => {
   beforeEach(async () => {
     const mockAuthDiscordService = {
       generateLoginUrl: vi.fn(),
+      parseStateData: vi.fn(),
       exchangeCodeForToken: vi.fn(),
       fetchUserDetails: vi.fn(),
       handleDiscordLogin: vi.fn(),
@@ -127,48 +129,107 @@ describe("AuthDiscordController", () => {
 
     it("should handle Discord callback and redirect to success URL", async () => {
       const redirectUrl = "http://app.example.com/auth?code=success-code";
+      authDiscordService.parseStateData.mockReturnValue(undefined);
       authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authDiscordService.handleDiscordLogin.mockResolvedValue(redirectUrl);
 
-      await controller.callbackDiscord(mockReply, {}, mockCode);
+      await controller.callbackDiscord(mockReply, mockCode);
 
       expect(authDiscordService.exchangeCodeForToken).toHaveBeenCalledWith(mockCode);
       expect(authDiscordService.fetchUserDetails).toHaveBeenCalledWith(mockAccessToken);
-      expect(authDiscordService.handleDiscordLogin).toHaveBeenCalledWith({ userDetails: mockUserDetails });
+      expect(authDiscordService.handleDiscordLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: undefined,
+        referralCode: undefined,
+      });
       expect(mockReply.redirect).toHaveBeenCalledWith(redirectUrl, 302);
     });
 
     it("should pass code to exchange for token", async () => {
       const customCode = "custom-discord-code";
+      authDiscordService.parseStateData.mockReturnValue(undefined);
       authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authDiscordService.handleDiscordLogin.mockResolvedValue("http://redirect.url");
 
-      await controller.callbackDiscord(mockReply, {}, customCode);
+      await controller.callbackDiscord(mockReply, customCode);
 
       expect(authDiscordService.exchangeCodeForToken).toHaveBeenCalledWith(customCode);
     });
 
+    it("should parse state and pass invite code to handleDiscordLogin", async () => {
+      const mockState = "encoded-state";
+      authDiscordService.parseStateData.mockReturnValue({ invite: "test-invite", referral: undefined });
+      authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authDiscordService.handleDiscordLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackDiscord(mockReply, mockCode, mockState);
+
+      expect(authDiscordService.parseStateData).toHaveBeenCalledWith(mockState);
+      expect(authDiscordService.handleDiscordLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: "test-invite",
+        referralCode: undefined,
+      });
+    });
+
+    it("should parse state and pass referral code to handleDiscordLogin", async () => {
+      const mockState = "encoded-state";
+      authDiscordService.parseStateData.mockReturnValue({ invite: undefined, referral: "test-referral" });
+      authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authDiscordService.handleDiscordLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackDiscord(mockReply, mockCode, mockState);
+
+      expect(authDiscordService.parseStateData).toHaveBeenCalledWith(mockState);
+      expect(authDiscordService.handleDiscordLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: undefined,
+        referralCode: "test-referral",
+      });
+    });
+
+    it("should parse state and pass both invite and referral codes to handleDiscordLogin", async () => {
+      const mockState = "encoded-state";
+      authDiscordService.parseStateData.mockReturnValue({ invite: "test-invite", referral: "test-referral" });
+      authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
+      authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
+      authDiscordService.handleDiscordLogin.mockResolvedValue("http://redirect.url");
+
+      await controller.callbackDiscord(mockReply, mockCode, mockState);
+
+      expect(authDiscordService.handleDiscordLogin).toHaveBeenCalledWith({
+        userDetails: mockUserDetails,
+        inviteCode: "test-invite",
+        referralCode: "test-referral",
+      });
+    });
+
     it("should handle token exchange failure", async () => {
+      authDiscordService.parseStateData.mockReturnValue(undefined);
       authDiscordService.exchangeCodeForToken.mockRejectedValue(new Error("Invalid code"));
 
-      await expect(controller.callbackDiscord(mockReply, {}, mockCode)).rejects.toThrow("Invalid code");
+      await expect(controller.callbackDiscord(mockReply, mockCode)).rejects.toThrow("Invalid code");
     });
 
     it("should handle user details fetch failure", async () => {
+      authDiscordService.parseStateData.mockReturnValue(undefined);
       authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authDiscordService.fetchUserDetails.mockRejectedValue(new Error("Failed to fetch user"));
 
-      await expect(controller.callbackDiscord(mockReply, {}, mockCode)).rejects.toThrow("Failed to fetch user");
+      await expect(controller.callbackDiscord(mockReply, mockCode)).rejects.toThrow("Failed to fetch user");
     });
 
     it("should handle login processing failure", async () => {
+      authDiscordService.parseStateData.mockReturnValue(undefined);
       authDiscordService.exchangeCodeForToken.mockResolvedValue(mockAccessToken);
       authDiscordService.fetchUserDetails.mockResolvedValue(mockUserDetails);
       authDiscordService.handleDiscordLogin.mockRejectedValue(new Error("Login failed"));
 
-      await expect(controller.callbackDiscord(mockReply, {}, mockCode)).rejects.toThrow("Login failed");
+      await expect(controller.callbackDiscord(mockReply, mockCode)).rejects.toThrow("Login failed");
     });
   });
 

@@ -654,4 +654,74 @@ export class CompanyRepository implements OnModuleInit {
 
     return this.neo4j.readMany(query);
   }
+
+  /**
+   * Find company by referral code
+   *
+   * @param params - Query parameters
+   * @param params.referralCode - The referral code to search for
+   * @returns Company if found, null otherwise
+   */
+  async findByReferralCode(params: { referralCode: string }): Promise<Company | null> {
+    const query = this.neo4j.initQuery({ serialiser: CompanyDescriptor.model });
+
+    query.queryParams = {
+      referralCode: params.referralCode,
+    };
+
+    query.query = `
+      MATCH (company:Company {referralCode: $referralCode})
+      RETURN company
+    `;
+
+    return this.neo4j.readOne(query);
+  }
+
+  /**
+   * Set referral code for a company
+   *
+   * @param params - Parameters
+   * @param params.companyId - Company identifier
+   * @param params.referralCode - The referral code to set
+   */
+  async setReferralCode(params: { companyId: string; referralCode: string }): Promise<void> {
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      referralCode: params.referralCode,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET company.referralCode = $referralCode,
+          company.updatedAt = datetime()
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
+
+  /**
+   * Add extra tokens to a company (increments availableExtraTokens)
+   *
+   * @param params - Parameters
+   * @param params.companyId - Company identifier
+   * @param params.tokens - Number of tokens to add
+   */
+  async addExtraTokens(params: { companyId: string; tokens: number }): Promise<void> {
+    const query = this.neo4j.initQuery();
+
+    query.queryParams = {
+      companyId: params.companyId,
+      tokens: params.tokens,
+    };
+
+    query.query = `
+      MATCH (company:Company {id: $companyId})
+      SET company.availableExtraTokens = COALESCE(company.availableExtraTokens, 0) + $tokens,
+          company.updatedAt = datetime()
+    `;
+
+    await this.neo4j.writeOne(query);
+  }
 }

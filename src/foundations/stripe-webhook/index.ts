@@ -28,3 +28,6 @@ export * from "./serialisers/stripe-webhook-event.serialiser";
 
 // Processor
 export * from "./processors/stripe-webhook.processor";
+
+// Interfaces
+export * from "./interfaces/referral-completion-handler.interface";

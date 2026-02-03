@@ -27,6 +27,7 @@ import { User } from "../../user/entities/user";
 import { UserRepository } from "../../user/repositories/user.repository";
 import { UserService } from "../../user/services/user.service";
 import { WaitlistService } from "../../waitlist/services/waitlist.service";
+import { REGISTRATION_HOOK, RegistrationHookInterface } from "../interfaces/registration-hook.interface";
 import { PendingRegistrationService } from "./pending-registration.service";
 import { TrialQueueService } from "./trial-queue.service";
 
@@ -54,6 +55,20 @@ export class AuthService {
     @Inject(forwardRef(() => TwoFactorService))
     private readonly twoFactorService: TwoFactorService,
   ) {}
+
+  /**
+   * Lazily resolves the registration hook from the module container.
+   * This allows app modules loaded after AuthModule to provide the hook.
+   * Returns undefined if no hook is registered.
+   */
+  private getRegistrationHook(): RegistrationHookInterface | undefined {
+    try {
+      return this.moduleRef.get(REGISTRATION_HOOK, { strict: false });
+    } catch {
+      // No registration hook provided - this is fine
+      return undefined;
+    }
+  }
 
   private get appConfig(): ConfigAppInterface {
     return this.configService.get<ConfigAppInterface>("app");
@@ -290,6 +305,27 @@ export class AuthService {
       marketingConsentAt: params.data.attributes.marketingConsentAt,
     });
 
+    // Set CLS context for registration hooks
+    this.clsService.set("companyId", company.id);
+    this.clsService.set("userId", user.id);
+
+    // Call registration hook (for referral tracking, etc.)
+    if (params.data.attributes.referralCode) {
+      const registrationHook = this.getRegistrationHook();
+      if (registrationHook) {
+        try {
+          await registrationHook.onRegistrationComplete({
+            companyId: company.id,
+            userId: user.id,
+            referralCode: params.data.attributes.referralCode,
+          });
+        } catch (error) {
+          // Log but don't fail registration if hook fails
+          this.logger.error("Registration hook failed:", error);
+        }
+      }
+    }
+
     // After successful registration, mark waitlist entry as registered
     if (registrationMode === "waitlist" && params.data.attributes.inviteCode) {
       await this.waitlistService.markAsRegistered({
@@ -496,6 +532,23 @@ export class AuthService {
     // Set CLS context
     this.clsService.set("companyId", companyId);
     this.clsService.set("userId", userId);
+
+    // Call registration hook (for referral tracking, etc.)
+    if (pending.referralCode) {
+      const registrationHook = this.getRegistrationHook();
+      if (registrationHook) {
+        try {
+          await registrationHook.onRegistrationComplete({
+            companyId: companyId,
+            userId: userId,
+            referralCode: pending.referralCode,
+          });
+        } catch (error) {
+          // Log but don't fail registration if hook fails
+          this.logger.error("Registration hook failed:", error);
+        }
+      }
+    }
 
     // Queue trial creation (async, non-blocking)
     await this.trialQueueService.queueTrialCreation({

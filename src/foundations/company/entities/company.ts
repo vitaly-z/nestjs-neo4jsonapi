@@ -25,6 +25,9 @@ export type Company = Entity & {
   scheduledDeletionAt?: Date;
   deactivationReason?: string;
 
+  // Referral system
+  referralCode?: string; // UUID referral code
+
   feature: Feature[];
   module: Module[];
 };
@@ -53,6 +56,7 @@ export const CompanyDescriptor = defineEntity<Company>()({
     subscriptionEndedAt: { type: "datetime" },
     scheduledDeletionAt: { type: "datetime" },
     deactivationReason: { type: "string" },
+    referralCode: { type: "string" },
   },
 
   // Relationship definitions

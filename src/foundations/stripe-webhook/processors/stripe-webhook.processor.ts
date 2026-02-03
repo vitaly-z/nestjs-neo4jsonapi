@@ -1,7 +1,12 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
+import { Inject, Optional } from "@nestjs/common";
 import { Job } from "bullmq";
 import { ClsService } from "nestjs-cls";
 import Stripe from "stripe";
+import {
+  REFERRAL_COMPLETION_HANDLER,
+  ReferralCompletionHandler,
+} from "../interfaces/referral-completion-handler.interface";
 import { QueueId } from "../../../config/enums/queue.id";
 import { AppLoggingService } from "../../../core/logging";
 import { WebSocketService } from "../../../core/websocket/services/websocket.service";
@@ -43,6 +48,9 @@ export class StripeWebhookProcessor extends WorkerHost {
     private readonly logger: AppLoggingService,
     private readonly cls: ClsService,
     private readonly webSocketService: WebSocketService,
+    @Optional()
+    @Inject(REFERRAL_COMPLETION_HANDLER)
+    private readonly referralCompletionHandler?: ReferralCompletionHandler,
   ) {
     super();
   }
@@ -506,6 +514,20 @@ export class StripeWebhookProcessor extends WorkerHost {
             `Failed to clear deletion schedule for ${featureSyncCompanyId}: ${error instanceof Error ? error.message : "Unknown error"}`,
           );
           // Don't throw - deletion schedule clear failure should not fail webhook
+        }
+
+        // Complete referral if handler is provided (non-blocking)
+        if (this.referralCompletionHandler) {
+          try {
+            await this.referralCompletionHandler.completeReferralOnPayment({
+              referredCompanyId: featureSyncCompanyId,
+            });
+          } catch (error) {
+            this.logger.error(
+              `Referral completion failed for company ${featureSyncCompanyId}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            );
+            // Don't throw - referral failure should not fail webhook processing
+          }
         }
       }
 

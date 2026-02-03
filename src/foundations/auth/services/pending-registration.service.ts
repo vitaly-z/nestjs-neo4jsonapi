@@ -12,6 +12,7 @@ export interface PendingRegistration {
   name: string;
   avatar?: string;
   inviteCode?: string;
+  referralCode?: string;
   createdAt: string;
 }
 

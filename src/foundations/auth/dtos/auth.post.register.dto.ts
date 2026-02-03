@@ -44,6 +44,10 @@ export class AuthPostRegisterAttributesDTO {
   @IsOptional()
   @IsString()
   inviteCode?: string;
+
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }
 
 export class AuthPostRegisterDataDTO {

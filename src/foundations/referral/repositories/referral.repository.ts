@@ -36,11 +36,7 @@ export class ReferralRepository extends AbstractRepository<Referral, typeof Refe
    * @param params.referredCompanyId - The company that was referred
    * @returns true if the referral was created, false if one or both companies don't exist
    */
-  async createReferral(params: {
-    id: string;
-    referrerCompanyId: string;
-    referredCompanyId: string;
-  }): Promise<boolean> {
+  async createReferral(params: { id: string; referrerCompanyId: string; referredCompanyId: string }): Promise<boolean> {
     const results = await this.neo4j.executeInTransaction([
       {
         query: `

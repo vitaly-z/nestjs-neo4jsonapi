@@ -1,3 +1,16 @@
+## [1.45.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.44.0...v1.45.0) (2026-02-05)
+
+### 🚀 Features
+
+* add oauth referral tracking ([7581b7e](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/7581b7e13faa74ed54c53e0f101d6a66e13b47dc))
+* add referral feature ([d38085c](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d38085cbb4ebaa7e1be2c26124896353ff3de4f9))
+* add referral support ([516cf82](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/516cf82e1cebec9bb19e47c0d8cbb87f62fbac26))
+
+### 💎 Styles
+
+* redesign email ([94a47cd](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/94a47cd4507ee93fc5978b12eac92a42a134ab24))
+* redesign email ([f263bbb](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/f263bbbaf04bd4067002e1d5cddc9fd9aaf55177))
+
 ## [1.44.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.43.2...v1.44.0) (2026-01-30)
 
 ### 🚀 Features

@@ -8,8 +8,18 @@ export const updateRelationshipQuery = (params: {
   relationshipProperties?: { [key: string]: any }[] | ((id: string) => { [key: string]: any });
   queryParams?: any;
 }): string => {
+  // COLLISION FIX: Use alias when node and param names collide
+  const paramAlias = params.node.toLowerCase() === params.param.toLowerCase() ? `${params.param}_ids` : params.param;
+
+  // SYNC queryParams: When there's a collision, copy values to the aliased key
+  if (params.queryParams && params.node.toLowerCase() === params.param.toLowerCase()) {
+    if (params.queryParams[params.param] !== undefined) {
+      params.queryParams[paramAlias] = params.queryParams[params.param];
+    }
+  }
+
   let relationshipProps: string | string[] = [];
-  const propertiesMapParam = `${params.param}PropertiesMap`;
+  const propertiesMapParam = `${paramAlias}PropertiesMap`;
 
   if (params.relationshipProperties) {
     // Check if it's a resolver function
@@ -54,14 +64,14 @@ export const updateRelationshipQuery = (params: {
   return `
     WITH ${params.node}
     OPTIONAL MATCH (${params.node})${params.relationshipToNode ? "-" : "<-"}[rel:${params.relationshipName}]${params.relationshipToNode ? "->" : "-"}(existing:${params.label})
-    WHERE NOT existing.id IN $${params.param}
+    WHERE NOT existing.id IN $${paramAlias}
     DELETE rel
 
     ${
       params.values && params.values.length > 0
         ? `
-        WITH ${params.node}, $${params.param} AS ${params.param}
-        UNWIND ${params.param} AS id
+        WITH ${params.node}, $${paramAlias} AS ${paramAlias}
+        UNWIND ${paramAlias} AS id
         MATCH (new:${params.label} {id: id})
         MERGE (${params.node})${params.relationshipToNode ? "-" : "<-"}[rel:${params.relationshipName}]${params.relationshipToNode ? "->" : "-"}(new)
         ${params.relationshipProperties ? `SET ${relationshipProps}, rel.updatedAt = datetime()` : ""}

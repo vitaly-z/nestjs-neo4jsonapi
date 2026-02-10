@@ -185,7 +185,28 @@ export class EntityFactory {
 
     const model = params.model as any;
 
-    if (model.singleChildrenTokens) {
+    // Handle SINGLE relationships - prefer new relationship info if available
+    if (model.singleChildrenRelationships && model.singleChildrenRelationships.length > 0) {
+      for (const relInfo of model.singleChildrenRelationships) {
+        const childModel = modelRegistry.get(relInfo.nodeName);
+        if (!childModel) continue;
+
+        // Use relationship name for Cypher column (matches buildReturnStatement)
+        const childName = `${params.name}_${relInfo.relationshipName}`;
+        const childEntity = this.createOrMerge({
+          model: childModel,
+          record: params.record,
+          name: childName,
+          nodeMap: params.nodeMap,
+        });
+
+        if (childEntity) {
+          // Use relationship name for property assignment
+          entity[relInfo.relationshipName] = childEntity;
+        }
+      }
+    } else if (model.singleChildrenTokens) {
+      // Fallback for backwards compatibility
       for (const token of model.singleChildrenTokens) {
         const childModel = modelRegistry.get(token);
         if (!childModel) continue;
@@ -204,7 +225,34 @@ export class EntityFactory {
       }
     }
 
-    if (model.childrenTokens) {
+    // Handle MANY relationships - prefer new relationship info if available
+    if (model.childrenRelationships && model.childrenRelationships.length > 0) {
+      for (const relInfo of model.childrenRelationships) {
+        const childModel = modelRegistry.get(relInfo.nodeName);
+        if (!childModel) continue;
+
+        // Use relationship name for Cypher column (matches buildReturnStatement)
+        const childName = `${params.name}_${relInfo.relationshipName}`;
+        const childEntity = this.createOrMerge({
+          model: childModel,
+          record: params.record,
+          name: childName,
+          nodeMap: params.nodeMap,
+        });
+
+        if (childEntity) {
+          // Use relationship name for property assignment
+          if (!Array.isArray(entity[relInfo.relationshipName])) {
+            entity[relInfo.relationshipName] = [];
+          }
+          const already = entity[relInfo.relationshipName].some((x: any) => x.id === childEntity.id);
+          if (!already) {
+            entity[relInfo.relationshipName].push(childEntity);
+          }
+        }
+      }
+    } else if (model.childrenTokens) {
+      // Fallback for backwards compatibility
       for (const token of model.childrenTokens) {
         const childModel = modelRegistry.get(token);
         if (!childModel) continue;

@@ -613,15 +613,15 @@ describe("JsonApiService", () => {
         },
       };
 
-      // Only include users, not categories
-      const paginator = new JsonApiPaginator("include=users");
+      // Only include author relationship, not category (JSON:API spec: include uses relationship names)
+      const paginator = new JsonApiPaginator("include=author");
 
       const result = await service.serialise(data, builder as any, "https://api.example.com/posts", paginator);
 
       expect(result.included).toBeDefined();
       const includedTypes = result.included.map((i: any) => i.type);
-      expect(includedTypes).toContain("users");
-      expect(includedTypes).not.toContain("categories");
+      expect(includedTypes).toContain("users"); // author relationship has type "users"
+      expect(includedTypes).not.toContain("categories"); // category not in include list
     });
 
     it("should deduplicate included resources", async () => {

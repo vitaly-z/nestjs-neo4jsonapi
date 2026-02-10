@@ -5,7 +5,7 @@ import { BaseConfigInterface } from "../../config/interfaces";
 import { JsonApiSerialiserFactory } from "../../core/jsonapi/factories/jsonapi.serialiser.factory";
 import { DescriptorBasedSerialiser } from "../../core/jsonapi/serialisers/descriptor.based.serialiser";
 import { mapEntity } from "../abstracts/entity";
-import { DataModelInterface } from "../interfaces/datamodel.interface";
+import { DataModelInterface, RelationshipInfo } from "../interfaces/datamodel.interface";
 import {
   ComputedFieldDef,
   CypherType,
@@ -213,14 +213,25 @@ export function defineEntity<T>() {
     // Derive childrenTokens from relationships
     // singleChildrenTokens: company (if scoped) + cardinality 'one' relationships
     // childrenTokens: cardinality 'many' relationships
+    // Also populate relationship info arrays for proper self-referential support
     const singleChildrenTokens: string[] = isCompanyScoped ? ["company"] : [];
     const childrenTokens: string[] = [];
+    const singleChildrenRelationships: RelationshipInfo[] = [];
+    const childrenRelationships: RelationshipInfo[] = [];
 
-    for (const [, rel] of Object.entries(relationships)) {
+    for (const [name, rel] of Object.entries(relationships)) {
       if (rel.cardinality === "one") {
         singleChildrenTokens.push(rel.model.nodeName);
+        singleChildrenRelationships.push({
+          nodeName: rel.model.nodeName,
+          relationshipName: name,
+        });
       } else {
         childrenTokens.push(rel.model.nodeName);
+        childrenRelationships.push({
+          nodeName: rel.model.nodeName,
+          relationshipName: name,
+        });
       }
     }
 
@@ -330,6 +341,8 @@ export function defineEntity<T>() {
       serialiser: serialiserClass,
       singleChildrenTokens,
       childrenTokens,
+      singleChildrenRelationships,
+      childrenRelationships,
     };
 
     // Assign model to descriptor

@@ -58,18 +58,12 @@ export class JsonApiService {
     return await this.serialise(records, builder.create(), url, paginator);
   }
 
-  private _addToIncluded(includedElements: any[], newElements: any[], paginator?: JsonApiPaginator) {
+  private _addToIncluded(includedElements: any[], newElements: any[], _paginator?: JsonApiPaginator) {
     const uniqueIdentifiers = new Set(includedElements.map((e) => `${e.type}-${e.id}`));
 
     newElements.forEach((element) => {
-      // If include parameter was explicitly specified, filter based on includedType
-      if (paginator && paginator.includeSpecified) {
-        if (!paginator.includedType.includes(element.type)) {
-          return; // Filter out types not in the include parameter
-        }
-      }
-      // If include not specified, allow all types (default behavior)
-
+      // Note: filtering by relationship name now happens in serialiseData
+      // when adding to includedElements. We just need to dedupe here.
       const identifier = `${element.type}-${element.id}`;
 
       if (!uniqueIdentifiers.has(identifier)) {
@@ -252,7 +246,17 @@ export class JsonApiService {
             }
           }
 
-          if (!relationship.excluded && additionalIncludeds.length > 0) includedElements.push(...additionalIncludeds);
+          // Only add to included if:
+          // 1. include parameter was not specified (include all), OR
+          // 2. this relationship is explicitly in the include list
+          const relationshipName = relationship.name ?? key;
+          const shouldIncludeRelated =
+            !paginator?.includeSpecified ||
+            paginator.includedType.some((t) => t.toLowerCase() === relationshipName.toLowerCase());
+
+          if (!relationship.excluded && shouldIncludeRelated && additionalIncludeds.length > 0) {
+            includedElements.push(...additionalIncludeds);
+          }
 
           serialisedData.relationships[relationship.name ?? key] = resourceLinkage;
         } else if (
@@ -270,7 +274,15 @@ export class JsonApiService {
               item, // Pass parent item for per-item meta access
             );
 
-            if (!relationship.excluded && additionalIncludeds.length > 0) includedElements.push(...additionalIncludeds);
+            // Only add to included if relationship is in the include list
+            const m2mRelationshipName = relationship.name ?? key;
+            const shouldIncludeM2mRelated =
+              !paginator?.includeSpecified ||
+              paginator.includedType.some((t) => t.toLowerCase() === m2mRelationshipName.toLowerCase());
+
+            if (!relationship.excluded && shouldIncludeM2mRelated && additionalIncludeds.length > 0) {
+              includedElements.push(...additionalIncludeds);
+            }
 
             if (relationship.forceSingle === true) {
               serialisedData.relationships[relationship.name ?? key] = {

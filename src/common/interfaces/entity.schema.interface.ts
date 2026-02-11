@@ -115,6 +115,39 @@ export interface RelationshipDef {
   dtoKey?: string;
   /** Fields stored on the relationship (edge properties). Only supported for cardinality: 'one' */
   fields?: RelationshipFieldDef[];
+  /** For polymorphic relationships - multiple possible types for same Neo4j label */
+  polymorphic?: PolymorphicConfig;
+}
+
+/**
+ * Data available to polymorphic discriminator function
+ */
+export interface PolymorphicDiscriminatorData {
+  /** Entity properties from Neo4j */
+  properties: Record<string, any>;
+  /** Neo4j labels on the node */
+  labels: string[];
+  /** Whether node has outgoing SPECIALISES relationship (for taxonomy case) */
+  hasParent?: boolean;
+}
+
+/**
+ * Configuration for polymorphic relationships where multiple entity types
+ * share the same Neo4j label but have different JSON:API types
+ */
+export interface PolymorphicConfig {
+  /** List of candidate models that could match this relationship */
+  candidates: DataMeta[];
+  /** Function that determines the correct model based on node data */
+  discriminator: (data: PolymorphicDiscriminatorData) => DataMeta;
+  /** Relationship type to check for discriminator (e.g., "SPECIALISES") */
+  discriminatorRelationship?: string;
+  /** Direction of discriminator relationship check: "out" = node has outgoing */
+  discriminatorDirection?: "in" | "out";
+  /** When true, also fetch the target of discriminatorRelationship for inclusion */
+  includeDiscriminatorTarget?: boolean;
+  /** Property name to assign the discriminator target to (e.g., "taxonomy" for LeafTaxonomy's parent) */
+  discriminatorTargetProperty?: string;
 }
 
 /**

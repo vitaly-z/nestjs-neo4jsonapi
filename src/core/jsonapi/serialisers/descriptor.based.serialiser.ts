@@ -6,6 +6,7 @@ import { EntityDescriptor, RelationshipDef } from "../../../common/interfaces/en
 import { modelRegistry } from "../../../common/registries/registry";
 import { AbstractJsonApiSerialiser } from "../abstracts/abstract.jsonapi.serialiser";
 import { JsonApiSerialiserFactory } from "../factories/jsonapi.serialiser.factory";
+import { PolymorphicRelationshipFactory } from "../factories/polymorphic.relationship.factory";
 import { JsonApiDataInterface } from "../interfaces/jsonapi.data.interface";
 import { JsonApiServiceInterface } from "../interfaces/jsonapi.service.interface";
 
@@ -118,6 +119,20 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
         // Use dtoKey if provided (e.g., 'topics' instead of 'topic')
         if (relDef.dtoKey && relDef.dtoKey !== relName) {
           relationship.name = relDef.dtoKey;
+        }
+        // Register serializers for polymorphic candidate models and set up dynamic factory
+        if (relDef.polymorphic) {
+          for (const candidateMeta of relDef.polymorphic.candidates) {
+            const candidateModel = modelRegistry.get(candidateMeta.nodeName);
+            if (candidateModel) {
+              this.serialiserFactory.create(candidateModel);
+            }
+          }
+          // Create dynamic factory for polymorphic relationships
+          relationship.dynamicFactory = new PolymorphicRelationshipFactory(
+            this.serialiserFactory,
+            relDef.polymorphic,
+          );
         }
         // Add relationship meta for edge properties (stored on the relationship)
         if (relDef.fields && relDef.fields.length > 0) {

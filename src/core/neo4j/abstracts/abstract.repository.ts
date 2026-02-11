@@ -171,6 +171,29 @@ export abstract class AbstractRepository<
         query += `${matchType} (${nodeName})-${relPattern}->(${relatedNodeName}:${rel.model.labelName})\n`;
       }
 
+      // Add polymorphic discriminator existence check
+      if (rel.polymorphic?.discriminatorRelationship) {
+        const discRel = rel.polymorphic.discriminatorRelationship;
+        const discDir = rel.polymorphic.discriminatorDirection ?? "out";
+        const hasParentAlias = `${relatedNodeName}_hasParent`;
+        if (discDir === "out") {
+          returnParts.push(`EXISTS((${relatedNodeName})-[:${discRel}]->()) AS ${hasParentAlias}`);
+        } else {
+          returnParts.push(`EXISTS((${relatedNodeName})<-[:${discRel}]-()) AS ${hasParentAlias}`);
+        }
+
+        // Optionally fetch the discriminator target (parent) for inclusion
+        if (rel.polymorphic.includeDiscriminatorTarget) {
+          const discTargetNodeName = `${relatedNodeName}_discTarget`;
+          if (discDir === "out") {
+            query += `OPTIONAL MATCH (${relatedNodeName})-[:${discRel}]->(${discTargetNodeName}:${rel.model.labelName})\n`;
+          } else {
+            query += `OPTIONAL MATCH (${relatedNodeName})<-[:${discRel}]-(${discTargetNodeName}:${rel.model.labelName})\n`;
+          }
+          returnParts.push(discTargetNodeName);
+        }
+      }
+
       // Add edge properties handling
       if (hasFields) {
         if (rel.cardinality === "one") {
@@ -216,6 +239,7 @@ export abstract class AbstractRepository<
       query += `RETURN ${returnParts.join(", ")}`;
     }
 
+    console.log(`[REPO] buildReturnStatement final query:\n${query}`);
     return query;
   }
 

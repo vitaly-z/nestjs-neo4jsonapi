@@ -156,6 +156,10 @@ export class EntityFactory {
     let entity = params.nodeMap.get(mapKey);
     if (!entity) {
       if (isNode) {
+        // Check for polymorphic discriminator data (e.g., skill_taxonomy_hasParent)
+        const hasParentKey = `${params.name}_hasParent`;
+        const hasParentValue = params.record.has(hasParentKey) ? params.record.get(hasParentKey) : undefined;
+
         entity = params.model.mapper({
           data: {
             ...data.properties,
@@ -165,6 +169,30 @@ export class EntityFactory {
           entityFactory: this,
           name: params.name,
         });
+        // Add _hasParent AFTER mapper (mapper doesn't preserve unknown properties)
+        if (hasParentValue !== undefined) {
+          entity._hasParent = hasParentValue;
+        }
+
+        // Check for polymorphic discriminator target (parent) in record
+        const discTargetKey = `${params.name}_discTarget`;
+        if (params.record.has(discTargetKey)) {
+          const parentNode = params.record.get(discTargetKey);
+          if (parentNode && parentNode.properties) {
+            // Create parent entity using same model mapper
+            const parentEntity = params.model.mapper({
+              data: {
+                ...parentNode.properties,
+                labels: parentNode.labels,
+              },
+              record: params.record,
+              entityFactory: this,
+              name: discTargetKey,
+            });
+            // Store on entity - polymorphic factory will assign to correct property
+            entity._discTarget = parentEntity;
+          }
+        }
       } else if (isRelationship) {
         entity = params.model.mapper({
           data: {

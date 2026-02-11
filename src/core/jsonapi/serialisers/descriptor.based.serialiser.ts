@@ -129,10 +129,7 @@ export class DescriptorBasedSerialiser extends AbstractJsonApiSerialiser impleme
             }
           }
           // Create dynamic factory for polymorphic relationships
-          relationship.dynamicFactory = new PolymorphicRelationshipFactory(
-            this.serialiserFactory,
-            relDef.polymorphic,
-          );
+          relationship.dynamicFactory = new PolymorphicRelationshipFactory(this.serialiserFactory, relDef.polymorphic);
         }
         // Add relationship meta for edge properties (stored on the relationship)
         if (relDef.fields && relDef.fields.length > 0) {

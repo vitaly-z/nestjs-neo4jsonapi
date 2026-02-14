@@ -4,8 +4,10 @@ import { QueueId } from "../../config";
 import { LLMModule } from "../../core/llm/llm.module";
 import { LoggingModule } from "../../core/logging/logging.module";
 import { CommunityModule } from "../../foundations/community/community.module";
+import { createWorkerProvider } from "../../common/decorators/conditional-service.decorator";
 import { CommunitySummariserProcessor } from "./processors/community.summariser.processor";
 import { CommunitySummariserService } from "./services/community.summariser.service";
+import { CommunitySummariserCron } from "./cron/community.summariser.cron";
 
 @Module({
   imports: [
@@ -14,7 +16,7 @@ import { CommunitySummariserService } from "./services/community.summariser.serv
     CommunityModule,
     BullModule.registerQueue({ name: QueueId.COMMUNITY_SUMMARISER }),
   ],
-  providers: [CommunitySummariserService, CommunitySummariserProcessor],
+  providers: [CommunitySummariserService, CommunitySummariserProcessor, createWorkerProvider(CommunitySummariserCron)],
   exports: [CommunitySummariserService],
 })
 export class CommunitySummariserModule {}

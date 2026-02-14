@@ -75,7 +75,7 @@ describe("DriftMigrationService", () => {
     addMemberToCommunity: vi.fn(),
     findById: vi.fn(),
     countByLevel: vi.fn(),
-    findStaleCommunities: vi.fn(),
+    countStaleCommunities: vi.fn(),
   });
 
   const createMockCommunityDetectorService = () => ({
@@ -272,7 +272,7 @@ describe("DriftMigrationService", () => {
         { level: 0, count: 5 },
         { level: 1, count: 3 },
       ]);
-      communityRepository.findStaleCommunities.mockResolvedValue([{ id: "stale1" }, { id: "stale2" }]);
+      communityRepository.countStaleCommunities.mockResolvedValue(2);
 
       // Act
       const result = await service.getMigrationStatus();
@@ -292,7 +292,7 @@ describe("DriftMigrationService", () => {
       // Arrange
       companyRepository.fetchAll.mockResolvedValue([MOCK_COMPANIES[0]]);
       communityRepository.countByLevel.mockResolvedValue([]);
-      communityRepository.findStaleCommunities.mockResolvedValue([]);
+      communityRepository.countStaleCommunities.mockResolvedValue(0);
 
       // Act
       const result = await service.getMigrationStatus();
@@ -307,7 +307,7 @@ describe("DriftMigrationService", () => {
       // Arrange
       companyRepository.fetchAll.mockResolvedValue([MOCK_COMPANIES[0]]);
       communityRepository.countByLevel.mockResolvedValue(null);
-      communityRepository.findStaleCommunities.mockResolvedValue([]);
+      communityRepository.countStaleCommunities.mockResolvedValue(0);
 
       // Act
       const result = await service.getMigrationStatus();
@@ -316,11 +316,11 @@ describe("DriftMigrationService", () => {
       expect(result.companies[0].totalCommunities).toBe(0);
     });
 
-    it("should handle null findStaleCommunities result", async () => {
+    it("should handle zero stale communities", async () => {
       // Arrange
       companyRepository.fetchAll.mockResolvedValue([MOCK_COMPANIES[0]]);
       communityRepository.countByLevel.mockResolvedValue([{ level: 0, count: 5 }]);
-      communityRepository.findStaleCommunities.mockResolvedValue(null);
+      communityRepository.countStaleCommunities.mockResolvedValue(0);
 
       // Act
       const result = await service.getMigrationStatus();
@@ -345,7 +345,7 @@ describe("DriftMigrationService", () => {
       // Arrange
       companyRepository.fetchAll.mockResolvedValue([MOCK_COMPANIES[0]]);
       communityRepository.countByLevel.mockResolvedValue([]);
-      communityRepository.findStaleCommunities.mockResolvedValue([]);
+      communityRepository.countStaleCommunities.mockResolvedValue(0);
 
       // Act
       await service.getMigrationStatus();

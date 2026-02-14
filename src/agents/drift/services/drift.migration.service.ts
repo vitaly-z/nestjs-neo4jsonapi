@@ -124,10 +124,9 @@ export class DriftMigrationService {
         this.clsService.set("companyId", companyId);
 
         const levelCounts = await this.communityRepository.countByLevel();
-        const staleCommunities = await this.communityRepository.findStaleCommunities(1000);
+        const staleCount = await this.communityRepository.countStaleCommunities();
 
         const totalCommunities = (levelCounts ?? []).reduce((sum, lc) => sum + lc.count, 0);
-        const staleCount = (staleCommunities ?? []).length;
 
         resolve({
           totalCommunities,

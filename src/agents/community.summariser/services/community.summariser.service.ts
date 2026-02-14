@@ -72,28 +72,15 @@ export class CommunitySummariserService {
   }
 
   /**
-   * Process stale communities and generate summaries
+   * Find a community by ID and generate its summary
    */
-  async processStaleCommunities(batchSize: number = 10): Promise<number> {
-    const staleCommunities = await this.communityRepository.findStaleCommunities(batchSize);
-
-    this.logger.debug(`Found ${staleCommunities.length} stale communities to process`, "CommunitySummariserService");
-
-    let processedCount = 0;
-
-    for (const community of staleCommunities) {
-      try {
-        await this.generateSummary(community);
-        processedCount++;
-      } catch (error) {
-        this.logger.error(
-          `Failed to generate summary for community ${community.id}: ${error.message}`,
-          "CommunitySummariserService",
-        );
-      }
+  async generateSummaryById(communityId: string): Promise<void> {
+    const community = await this.communityRepository.findById(communityId);
+    if (!community) {
+      this.logger.warn(`Community ${communityId} not found, skipping`, "CommunitySummariserService");
+      return;
     }
-
-    return processedCount;
+    await this.generateSummary(community);
   }
 
   /**

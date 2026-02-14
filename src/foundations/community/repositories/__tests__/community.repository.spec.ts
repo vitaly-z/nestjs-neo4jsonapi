@@ -302,26 +302,34 @@ describe("CommunityRepository", () => {
     });
   });
 
-  describe("findStaleCommunities", () => {
-    it("should find stale communities ordered by staleSince", async () => {
+  describe("findAllStaleCommunities", () => {
+    it("should find all stale communities with their company IDs", async () => {
+      const mockRecords = [
+        {
+          get: vi.fn((key: string) => {
+            if (key === "communityId") return TEST_IDS.communityId;
+            if (key === "companyId") return TEST_IDS.companyId;
+            return null;
+          }),
+        },
+      ];
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readMany.mockResolvedValue([MOCK_COMMUNITY]);
+      neo4jService.read.mockResolvedValue({ records: mockRecords });
 
-      const result = await repository.findStaleCommunities(10);
+      const result = await repository.findAllStaleCommunities();
 
-      expect(mockQuery.queryParams.limit).toBe(10);
       expect(mockQuery.query).toContain("community:Community {isStale: true}");
       expect(mockQuery.query).toContain("ORDER BY community.staleSince ASC");
-      expect(result).toEqual([MOCK_COMMUNITY]);
+      expect(result).toEqual([{ communityId: TEST_IDS.communityId, companyId: TEST_IDS.companyId }]);
     });
 
     it("should return empty array when no stale communities found", async () => {
       const mockQuery = createMockQuery();
       neo4jService.initQuery.mockReturnValue(mockQuery);
-      neo4jService.readMany.mockResolvedValue(null);
+      neo4jService.read.mockResolvedValue({ records: [] });
 
-      const result = await repository.findStaleCommunities(10);
+      const result = await repository.findAllStaleCommunities();
 
       expect(result).toEqual([]);
     });

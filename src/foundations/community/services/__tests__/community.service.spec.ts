@@ -21,7 +21,7 @@ describe("CommunityService", () => {
     addMemberToCommunity: vi.fn(),
     findById: vi.fn(),
     countByLevel: vi.fn(),
-    findStaleCommunities: vi.fn(),
+    findAllStaleCommunities: vi.fn(),
   });
 
   const createMockJsonApiService = () => ({

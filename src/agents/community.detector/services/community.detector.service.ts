@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { AppLoggingService } from "../../../core/logging/services/logging.service";
 import { Neo4jService } from "../../../core/neo4j/services/neo4j.service";
 import { CommunityRepository } from "../../../foundations/community/repositories/community.repository";
-import { CommunitySummariserService } from "../../community.summariser/services/community.summariser.service";
 
 interface DetectedCommunity {
   id: string;
@@ -22,7 +21,6 @@ export class CommunityDetectorService {
     private readonly neo4j: Neo4jService,
     private readonly logger: AppLoggingService,
     private readonly communityRepository: CommunityRepository,
-    private readonly summariserService: CommunitySummariserService,
   ) {}
 
   /**
@@ -392,19 +390,29 @@ export class CommunityDetectorService {
       // If no related communities, leave as orphan for next full detection
     }
 
-    // Generate summaries for affected communities
     if (affectedCommunityIds.size > 0) {
       this.logger.log(
-        `Assigned KeyConcepts to ${affectedCommunityIds.size} communities, generating summaries`,
+        `Assigned KeyConcepts to ${affectedCommunityIds.size} communities, marking as stale`,
         "CommunityDetectorService",
       );
 
-      for (const communityId of affectedCommunityIds) {
-        const community = await this.communityRepository.findById(communityId);
-        if (community) {
-          await this.summariserService.generateSummary(community);
-        }
-      }
+      await this.communityRepository.markAsStale(Array.from(affectedCommunityIds));
+    }
+  }
+
+  /**
+   * Detect or assign communities based on current state.
+   * - If no communities exist: run full Louvain detection
+   * - If communities exist: incrementally assign orphan KeyConcepts
+   */
+  async detectAndAssignCommunities(contentId: string, label: string): Promise<void> {
+    const levelCounts = await this.communityRepository.countByLevel();
+    const totalCommunities = levelCounts.reduce((sum, lc) => sum + lc.count, 0);
+
+    if (totalCommunities === 0) {
+      await this.detectCommunities();
+    } else {
+      await this.assignKeyConceptsToCommunities(contentId, label);
     }
   }
 }

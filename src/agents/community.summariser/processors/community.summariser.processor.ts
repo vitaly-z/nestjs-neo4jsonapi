@@ -6,8 +6,8 @@ import { AppLoggingService } from "../../../core/logging/services/logging.servic
 import { CommunitySummariserService } from "../services/community.summariser.service";
 
 interface CommunitySummariserJobData {
+  communityId: string;
   companyId: string;
-  batchSize?: number;
 }
 
 @Processor(QueueId.COMMUNITY_SUMMARISER, { concurrency: 1, lockDuration: 1000 * 60 * 5 })
@@ -38,22 +38,19 @@ export class CommunitySummariserProcessor extends WorkerHost {
   }
 
   async process(job: Job<CommunitySummariserJobData>): Promise<void> {
-    const { companyId, batchSize = 10 } = job.data;
+    const { communityId, companyId } = job.data;
 
     await this.cls.run(async () => {
       this.cls.set("companyId", companyId);
 
       this.logger.log(
-        `Starting community summarisation for company ${companyId} (batch size: ${batchSize})`,
+        `Starting community summarisation for community ${communityId} (company ${companyId})`,
         "CommunitySummariserProcessor",
       );
 
-      const processedCount = await this.summariserService.processStaleCommunities(batchSize);
+      await this.summariserService.generateSummaryById(communityId);
 
-      this.logger.log(
-        `Processed ${processedCount} stale communities for company ${companyId}`,
-        "CommunitySummariserProcessor",
-      );
+      this.logger.log(`Completed community summarisation for community ${communityId}`, "CommunitySummariserProcessor");
     });
   }
 }

@@ -29,7 +29,7 @@ describe("CommunitySummariserService", () => {
   });
 
   const createMockCommunityRepository = () => ({
-    findStaleCommunities: vi.fn(),
+    findById: vi.fn(),
     findMemberKeyConcepts: vi.fn(),
     findMemberRelationships: vi.fn(),
     updateSummary: vi.fn(),
@@ -139,36 +139,26 @@ describe("CommunitySummariserService", () => {
     });
   });
 
-  describe("processStaleCommunities", () => {
-    it("should return 0 when no stale communities found", async () => {
+  describe("generateSummaryById", () => {
+    it("should skip when community not found", async () => {
       // Arrange
-      communityRepository.findStaleCommunities.mockResolvedValue([]);
+      communityRepository.findById.mockResolvedValue(null);
 
       // Act
-      const result = await service.processStaleCommunities(10);
+      await service.generateSummaryById("nonexistent");
 
       // Assert
-      expect(result).toBe(0);
-      expect(communityRepository.findStaleCommunities).toHaveBeenCalledWith(10);
-      expect(logger.debug).toHaveBeenCalledWith("Found 0 stale communities to process", "CommunitySummariserService");
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Community nonexistent not found, skipping",
+        "CommunitySummariserService",
+      );
+      expect(communityRepository.findMemberKeyConcepts).not.toHaveBeenCalled();
     });
 
-    it("should use default batch size of 10", async () => {
+    it("should find community and generate summary", async () => {
       // Arrange
-      communityRepository.findStaleCommunities.mockResolvedValue([]);
-
-      // Act
-      await service.processStaleCommunities();
-
-      // Assert
-      expect(communityRepository.findStaleCommunities).toHaveBeenCalledWith(10);
-    });
-
-    it("should process all stale communities and return count", async () => {
-      // Arrange
-      const staleCommunities = [createMockCommunity({ id: "comm1" }), createMockCommunity({ id: "comm2" })];
-
-      communityRepository.findStaleCommunities.mockResolvedValue(staleCommunities);
+      const community = createMockCommunity();
+      communityRepository.findById.mockResolvedValue(community);
       communityRepository.findMemberKeyConcepts.mockResolvedValue([
         { id: "kc1", value: "Concept 1", description: "Description 1" },
       ]);
@@ -182,64 +172,11 @@ describe("CommunitySummariserService", () => {
       communityRepository.updateSummary.mockResolvedValue(undefined);
 
       // Act
-      const result = await service.processStaleCommunities(10);
+      await service.generateSummaryById(TEST_IDS.communityId);
 
       // Assert
-      expect(result).toBe(2);
-    });
-
-    it("should count communities even when they have no members (early return)", async () => {
-      // Arrange
-      const staleCommunities = [createMockCommunity({ id: "comm1" }), createMockCommunity({ id: "comm2" })];
-
-      communityRepository.findStaleCommunities.mockResolvedValue(staleCommunities);
-      communityRepository.findMemberKeyConcepts
-        .mockResolvedValueOnce([]) // First community has no members (returns early, but doesn't throw)
-        .mockResolvedValueOnce([{ id: "kc1", value: "Concept 1" }]); // Second community
-      communityRepository.findMemberRelationships.mockResolvedValue([]);
-      llmService.call.mockResolvedValue({
-        title: "Test Title",
-        summary: "Test Summary",
-        rating: 75,
-      });
-      embedderService.vectoriseText.mockResolvedValue([0.1, 0.2, 0.3]);
-      communityRepository.updateSummary.mockResolvedValue(undefined);
-
-      // Act
-      const result = await service.processStaleCommunities(10);
-
-      // Assert - both communities counted since generateSummary doesn't throw
-      expect(result).toBe(2);
-      // Verify that LLM was only called once (for the community with members)
-      expect(llmService.call).toHaveBeenCalledTimes(1);
-    });
-
-    it("should log errors and continue when processing fails", async () => {
-      // Arrange
-      const staleCommunities = [createMockCommunity({ id: "comm1" }), createMockCommunity({ id: "comm2" })];
-
-      communityRepository.findStaleCommunities.mockResolvedValue(staleCommunities);
-      communityRepository.findMemberKeyConcepts
-        .mockRejectedValueOnce(new Error("Database error"))
-        .mockResolvedValueOnce([{ id: "kc1", value: "Concept 1" }]);
-      communityRepository.findMemberRelationships.mockResolvedValue([]);
-      llmService.call.mockResolvedValue({
-        title: "Test Title",
-        summary: "Test Summary",
-        rating: 75,
-      });
-      embedderService.vectoriseText.mockResolvedValue([0.1, 0.2, 0.3]);
-      communityRepository.updateSummary.mockResolvedValue(undefined);
-
-      // Act
-      const result = await service.processStaleCommunities(10);
-
-      // Assert
-      expect(result).toBe(1); // Only second one processed
-      expect(logger.error).toHaveBeenCalledWith(
-        "Failed to generate summary for community comm1: Database error",
-        "CommunitySummariserService",
-      );
+      expect(communityRepository.findById).toHaveBeenCalledWith(TEST_IDS.communityId);
+      expect(communityRepository.updateSummary).toHaveBeenCalled();
     });
   });
 

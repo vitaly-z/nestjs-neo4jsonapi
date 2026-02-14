@@ -155,20 +155,35 @@ export class CommunityRepository implements OnModuleInit {
   }
 
   /**
-   * Find stale communities for cron job processing (oldest first)
-   * Filters by company from CLS context
+   * Count stale communities for the current company (from CLS)
    */
-  async findStaleCommunities(limit: number): Promise<Community[]> {
-    const query = this.neo4j.initQuery({ serialiser: CommunityModel });
-    query.queryParams = { ...query.queryParams, limit: Number(limit) };
+  async countStaleCommunities(): Promise<number> {
+    const query = this.neo4j.initQuery();
     query.query += `
       MATCH (community:Community {isStale: true})-[:BELONGS_TO]->(company)
-      RETURN community
-      ORDER BY community.staleSince ASC
-      LIMIT toInteger($limit)
+      RETURN COUNT(community) AS count
     `;
-    const result = await this.neo4j.readMany(query);
-    return result ?? [];
+    const result = await this.neo4j.read(query.query, query.queryParams);
+    const count = result.records[0]?.get("count");
+    return count?.toNumber?.() ?? count ?? 0;
+  }
+
+  /**
+   * Find all stale communities with their company IDs (for cron job enqueuing)
+   * No CLS context needed - returns cross-company results
+   */
+  async findAllStaleCommunities(): Promise<{ communityId: string; companyId: string }[]> {
+    const query = this.neo4j.initQuery();
+    query.query += `
+      MATCH (community:Community {isStale: true})-[:BELONGS_TO]->(company)
+      RETURN community.id AS communityId, company.id AS companyId
+      ORDER BY community.staleSince ASC
+    `;
+    const result = await this.neo4j.read(query.query, query.queryParams);
+    return result.records.map((record) => ({
+      communityId: record.get("communityId") as string,
+      companyId: record.get("companyId") as string,
+    }));
   }
 
   /**

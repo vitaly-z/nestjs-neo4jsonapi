@@ -1,3 +1,17 @@
+## [1.51.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.50.0...v1.51.0) (2026-02-15)
+
+### 🚀 Features
+
+* add support for immutable relationships in DTO and entity generation ([c27eb0f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/c27eb0f7fcf1cd35bd7e581ecaf555175d1acf0e))
+
+### 🐛 Bug Fixes
+
+* ensure fallback to Content label when contentTypes are not configured ([d8450e8](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/d8450e823fd120463f6e518f0ded55192fae2c86))
+
+### 📦 Code Refactoring
+
+* simplify query conditions by removing unnecessary tldr checks ([674087f](https://github.com/carlonicora/nestjs-neo4jsonapi/commit/674087f1d13484b232a5c54d716b96fab013da60))
+
 ## [1.50.0](https://github.com/carlonicora/nestjs-neo4jsonapi/compare/v1.49.0...v1.50.0) (2026-02-14)
 
 ### 🚀 Features
